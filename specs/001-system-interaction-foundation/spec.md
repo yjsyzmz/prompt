@@ -7,194 +7,194 @@ reviewer: "Fable"
 product_design: "docs/superpowers/specs/2026-07-17--design.md"
 ---
 
-# System interaction foundation — Specification
+# 系统交互基础——规格说明
 
-## Problem and outcome
+## 问题与预期结果
 
-The product depends on reading and replacing text across unrelated macOS applications without losing the user's work. That system interaction is the highest-risk dependency for every later prompt-library and AI-optimization feature, but it has not yet been proven as one complete user flow.
+本产品后续所有提示词库与 AI 优化能力，都依赖于一项高风险前提：应用能够在互不相关的 macOS 应用之间读取和替换文字，同时不丢失用户正在编辑的内容。目前，这项系统交互能力尚未通过一个完整的用户闭环得到验证。
 
-This feature delivers a model-free capability probe. While the application is already running, a user invokes one temporary global shortcut, captures the current selection or editable field, reviews a clearly marked deterministic test result in a floating preview, and explicitly chooses whether to replace the source text. Permission denial, unsupported targets, changed focus, and failed insertion remain understandable and recoverable through explicit clipboard actions. The outcome is compatibility evidence for representative native, browser, and Electron inputs without committing the product to final names, layout, model behavior, or technical architecture.
+本功能提供一个不接入模型的能力验证闭环。当应用已经在运行时，用户通过一个临时全局快捷键主动触发，应用获取当前选区或可编辑输入框内容，在悬浮预览中展示明确标注的确定性测试结果，再由用户明确决定是否替换原文。权限缺失、不支持的输入目标、焦点变化和写入失败，都必须具有可理解、可恢复的状态，并提供由用户主动操作的剪贴板后备路径。最终产出是针对原生应用、浏览器和 Electron 应用的兼容性证据，而不是对最终名称、布局、模型行为或技术架构的承诺。
 
-## Goals
+## 目标
 
-- Prove an end-to-end shortcut-to-preview-to-confirmation flow in representative macOS text inputs.
-- Demonstrate that source text is never modified before explicit confirmation.
-- Demonstrate selection-first capture and whole-field capture when no non-empty selection exists.
-- Demonstrate safe target revalidation, replacement, in-session source recovery, and explicit clipboard fallback.
-- Make missing permissions, unsafe inputs, empty inputs, unsupported targets, shortcut conflicts, and failed writes understandable and recoverable.
-- Record reproducible compatibility results for TextEdit, Chrome with ChatGPT, and VS Code.
+- 在具有代表性的 macOS 文本输入环境中，证明“快捷键—预览—确认”的端到端闭环可行。
+- 证明用户明确确认前，原文绝不被修改。
+- 证明有非空选区时优先读取选区，无非空选区时读取输入框全文。
+- 证明目标重新验证、确认替换、会话内恢复原文和显式剪贴板后备流程安全可用。
+- 让权限缺失、不安全输入、空输入、不支持目标、快捷键冲突和写入失败都可理解、可恢复。
+- 为 TextEdit、Chrome 中的 ChatGPT 和 VS Code 记录可复现的兼容性结果。
 
-## Out of scope
+## 范围外
 
-- AI generation, model requests, streaming output, API keys, model configuration, or provider tutorials.
-- Prompt-library, optimization-rule, template, search, collection, or persistence behavior.
-- Real-time mode, background text monitoring, or automatic transformation.
-- Accounts, synchronization, community, analytics, telemetry, or content history.
-- A final product name, feature name, visual system, floating-panel layout, or permanent shortcut combination.
-- User-configurable shortcut recording or a complete settings experience.
-- A final onboarding, installer, distribution, signing, or update flow.
-- Windows support or identical control behavior in every third-party application.
-- Technical architecture, framework selection, interface design, task decomposition, or application implementation.
+- AI 生成、模型请求、流式输出、API Key、模型配置或服务商教程。
+- 提示词库、优化规则、模板、搜索、分类整理或持久化能力。
+- 实时模式、后台文字监控或自动转换。
+- 账号、同步、社区、数据分析、遥测（telemetry）或内容历史。
+- 最终产品名、功能名、视觉系统、悬浮面板布局或永久快捷键组合。
+- 用户自定义快捷键录制或完整设置体验。
+- 最终版新手引导、安装、分发、签名或更新流程。
+- Windows 支持，或在所有第三方应用中实现完全相同的控制能力。
+- 技术架构、框架选择、接口设计、任务拆分或应用实现。
 
-## User stories
+## 用户故事
 
-### US-001 — Invoke without leaving the current task
+### US-001 — 不离开当前任务即可调用
 
-As a frequent Prompt user, I want to invoke the tool with one global shortcut while editing in another application, so that I can test the system interaction without switching workflows.
+作为一名经常使用 Prompt 的用户，我希望在其他应用中编辑文字时通过一个全局快捷键调用工具，从而无需切换工作流就能使用系统交互能力。
 
-### US-002 — Preview before changing text
+### US-002 — 修改文字前先预览
 
-As a user protecting unfinished work, I want to see the captured source and deterministic test result before any write occurs, so that I remain in control of the original text.
+作为一名需要保护未完成内容的用户，我希望在任何写入发生前看到读取到的原文和确定性测试结果，从而始终掌握对原文的控制权。
 
-### US-003 — Replace only the intended target
+### US-003 — 只替换预期目标
 
-As a user working across applications and windows, I want replacement to occur only when the original target is still valid, so that a stale action cannot modify unrelated text.
+作为一名同时使用多个应用和窗口的用户，我希望只有原始输入目标仍然有效时才允许替换，从而避免过期操作修改无关文字。
 
-### US-004 — Complete the flow when direct access is restricted
+### US-004 — 直接访问受限时仍能完成流程
 
-As a user of an application with limited system text access, I want clear clipboard-based recovery actions, so that I can still complete the test flow without losing the result or source.
+作为一名使用系统文字访问受限应用的用户，我希望获得清晰的剪贴板恢复操作，从而在不丢失结果或原文的情况下继续完成验证流程。
 
-### US-005 — Recover the original after replacement
+### US-005 — 替换后能够恢复原文
 
-As a user who confirmed a test replacement, I want an immediate way to restore the captured original, so that validation cannot leave my text irreversibly changed.
+作为一名已经确认测试替换的用户，我希望可以立即恢复读取时保存的原文，从而避免系统能力验证造成不可逆的内容变化。
 
-### US-006 — Understand permission and safety boundaries
+### US-006 — 理解权限与安全边界
 
-As a user without Accessibility permission or with a secure input focused, I want an understandable refusal and safe next action, so that the tool neither fails silently nor reads protected content.
+作为一名尚未授予辅助功能权限，或当前正在安全输入区域中输入的用户，我希望看到可理解的拒绝原因和安全的下一步操作，从而避免工具静默失败或读取受保护内容。
 
-## Functional requirements
+## 功能需求
 
-- **FR-001 — Global trigger:** While the application is already running, the system shall register one documented temporary global shortcut. A registration failure or detected conflict shall produce an understandable state instead of silent non-operation. The exact combination is not a permanent product decision.
-- **FR-002 — Permission gate:** Before reading or writing another application's text, the system shall verify the required macOS Accessibility permission. When permission is absent, it shall not read or modify target content and shall offer an explanation, an action that opens the relevant System Settings location, and a recheck action. It may also offer a user-initiated clipboard path.
-- **FR-003 — Secure-input refusal:** When the focused element is reported as a password field or secure input area, the system shall not read, transform, display, log, copy, or modify its content. It shall show only a content-free safety explanation.
-- **FR-004 — Selection-first capture:** When the focused editable element contains a non-empty selection, the system shall capture only that selection. Otherwise, it shall attempt to capture the complete value of the focused editable element.
-- **FR-005 — Empty and unsupported targets:** When no non-empty text can be captured, or the focused element cannot be established as an editable target, the system shall not create a result and shall provide an understandable next action.
-- **FR-006 — Deterministic validation result:** For a successful capture, the system shall produce the exact local validation result `【系统交互验证】`, followed by one newline and the captured text. The result shall be visibly identified as validation-only behavior and shall require no model or network request.
-- **FR-007 — Safe floating preview:** The system shall display the validation result without modifying source text. It shall prefer an anchor near the caret, selection, or input element when bounds are available; otherwise it shall use a safe position within the target window or active display. The preview shall remain fully visible on the active screen.
-- **FR-008 — Explicit preview actions:** The preview shall offer Confirm replacement, Copy result, and Cancel. Confirm shall be the only action that attempts direct source replacement. Copy shall be the only normal action that writes the result to the clipboard. Cancel shall close the interaction without changing source text or clipboard contents.
-- **FR-009 — Target revalidation:** Immediately before any direct write, the system shall revalidate the originating application, window, editable element, and relevant source range or value. Interacting with the tool's own preview shall not itself invalidate the target. An external target or focus change shall disable direct replacement while keeping Copy result and Cancel available.
-- **FR-010 — Replacement and fallback:** After a valid confirmation, the system shall replace only the originally captured selection or whole-field value. If replacement cannot be completed safely, it shall leave source text unchanged, retain the result in the current preview, explain the failure, and offer an explicit Copy result action.
-- **FR-011 — Single active session:** The system shall maintain at most one interaction session and one floating preview. Repeated shortcut triggers shall not stack windows or allow an older session to write over a newer target.
-- **FR-012 — Recoverable original:** After a successful replacement, the system shall keep the captured original in memory and expose a short-lived Restore original action for the current session. Restore shall revalidate the target before writing. If restoration cannot be completed safely, the system shall retain the original and offer an explicit Copy original action. Starting a new session or dismissing the success state ends application-managed recovery; the target application's system Undo remains an additional compatibility observation.
-- **FR-013 — Ephemeral content lifecycle:** Real user text, validation results derived from real user text, and recoverable originals shall exist only for the current in-memory session. They shall not be written to disk, ordinary configuration, logs, analytics, screenshots, or test artifacts, and shall be cleared when the session ends. Automated validation may use committed, non-sensitive synthetic text that contains no credential-like value and is clearly identified as test data.
+- **FR-001 — 全局触发：** 当应用已经运行时，系统必须注册一个有明确说明的临时全局快捷键。如果注册失败或检测到冲突，必须展示可理解的状态，不能静默失效。具体按键组合不构成永久产品决定。
+- **FR-002 — 权限门禁：** 在读取或写入其他应用的文字前，系统必须检查所需的 macOS Accessibility（辅助功能）权限。权限缺失时，不得读取或修改目标内容，并必须提供权限用途说明、打开相关 System Settings（系统设置）位置的操作和重新检测操作；也可以提供由用户主动选择的剪贴板路径。
+- **FR-003 — 拒绝安全输入：** 当焦点元素被系统标记为密码框或安全输入区域时，系统不得读取、转换、展示、记录、复制或修改其中的内容，只能展示不包含任何输入内容的安全说明。
+- **FR-004 — 选区优先读取：** 当焦点可编辑元素中存在非空选区时，系统必须只读取该选区；否则必须尝试读取焦点可编辑元素的完整内容。
+- **FR-005 — 空内容与不支持目标：** 当无法读取到非空文字，或无法确认焦点元素是可编辑目标时，系统不得生成结果，并必须提供可理解的下一步操作。
+- **FR-006 — 确定性验证结果：** 读取成功后，系统必须在本地生成固定结果：第一行是 `【系统交互验证】`，随后是一个换行符和读取到的原文。结果必须明确标注为仅用于能力验证，并且不需要模型或网络请求。
+- **FR-007 — 安全悬浮预览：** 系统必须在不修改原文的前提下展示验证结果。当能够获取位置时，优先显示在光标、选区或输入元素附近；否则显示在目标窗口或当前活跃显示器内的安全位置。预览必须完整位于可见屏幕区域内。
+- **FR-008 — 显式预览操作：** 预览必须提供“确认替换”“复制结果”和“取消”。只有“确认替换”可以尝试直接修改原文；正常流程中只有“复制结果”可以把结果写入剪贴板；“取消”必须关闭当前交互，且不得修改原文或剪贴板。
+- **FR-009 — 目标重新验证：** 每次直接写入前，系统必须重新验证原始应用、窗口、可编辑元素以及相关文字范围或内容。与工具自身预览交互不能被视为目标失效；用户切换到其他应用、窗口或输入元素后，必须禁用直接替换，但仍保留“复制结果”和“取消”。
+- **FR-010 — 替换与后备：** 通过有效确认后，系统只能替换最初读取的选区或输入框全文。如果无法安全完成替换，必须保持原文不变，在当前预览中保留结果，解释失败原因，并提供显式“复制结果”操作。
+- **FR-011 — 单一活动会话：** 系统在同一时间最多只能保留一个交互会话和一个悬浮预览。重复按下快捷键不得叠加多个窗口，也不得允许旧会话稍后写入之前的目标。
+- **FR-012 — 原文可恢复：** 替换成功后，系统必须在内存中保留读取到的原文，并在当前会话中短暂提供“恢复原文”操作。恢复前必须重新验证目标；如果无法安全直接恢复，系统必须继续保留原文，并提供显式“复制原文”操作。开始新会话或关闭成功状态后，应用管理的恢复能力结束；目标应用自身的 Undo（撤销）能力作为额外兼容性观察记录。
+- **FR-013 — 临时内容生命周期：** 真实用户文字、由真实用户文字产生的验证结果和可恢复原文，只能存在于当前内存会话中。它们不得写入磁盘、普通配置、日志、数据分析、截图或测试产物，并且必须在会话结束时清除。自动化验证可以使用提交到仓库的非敏感合成文字，但合成文字不得包含类似凭据的内容，并必须明确标识为测试数据。
 
-## Non-functional requirements
+## 非功能需求
 
-- **NFR-001 — Responsiveness:** With the application already running, a visible preview shell or explicit permission, conflict, empty-input, or unsupported-target state shall appear within 300 milliseconds of the shortcut in at least 9 of 10 consecutive attempts in each required full-loop environment. The validation record shall identify the Mac, macOS version, application version, and measurement method.
-- **NFR-002 — No pre-confirmation mutation:** Across all automated and manual acceptance runs, the number of source-text mutations before Confirm replacement shall be zero.
-- **NFR-003 — Compatibility floor:** TextEdit and Chrome with ChatGPT shall complete the full capture, preview, confirm, replace, and recovery flow. VS Code shall complete at least the explicit clipboard fallback flow; direct capture and replacement, when available, shall be recorded separately rather than assumed.
-- **NFR-004 — Input robustness:** Chinese, English, mixed-language, empty, multiline, long, and special-character inputs shall not cause a crash, silent failure, unintended truncation, or unrelated text modification. The long-text test size shall be recorded with the result rather than treated as an unlimited guarantee.
-- **NFR-005 — Display safety:** On single- and multi-display configurations, including an input near a visible screen edge, the preview shall remain fully visible on one active display.
-- **NFR-006 — Privacy:** Validation shall produce no persisted real user content and no user-content-bearing logs, screenshots, artifacts, or telemetry. Clipboard contents shall not be read or changed unless the user explicitly selects a clipboard fallback or copy action. Automated evidence shall use only non-sensitive synthetic text.
-- **NFR-007 — Understandable recovery:** Every refusal or failure state shall name the failed capability in user language and present at least one safe next action. Raw platform error codes alone are insufficient.
+- **NFR-001 — 响应速度：** 在应用已经运行的情况下，每个必须支持完整闭环的环境中连续触发 10 次，至少 9 次必须在按下快捷键后 300 毫秒内出现可见预览外壳，或明确的权限、冲突、空输入、不支持目标状态。验证记录必须说明 Mac 型号、macOS 版本、应用版本和测量方法。
+- **NFR-002 — 确认前零修改：** 在全部自动化和人工验收中，用户点击“确认替换”之前，原文修改次数必须为 0。
+- **NFR-003 — 最低兼容标准：** TextEdit 和 Chrome 中的 ChatGPT 必须完成读取、预览、确认、替换和恢复原文的完整闭环。VS Code 至少必须完成显式剪贴板后备闭环；如果能够直接读取和替换，则单独记录结果，不能预先假定其可用。
+- **NFR-004 — 输入健壮性：** 中文、英文、中英混合、空文本、多行文本、长文本和特殊字符不得导致崩溃、静默失败、意外截断或修改无关文字。长文本测试的具体长度必须随结果记录，不能把一次测试解释为无限长度保证。
+- **NFR-005 — 显示安全：** 在单显示器和多显示器环境下，包括输入位置靠近可见屏幕边缘时，预览必须完整显示在一个活跃显示器内。
+- **NFR-006 — 隐私：** 验证过程不得持久化真实用户内容，也不得产生包含用户内容的日志、截图、测试产物或遥测。只有用户明确选择剪贴板后备或复制操作时，系统才可以读取或修改剪贴板。自动化证据只能使用非敏感合成文字。
+- **NFR-007 — 恢复信息可理解：** 每个拒绝或失败状态都必须使用用户可理解的语言指出失败的能力，并提供至少一个安全的下一步操作。只显示原始系统错误码不符合要求。
 
-## Acceptance scenarios
+## 验收场景
 
-### AC-001 — Register and invoke the temporary shortcut
+### AC-001 — 注册并触发临时快捷键
 
-- **Given** the application is already running and the temporary shortcut is available
-- **When** the user presses the shortcut from TextEdit or Chrome
-- **Then** the system begins one interaction session and displays a preview shell or explicit state within the NFR-001 threshold
+- **前提** 应用已经运行，并且临时快捷键可用
+- **当** 用户在 TextEdit 或 Chrome 中按下快捷键
+- **那么** 系统开始一个交互会话，并在 NFR-001 规定的时间内展示预览外壳或明确状态
 
-### AC-002 — Explain a shortcut conflict
+### AC-002 — 解释快捷键冲突
 
-- **Given** the temporary shortcut cannot be registered
-- **When** the application initializes the global trigger
-- **Then** the user sees that the shortcut is unavailable and receives a safe next action without the feature appearing silently functional
+- **前提** 临时快捷键无法注册
+- **当** 应用初始化全局触发能力
+- **那么** 用户能够看到快捷键不可用及安全的下一步操作，并且功能不会表现为已经可用却静默无响应
 
-### AC-003 — Recover from missing Accessibility permission
+### AC-003 — 从辅助功能权限缺失中恢复
 
-- **Given** Accessibility permission is not granted
-- **When** the user presses the shortcut
-- **Then** no target text is read or modified, and the user can open the relevant System Settings location, recheck permission, or choose a user-initiated clipboard path
+- **前提** 尚未授予 Accessibility（辅助功能）权限
+- **当** 用户按下快捷键
+- **那么** 系统不读取或修改目标文字，并允许用户打开相关 System Settings（系统设置）位置、重新检测权限，或选择由用户主动发起的剪贴板路径
 
-### AC-004 — Refuse secure input
+### AC-004 — 拒绝读取安全输入
 
-- **Given** a password field or secure input area is focused
-- **When** the user presses the shortcut
-- **Then** no content is captured, transformed, displayed, logged, copied, or modified, and a content-free safety explanation appears
+- **前提** 当前焦点位于密码框或安全输入区域
+- **当** 用户按下快捷键
+- **那么** 系统不读取、转换、展示、记录、复制或修改任何输入内容，并展示不包含输入内容的安全说明
 
-### AC-005 — Replace only a TextEdit selection
+### AC-005 — 在 TextEdit 中只替换选区
 
-- **Given** TextEdit contains surrounding text and one non-empty selection
-- **When** the user invokes the feature, reviews the validation result, and confirms replacement
-- **Then** the preview initially leaves all source text unchanged, confirmation replaces only the selected range, and surrounding text remains byte-for-byte unchanged
+- **前提** TextEdit 中存在选区前后的文字，并有一个非空选区
+- **当** 用户调用功能、检查验证结果并确认替换
+- **那么** 预览出现时所有原文保持不变；确认后只替换选中范围；选区前后的文字逐字节保持不变
 
-### AC-006 — Replace a Chrome ChatGPT input without a selection
+### AC-006 — 在 Chrome 的 ChatGPT 输入框中替换全文
 
-- **Given** the ChatGPT input in Chrome is focused, contains non-empty text, and has no non-empty selection
-- **When** the user invokes the feature and confirms replacement
-- **Then** the deterministic result represents the complete input value and only that input value is replaced
+- **前提** Chrome 中的 ChatGPT 输入框已获得焦点，包含非空文字，并且没有非空选区
+- **当** 用户调用功能并确认替换
+- **那么** 确定性结果包含完整输入框内容，并且只替换该输入框中的内容
 
-### AC-007 — Explain empty or unsupported input
+### AC-007 — 解释空输入或不支持目标
 
-- **Given** the focused target is empty or cannot be established as editable
-- **When** the user invokes the feature
-- **Then** no empty result is generated, no source or clipboard mutation occurs, and an understandable next action appears
+- **前提** 焦点目标为空，或无法确认它是可编辑元素
+- **当** 用户调用功能
+- **那么** 系统不生成空结果，不修改原文或剪贴板，并展示可理解的下一步操作
 
-### AC-008 — Cancel without side effects
+### AC-008 — 取消时无副作用
 
-- **Given** a valid preview is visible and the clipboard has a known pre-test value
-- **When** the user selects Cancel
-- **Then** the preview closes, source text is unchanged, and the clipboard retains the pre-test value
+- **前提** 有效预览已经显示，并且剪贴板中存有已知的测试前内容
+- **当** 用户选择“取消”
+- **那么** 预览关闭，原文保持不变，剪贴板仍保留测试前内容
 
-### AC-009 — Block a stale target write
+### AC-009 — 阻止向过期目标写入
 
-- **Given** a valid preview exists for one target
-- **When** the user externally changes application, window, or editable input before confirmation
-- **Then** direct replacement is disabled, the original target is unchanged, and Copy result and Cancel remain available
+- **前提** 某个目标已经生成有效预览
+- **当** 用户在确认前切换到其他应用、窗口或可编辑输入元素
+- **那么** 直接替换被禁用，原始目标保持不变，“复制结果”和“取消”仍然可用
 
-### AC-010 — Complete the VS Code fallback flow
+### AC-010 — 在 VS Code 中完成后备闭环
 
-- **Given** VS Code does not permit reliable direct capture or replacement in the tested configuration
-- **When** the user invokes the feature or a confirmed write fails
-- **Then** the system explains the restricted capability, retains any available result, and allows the user to explicitly copy the result for manual paste without changing unrelated text
+- **前提** VS Code 在当前测试配置下不允许可靠地直接读取或替换
+- **当** 用户调用功能，或一次已确认的写入失败
+- **那么** 系统解释受限能力，保留已经可用的结果，并允许用户明确复制结果后手动粘贴，不修改任何无关文字
 
-### AC-011 — Prevent stacked or stale sessions
+### AC-011 — 防止窗口叠加和旧会话写入
 
-- **Given** one interaction session is active
-- **When** the user presses the global shortcut again
-- **Then** no second floating window is stacked and no older session can later write to its previous target
+- **前提** 已经存在一个活动交互会话
+- **当** 用户再次按下全局快捷键
+- **那么** 系统不叠加第二个悬浮窗口，并且旧会话之后不能再向原目标写入
 
-### AC-012 — Restore the original after successful replacement
+### AC-012 — 替换成功后恢复原文
 
-- **Given** a confirmed replacement succeeded and the current session remains active
-- **When** the user selects Restore original while the same target remains valid
-- **Then** the captured original replaces only the validation result and no unrelated text changes
+- **前提** 一次确认替换已经成功，并且当前会话仍然有效
+- **当** 用户在同一目标仍有效时选择“恢复原文”
+- **那么** 读取时保存的原文只替换验证结果，不修改任何无关文字
 
-### AC-013 — Preserve recovery when direct restoration is unsafe
+### AC-013 — 无法安全直接恢复时保留原文
 
-- **Given** a confirmed replacement succeeded but the original target later becomes invalid
-- **When** the user selects Restore original
-- **Then** no direct write occurs, the original remains available in memory, and the user can explicitly copy it
+- **前提** 一次确认替换已经成功，但原始目标后来失效
+- **当** 用户选择“恢复原文”
+- **那么** 系统不执行直接写入，原文继续保留在内存中，并允许用户明确复制原文
 
-### AC-014 — Clear private session content
+### AC-014 — 清除私密会话内容
 
-- **Given** a session has captured source text and produced a result
-- **When** the session is cancelled, dismissed after success, replaced by a new session, or otherwise ended normally
-- **Then** the application clears the source, result, and recovery copy from session memory and no real user content appears in files, configuration, logs, analytics, screenshots, or test artifacts
+- **前提** 某个会话已经读取原文并生成结果
+- **当** 会话被取消、在成功后关闭、被新会话替代或以其他正常方式结束
+- **那么** 应用从会话内存中清除原文、结果和恢复副本，并且文件、配置、日志、数据分析、截图或测试产物中不出现真实用户内容
 
-### AC-015 — Keep the preview visible across display positions
+### AC-015 — 在不同显示位置保持预览可见
 
-- **Given** an editable target is near any screen edge or on a secondary display
-- **When** a preview or explicit state appears
-- **Then** the entire preview is visible on one active display, using a safe fallback position when accurate input bounds are unavailable
+- **前提** 可编辑目标靠近任意屏幕边缘，或位于副显示器上
+- **当** 预览或明确状态出现
+- **那么** 完整预览显示在一个活跃显示器内；无法获取准确输入位置时使用安全后备位置
 
-### AC-016 — Handle representative text shapes without data loss
+### AC-016 — 处理代表性文字形态且不丢失内容
 
-- **Given** Chinese, English, mixed-language, multiline, long, or special-character source text
-- **When** the user captures, previews, confirms, cancels, copies, or restores according to the relevant flow
-- **Then** the application does not crash, silently truncate content, or modify unrelated text, and the validation record identifies any application-specific limitation
+- **前提** 原文为中文、英文、中英混合、多行、长文本或包含特殊字符
+- **当** 用户按照相应流程执行读取、预览、确认、取消、复制或恢复
+- **那么** 应用不崩溃、不静默截断内容、不修改无关文字，并且验证记录说明任何特定应用限制
 
-### AC-017 — Record target-application Undo behavior
+### AC-017 — 记录目标应用的 Undo 行为
 
-- **Given** a direct replacement succeeded in a required compatibility application
-- **When** the application-managed recovery state is dismissed and the user invokes the target application's standard Undo
-- **Then** the observed restoration behavior is recorded as compatibility evidence without being treated as a substitute for FR-012
+- **前提** 在必须验证兼容性的应用中，一次直接替换已经成功
+- **当** 应用管理的恢复状态被关闭，用户执行目标应用的标准 Undo（撤销）操作
+- **那么** 实际恢复行为被记录为兼容性证据，但不能替代 FR-012 对会话内恢复能力的要求
 
-## Requirement traceability
+## 需求追踪
 
-| Requirement | Acceptance evidence |
+| 需求 | 验收证据 |
 | --- | --- |
 | FR-001 | AC-001, AC-002 |
 | FR-002 | AC-003 |
@@ -210,42 +210,42 @@ As a user without Accessibility permission or with a secure input focused, I wan
 | FR-012 | AC-012, AC-013, AC-017 |
 | FR-013 | AC-014 |
 | NFR-001 | AC-001 |
-| NFR-002 | AC-003 through AC-016 |
+| NFR-002 | AC-003 至 AC-016 |
 | NFR-003 | AC-005, AC-006, AC-010 |
 | NFR-004 | AC-007, AC-016 |
 | NFR-005 | AC-015 |
 | NFR-006 | AC-003, AC-004, AC-008, AC-014 |
 | NFR-007 | AC-002, AC-003, AC-004, AC-007, AC-009, AC-010, AC-013 |
 
-## Edge cases and failure behavior
+## 边界情况与失败行为
 
-- A zero-length selection is treated as no selection; whole-field capture is attempted.
-- Whitespace-only text is valid non-empty text and is preserved exactly after the validation marker.
-- If source content changes after capture but before confirmation, the target is stale and direct replacement is blocked.
-- If input bounds are unavailable or invalid, the preview uses a safe target-window or active-display position instead of failing the entire flow.
-- If the preview itself receives interaction, that internal interaction does not count as an external target change; the originating target still must pass revalidation before writing.
-- If direct capture fails before a result exists, the user may explicitly choose a clipboard-input path after manually copying source text. The application does not inspect the clipboard automatically.
-- If direct replacement or restoration fails, the system preserves the applicable result or original in the current session and offers explicit copying; it never clears or overwrites the target as a fallback.
-- If the application exits unexpectedly after a successful replacement, application-managed in-memory recovery is unavailable. The compatibility record must include the target application's standard Undo result, while FR-012 remains the normal in-session recovery guarantee.
-- If a new shortcut trigger supersedes an existing session, the existing preview and its write authority end before the new capture begins.
-- If text length or application behavior exceeds the validated envelope, the system reports the limitation rather than claiming universal compatibility.
+- 长度为 0 的选区视为没有选区，系统继续尝试读取输入框全文。
+- 只包含空白字符的文字属于有效非空文字，必须原样保留在验证标记之后。
+- 如果原文在读取后、确认前发生变化，则目标已经过期，必须阻止直接替换。
+- 如果输入位置边界不可用或无效，预览使用目标窗口或活跃显示器内的安全位置，而不是让整个流程失败。
+- 如果用户与预览本身交互，该内部交互不算外部目标变化；但写入前仍必须重新验证原始目标。
+- 如果直接读取失败且尚未生成结果，用户可以在手动复制原文后明确选择剪贴板输入路径；应用不得自动检查剪贴板。
+- 如果直接替换或恢复失败，系统在当前会话中保留相应结果或原文并提供显式复制操作；不得把清空或覆盖目标作为后备行为。
+- 如果应用在替换成功后异常退出，应用管理的内存恢复将不可用。兼容性记录必须包含目标应用标准 Undo 的结果，但正常会话内的恢复保证仍由 FR-012 约束。
+- 如果新的快捷键触发取代现有会话，必须先结束现有预览及其写入权限，再开始新的读取。
+- 如果文字长度或应用行为超出已验证范围，系统必须报告限制，不能声称普遍兼容。
 
-## Dependencies and assumptions
+## 依赖与假设
 
-- The feature targets macOS and assumes the application is already running; cold-launch and login-item behavior are outside this Spec Gate.
-- The user actively invokes every capture. No background monitoring or real-time processing is permitted.
-- macOS Accessibility authorization is an explicit user-controlled dependency for direct cross-application reading and writing.
-- The exact minimum supported macOS version and implementation mechanism are Plan Gate decisions, but every validation result must record its OS and application versions.
-- TextEdit represents native macOS text controls, Chrome with ChatGPT represents browser text input, and VS Code represents an Electron application with potentially restricted direct access.
-- Compatibility means either the documented full loop or the documented clipboard fallback; it does not imply identical control across all applications.
-- The deterministic validation marker and temporary shortcut are disposable validation behavior and do not establish final product copy or interaction design.
-- Automated tests and recorded screenshots use only clearly identified, non-sensitive synthetic text and never use copied real-world user content or credential-like values.
-- Fable independently reviews the exact Spec commit SHA before any planning begins.
+- 本功能面向 macOS，并假设应用已经运行；冷启动和登录项行为不属于本 Spec Gate。
+- 每次读取都由用户主动触发，不允许后台监控或实时处理。
+- macOS Accessibility（辅助功能）授权是直接跨应用读取和写入的显式、由用户控制的依赖。
+- 最低支持的 macOS 版本和具体实现机制由后续 Plan Gate 决定，但每份验证结果必须记录操作系统和应用版本。
+- TextEdit 代表 macOS 原生文字控件；Chrome 中的 ChatGPT 代表浏览器文本输入；VS Code 代表可能限制直接访问的 Electron 应用。
+- 兼容性可以是已记录的完整闭环，也可以是已记录的剪贴板后备闭环；不代表所有应用都具有完全相同的控制能力。
+- 确定性验证标记和临时快捷键是可替换的验证行为，不构成最终产品文案或交互设计。
+- 自动化测试和验证截图只能使用明确标识的非敏感合成文字，不得使用复制自现实场景的用户内容或类似凭据的值。
+- Fable 必须在任何规划开始前，独立审核准确的 Spec 提交 SHA。
 
-## Spec Gate record
+## Spec Gate 记录
 
-- User design approval: confirmed in the product-design dialogue before repository write
-- Review commit SHA: pending Owner HANDOFF
-- Reviewer verdict: awaiting Fable review
-- PR review reference: PR #2
-- Downstream authorization: Plan Gate, Tasks Gate, and implementation are not authorized
+- 用户设计确认：写入仓库前已在产品设计对话中逐段确认
+- 审核提交 SHA：等待 Owner 发布 HANDOFF
+- Reviewer 结论：等待 Fable 审核
+- PR 审核位置：PR #2
+- 后续授权：Plan Gate、Tasks Gate 和实现均未获授权
