@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: plan
-status: in_review
+status: approved
 spec_version: "501e34584e3ca06a922038d153a96e3b93aa65ab"
 owner: "Solar"
 reviewer: "Fable"
@@ -380,4 +380,4 @@ Tasks Gate 必须为 FR-001 至 FR-013、NFR-001 至 NFR-007、AC-001 至 AC-017
 - Review commit SHA 与 Reviewer verdict：以 PR #2 中结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录；本文件不复制会随提交变化的结果
 - 审核更新规则：任何 Plan Gate `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR review reference：PR #2
-- 后续授权：Tasks Gate 和 Implementation Gate 均未获授权
+- 后续授权：Tasks Gate 已获用户授权，仅允许编写 `tasks.md`；Implementation Gate 未获授权

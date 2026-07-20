@@ -1,6 +1,6 @@
 ---
 feature: "001-system-interaction-foundation"
-stage: plan
+stage: tasks
 status: approved
 owner: "Solar"
 reviewer: "Fable"
@@ -248,4 +248,4 @@ product_design: "docs/superpowers/specs/2026-07-17--design.md"
 - 审核提交 SHA 与 Reviewer 结论：以 PR #2 中结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录；本文件不复制会随提交变化的 Gate 结果
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- 后续授权：Plan Gate、Tasks Gate 和实现均未获授权
+- 后续授权：Tasks Gate 已获用户授权，仅允许编写 `tasks.md`；Implementation Gate 未获授权
