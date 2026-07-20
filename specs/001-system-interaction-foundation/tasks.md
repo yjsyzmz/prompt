@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: tasks
-status: draft
+status: in_review
 plan_version: "c5666be0aefb4523e21a2544722511f087201360"
 owner: "Solar"
 reviewer: "Fable"
@@ -134,6 +134,7 @@ reviewer: "Fable"
 
 - Plan Gate 通过提交：`c5666be0aefb4523e21a2544722511f087201360`
 - 用户授权：已授权编写 `tasks.md`；未授权安装依赖、创建工程或开发
+- 用户书面确认：2026-07-20 已确认本任务清单，可以交给 Fable 进行 Tasks Gate 审核
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
