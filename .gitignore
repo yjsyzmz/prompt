@@ -1,0 +1,23 @@
+# Local agent worktrees
+.worktrees/
+
+# macOS
+.DS_Store
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Local secrets and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+
+# Local tool output
+.cache/
+build/
+
