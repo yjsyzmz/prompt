@@ -6,7 +6,7 @@ if [[ -f Package.swift ]]; then
   exit 0
 fi
 
-container="$(find . -maxdepth 3 \( -name '*.xcworkspace' -o -name '*.xcodeproj' \) -print | head -1)"
+container="$(./scripts/find-xcode-container.sh)"
 if [[ -z "$container" ]]; then
   echo "No application project exists yet; collaboration bootstrap build check passed."
   exit 0

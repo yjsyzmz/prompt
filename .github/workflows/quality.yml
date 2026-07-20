@@ -12,14 +12,16 @@ jobs:
   sdd-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Validate SDD artifacts
         run: ./scripts/sdd-check.sh
+      - name: Verify SDD gate behavior
+        run: ./scripts/sdd-check.sh --self-test
 
   secret-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
       - name: Scan tracked content for credential patterns
@@ -30,13 +32,15 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Verify Xcode container discovery
+        run: ./scripts/find-xcode-container.sh --self-test
       - name: Build
         run: ./scripts/build.sh
 
   unit-tests:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run unit tests
         run: ./scripts/unit-tests.sh

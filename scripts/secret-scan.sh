@@ -5,18 +5,30 @@ pattern='(sk-[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]
 
 scan_file() {
   local file="$1"
-  if grep -nE "$pattern" "$file"; then
-    echo "Potential credential detected in $file" >&2
+  local line_number
+  line_number="$(awk -v pattern="$pattern" '$0 ~ pattern { print NR; exit }' "$file")"
+  if [[ -n "$line_number" ]]; then
+    echo "Potential credential detected at $file:$line_number" >&2
     return 1
   fi
 }
 
 if [[ "${1:-}" == "--self-test" ]]; then
   temp_file="$(mktemp)"
-  trap 'rm -f "$temp_file"' EXIT
-  printf '%s\n' 'sk-'"$(printf 'a%.0s' {1..24})" > "$temp_file"
-  if scan_file "$temp_file" >/dev/null 2>&1; then
+  output_file="$(mktemp)"
+  trap 'rm -f "$temp_file" "$output_file"' EXIT
+  fixture='sk-'"$(printf 'a%.0s' {1..24})"
+  printf '%s\n' "$fixture" > "$temp_file"
+  if scan_file "$temp_file" >"$output_file" 2>&1; then
     echo "Secret scanner self-test failed: fixture was not detected." >&2
+    exit 1
+  fi
+  if grep -Fq "$fixture" "$output_file"; then
+    echo "Secret scanner self-test failed: credential content reached scanner output." >&2
+    exit 1
+  fi
+  if ! grep -Fq "$temp_file:1" "$output_file"; then
+    echo "Secret scanner self-test failed: safe file and line evidence was not emitted." >&2
     exit 1
   fi
   echo "Secret scanner self-test passed."
