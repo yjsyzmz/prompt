@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: research
-status: draft
+status: in_review
 spec_version: "501e34584e3ca06a922038d153a96e3b93aa65ab"
 researched_on: "2026-07-20"
 ---

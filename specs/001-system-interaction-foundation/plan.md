@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: plan
-status: draft
+status: in_review
 spec_version: "501e34584e3ca06a922038d153a96e3b93aa65ab"
 owner: "Solar"
 reviewer: "Fable"
