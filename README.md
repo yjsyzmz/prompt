@@ -10,3 +10,9 @@
 
 产品设计见 [`docs/superpowers/specs/2026-07-17--design.md`](docs/superpowers/specs/2026-07-17--design.md)。协作协议将在首个 SDD 基础设施 PR 中建立。
 
+## 双 Agent 协作
+
+- Agent 必读规则：[`AGENTS.md`](AGENTS.md)
+- 工程宪法：[`.specify/memory/constitution.md`](.specify/memory/constitution.md)
+- 人工操作指南：[`docs/process/dual-agent-sdd.md`](docs/process/dual-agent-sdd.md)
+- 功能规格目录：[`specs/`](specs/)

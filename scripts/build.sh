@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -f Package.swift ]]; then
+  swift build
+  exit 0
+fi
+
+container="$(./scripts/find-xcode-container.sh)"
+if [[ -z "$container" ]]; then
+  echo "No application project exists yet; collaboration bootstrap build check passed."
+  exit 0
+fi
+
+if [[ ! -f .ci/xcode.env ]]; then
+  echo "An Xcode project exists but .ci/xcode.env is missing." >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+source .ci/xcode.env
+: "${XCODE_SCHEME:?XCODE_SCHEME must be set in .ci/xcode.env}"
+
+if [[ "$container" == *.xcworkspace ]]; then
+  xcodebuild -workspace "$container" -scheme "$XCODE_SCHEME" -destination 'platform=macOS' build
+else
+  xcodebuild -project "$container" -scheme "$XCODE_SCHEME" -destination 'platform=macOS' build
+fi
