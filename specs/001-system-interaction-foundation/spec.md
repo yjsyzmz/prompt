@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
-stage: spec
-status: in_review
+stage: plan
+status: approved
 owner: "Solar"
 reviewer: "Fable"
 product_design: "docs/superpowers/specs/2026-07-17--design.md"
