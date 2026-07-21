@@ -107,3 +107,7 @@ cannot find type 'PanelProbeDisplay' in scope
 ## 下一步
 
 下一项是 T-009：只实现本文件记录的最小 nonactivating `NSPanel` 与 probe geometry，使 T-008 测试转绿。T-009 需要新的用户明确授权；本任务在此停止。
+
+## T-009 关闭记录
+
+T-009 获得单独授权后已在 `evidence/T-009-panel-geometry-green.md` 记录绿色证据。上述 8 个失败测试现已全部通过；本文件保留为测试优先开发的红灯基线，不再代表当前分支状态。

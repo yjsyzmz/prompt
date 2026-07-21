@@ -69,7 +69,7 @@ reviewer: "Fable"
 - [x] **T-006 [Implementation] 实现最薄快捷键与安全输入适配器。** 使用 `RegisterEventHotKey`、`UnregisterEventHotKey` 与 `IsSecureEventInputEnabled`，将状态交给协调器；不得加入键盘监听替代路径。— Depends on: T-005; Covers: FR-001, FR-003, NFR-001
 - [x] **T-007 [Probe] 验证快捷键停止条件。** 在普通输入、Secure Event Input 和快捷键冲突环境人工复核；若 Secure Event Input 完全抑制回调，记录 AC-004 未满足并返回 Gate，不得声称已实现应用内拒绝。— Depends on: T-006; Covers: FR-001, FR-003, AC-001, AC-002, AC-004; Evidence: `evidence/T-007-hot-key-stop-conditions.md`
 - [x] **T-008 [Test] 定义非激活面板与显示几何探针。** 先覆盖 `NSPanel` 不抢焦点、后备锚点、屏幕边缘、负坐标、副显示器、不同缩放和全屏空间的预期几何；失败样例必须可复现。— Depends on: T-004; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-008-panel-geometry-red.md`
-- [ ] **T-009 [Implementation] 实现最小面板探针。** 创建 nonactivating `NSPanel` 和最小 SwiftUI 占位内容，只验证不抢焦点、层级与几何，不实现正式交互界面。— Depends on: T-008; Covers: FR-007, NFR-005
+- [x] **T-009 [Implementation] 实现最小面板探针。** 创建 nonactivating `NSPanel` 和最小 SwiftUI 占位内容，只验证不抢焦点、层级与几何，不实现正式交互界面。— Depends on: T-008; Covers: FR-007, NFR-005; Evidence: `evidence/T-009-panel-geometry-green.md`
 - [ ] **T-010 [Probe] 验证面板停止条件。** 在单屏、多屏、全屏、边缘位置和非默认缩放下记录结果；若 TextEdit 或 Chrome/ChatGPT 中无法既保持目标又显示完整面板，返回 Gate。— Depends on: T-009; Covers: FR-007, NFR-005, AC-015
 
 ### P2 — 领域核心
@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-008；T-009 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-009；T-010 及后续任务未获授权
