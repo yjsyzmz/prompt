@@ -59,7 +59,7 @@ reviewer: "Fable"
 ### P0 — 环境与工程门禁
 
 - [x] **T-001 [Environment] 记录可复现工具链。** 安装并选择稳定版完整 Xcode，记录 Xcode、Swift、macOS、Mac 型号和 CPU 架构；若只有 Command Line Tools 或 Swift 6 不可用，立即停止。此任务只能在 Tasks Gate `PASS` 和用户授权 Implementation Gate 后执行。— Covers: Plan 阶段出口 1；Evidence: `evidence/T-001-toolchain.md`
-- [ ] **T-002 [Test] 编写工程结构失败检查。** 先定义并运行一个预期失败的结构检查，要求存在 macOS 14.0+、Swift 6、arm64+x86_64 的应用目标、单元测试目标和合成 AX 宿主目标，同时拒绝 App Sandbox、网络 entitlement、第三方运行时依赖和范围外模块。— Depends on: T-001; Covers: Constitution IV, VII
+- [x] **T-002 [Test] 编写工程结构失败检查。** 先定义并运行一个预期失败的结构检查，要求存在 macOS 14.0+、Swift 6、arm64+x86_64 的应用目标、单元测试目标和合成 AX 宿主目标，同时拒绝 App Sandbox、网络 entitlement、第三方运行时依赖和范围外模块。— Depends on: T-001; Covers: Constitution IV, VII; Evidence: `evidence/T-002-project-structure-red.md`
 - [ ] **T-003 [Implementation] 创建最小 Xcode 工程。** 只创建 T-002 要求的目标、配置和目录，不加入产品行为；使结构检查通过。— Depends on: T-002; Covers: Constitution IV, VII
 - [ ] **T-004 [Verification] 建立基础构建基线。** 在本地与 GitHub Actions 运行 universal Debug build、单元测试发现、`sdd-check` 和 `secret-scan`；记录命令和结果，不绕过无法执行的 Xcode 检查。— Depends on: T-003; Covers: Constitution V, VI
 
@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户授权，当前仅完成 T-001；T-002 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 与 T-002；T-003 及后续任务未获授权
