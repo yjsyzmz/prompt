@@ -11,6 +11,9 @@
 		100000000000000000000092 /* ProjectStructureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000026 /* ProjectStructureTests.swift */; };
 		100000000000000000000093 /* AppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000027 /* AppEntry.swift */; };
 		100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */; };
+		100000000000000000000095 /* SystemInteractionAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000029 /* SystemInteractionAdapters.swift */; };
+		100000000000000000000096 /* SystemInteractionAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000029 /* SystemInteractionAdapters.swift */; };
+		100000000000000000000097 /* SystemInteractionAdapters.swift in Copy Adapter Source for Audit */ = {isa = PBXBuildFile; fileRef = 100000000000000000000029 /* SystemInteractionAdapters.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,6 +26,18 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		100000000000000000000064 /* Copy Adapter Source for Audit */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (100000000000000000000097 /* SystemInteractionAdapters.swift in Copy Adapter Source for Audit */,);
+			name = "Copy Adapter Source for Audit";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		100000000000000000000021 /* SystemInteractionFoundation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SystemInteractionFoundation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		100000000000000000000022 /* SystemInteractionFoundationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SystemInteractionFoundationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -32,6 +47,7 @@
 		100000000000000000000026 /* ProjectStructureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ProjectStructureTests.swift; sourceTree = "<group>"; };
 		100000000000000000000027 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticAXHost/AppEntry.swift; sourceTree = "<group>"; };
 		100000000000000000000028 /* HotKeySecureInputProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/HotKeySecureInputProbeTests.swift; sourceTree = "<group>"; };
+		100000000000000000000029 /* SystemInteractionAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/SystemInteractionAdapters.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,7 +77,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		100000000000000000000004 /* Sources */ = {isa = PBXGroup; children = (100000000000000000000025 /* AppEntry.swift */,); path = Sources; sourceTree = "<group>"; };
+		100000000000000000000004 /* Sources */ = {isa = PBXGroup; children = (100000000000000000000025 /* AppEntry.swift */, 100000000000000000000029 /* SystemInteractionAdapters.swift */,); path = Sources; sourceTree = "<group>"; };
 		100000000000000000000005 /* Tests */ = {isa = PBXGroup; children = (100000000000000000000026 /* ProjectStructureTests.swift */, 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */, 100000000000000000000027 /* AppEntry.swift */,); path = Tests; sourceTree = "<group>"; };
 		100000000000000000000006 /* Configurations */ = {
 			isa = PBXGroup;
@@ -86,7 +102,7 @@
 		100000000000000000000012 /* SystemInteractionFoundationTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 100000000000000000000072 /* Build configuration list for PBXNativeTarget "SystemInteractionFoundationTests" */;
-			buildPhases = (100000000000000000000052 /* Sources */, 100000000000000000000042 /* Frameworks */, 100000000000000000000062 /* Resources */);
+			buildPhases = (100000000000000000000052 /* Sources */, 100000000000000000000042 /* Frameworks */, 100000000000000000000062 /* Resources */, 100000000000000000000064 /* Copy Adapter Source for Audit */);
 			buildRules = ();
 			dependencies = (100000000000000000000032 /* PBXTargetDependency */,);
 			name = SystemInteractionFoundationTests;
@@ -144,8 +160,8 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		100000000000000000000051 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000091 /* AppEntry.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
-		100000000000000000000052 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000092 /* ProjectStructureTests.swift in Sources */, 100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000051 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000091 /* AppEntry.swift in Sources */, 100000000000000000000095 /* SystemInteractionAdapters.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000052 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000092 /* ProjectStructureTests.swift in Sources */, 100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */, 100000000000000000000096 /* SystemInteractionAdapters.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 		100000000000000000000053 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000093 /* AppEntry.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

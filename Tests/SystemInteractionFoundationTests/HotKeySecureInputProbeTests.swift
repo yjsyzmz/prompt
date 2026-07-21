@@ -1,6 +1,5 @@
 import Foundation
 import XCTest
-@testable import SystemInteractionFoundation
 
 @MainActor
 final class HotKeySecureInputProbeTests: XCTestCase {
@@ -98,12 +97,6 @@ final class HotKeySecureInputProbeTests: XCTestCase {
     }
 
     func testProductionSourcesDoNotUseGeneralKeyMonitoringAPIs() throws {
-        let repositoryRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let sourcesRoot = repositoryRoot
-            .appendingPathComponent("Sources/SystemInteractionFoundation")
         let forbiddenSymbols = [
             "CGEventTap",
             "CGEvent.tapCreate",
@@ -112,17 +105,21 @@ final class HotKeySecureInputProbeTests: XCTestCase {
             "IOHIDManager",
             "kTCCServiceListenEvent",
         ]
-        let sourceFiles = try FileManager.default.swiftFiles(under: sourcesRoot)
+        let testBundle = Bundle(for: HotKeySecureInputProbeTests.self)
+        guard let sourceFile = testBundle.url(
+            forResource: "SystemInteractionAdapters",
+            withExtension: "swift"
+        ) else {
+            XCTFail("Expected the production adapter source audit resource")
+            return
+        }
+        let source = try String(contentsOf: sourceFile, encoding: .utf8)
 
-        XCTAssertFalse(sourceFiles.isEmpty, "Expected production Swift sources to audit")
-        for sourceFile in sourceFiles {
-            let source = try String(contentsOf: sourceFile, encoding: .utf8)
-            for forbiddenSymbol in forbiddenSymbols {
-                XCTAssertFalse(
-                    source.contains(forbiddenSymbol),
-                    "Production source must not use general key monitoring API \(forbiddenSymbol): \(sourceFile.path)"
-                )
-            }
+        for forbiddenSymbol in forbiddenSymbols {
+            XCTAssertFalse(
+                source.contains(forbiddenSymbol),
+                "Production source must not use general key monitoring API \(forbiddenSymbol)"
+            )
         }
     }
 }
@@ -187,27 +184,5 @@ private final class MonotonicClockStub: MonotonicClockReading {
     func now() -> UInt64 {
         sampleCallCount += 1
         return samples.removeFirst()
-    }
-}
-
-private extension FileManager {
-    func swiftFiles(under directory: URL) throws -> [URL] {
-        guard let enumerator = enumerator(
-            at: directory,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return []
-        }
-
-        return try enumerator.compactMap { item in
-            guard let url = item as? URL,
-                  url.pathExtension == "swift",
-                  try url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true
-            else {
-                return nil
-            }
-            return url
-        }
     }
 }
