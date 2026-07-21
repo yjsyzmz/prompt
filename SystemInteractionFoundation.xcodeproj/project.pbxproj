@@ -10,6 +10,7 @@
 		100000000000000000000091 /* AppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000025 /* AppEntry.swift */; };
 		100000000000000000000092 /* ProjectStructureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000026 /* ProjectStructureTests.swift */; };
 		100000000000000000000093 /* AppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000027 /* AppEntry.swift */; };
+		100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,6 +31,7 @@
 		100000000000000000000025 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/AppEntry.swift; sourceTree = "<group>"; };
 		100000000000000000000026 /* ProjectStructureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ProjectStructureTests.swift; sourceTree = "<group>"; };
 		100000000000000000000027 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticAXHost/AppEntry.swift; sourceTree = "<group>"; };
+		100000000000000000000028 /* HotKeySecureInputProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/HotKeySecureInputProbeTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,7 +62,7 @@
 			sourceTree = "<group>";
 		};
 		100000000000000000000004 /* Sources */ = {isa = PBXGroup; children = (100000000000000000000025 /* AppEntry.swift */,); path = Sources; sourceTree = "<group>"; };
-		100000000000000000000005 /* Tests */ = {isa = PBXGroup; children = (100000000000000000000026 /* ProjectStructureTests.swift */, 100000000000000000000027 /* AppEntry.swift */,); path = Tests; sourceTree = "<group>"; };
+		100000000000000000000005 /* Tests */ = {isa = PBXGroup; children = (100000000000000000000026 /* ProjectStructureTests.swift */, 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */, 100000000000000000000027 /* AppEntry.swift */,); path = Tests; sourceTree = "<group>"; };
 		100000000000000000000006 /* Configurations */ = {
 			isa = PBXGroup;
 			children = (100000000000000000000024 /* Shared.xcconfig */,);
@@ -143,7 +145,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		100000000000000000000051 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000091 /* AppEntry.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
-		100000000000000000000052 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000092 /* ProjectStructureTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000052 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000092 /* ProjectStructureTests.swift in Sources */, 100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 		100000000000000000000053 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000093 /* AppEntry.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
@@ -152,7 +154,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		100000000000000000000081 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {DEBUG_INFORMATION_FORMAT = dwarf;}; name = Debug; };
+		100000000000000000000081 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES;}; name = Debug; };
 		100000000000000000000082 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";}; name = Release; };
 		100000000000000000000083 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.systeminteractionfoundation;}; name = Debug; };
 		100000000000000000000084 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.systeminteractionfoundation;}; name = Release; };
