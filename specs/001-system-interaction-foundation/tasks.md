@@ -75,7 +75,7 @@ reviewer: "Fable"
 ### P2 — 领域核心
 
 - [x] **T-011 [Test] 编写领域值与隐私契约测试。** 先覆盖确定性标记逐字符保真、中文/英文/混合/空白/多行/长文本/特殊字符、错误到可理解状态的映射、敏感值不可 `Codable`、错误和日志不得携带内容。— Depends on: T-007, T-010; Covers: FR-006, FR-013, NFR-004, NFR-006, NFR-007, AC-014, AC-016; Evidence: `evidence/T-011-domain-privacy-red.md`
-- [ ] **T-012 [Implementation] 实现领域值、协议与确定性转换器。** 仅实现 Plan 已定义的值类型、错误、协议和 `【系统交互验证】\n<原文>` 转换；不引用 AppKit、网络或持久化。— Depends on: T-011; Covers: FR-006, FR-013, NFR-004, NFR-006, NFR-007
+- [x] **T-012 [Implementation] 实现领域值、协议与确定性转换器。** 仅实现 Plan 已定义的值类型、错误、协议和 `【系统交互验证】\n<原文>` 转换；不引用 AppKit、网络或持久化。— Depends on: T-011; Covers: FR-006, FR-013, NFR-004, NFR-006, NFR-007; Evidence: `evidence/T-012-domain-privacy-green.md`
 - [ ] **T-013 [Test] 编写会话状态机与副作用测试。** 先覆盖完整状态路径、一次仅一个会话、旧 session callback 无效、确认前 setter 为 0、取消零写入/零剪贴板、clipboardInput 禁止直接替换，以及 `recoverable → previewing(recoveryUnavailable)` 后只允许复制原文或关闭、不得再次写入。— Depends on: T-007, T-010; Covers: FR-008, FR-009, FR-011, FR-012, FR-013, NFR-002, NFR-007, AC-008, AC-009, AC-011, AC-012, AC-013, AC-014
 - [ ] **T-014 [Implementation] 实现会话协调器。** 以最小状态转移满足 T-013，使用 session ID 隔离旧回调，结束或替换会话时释放句柄并清除敏感内存引用。— Depends on: T-012, T-013; Covers: FR-008, FR-009, FR-011, FR-012, FR-013, NFR-002, NFR-007
 
@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-011，C1 已达成；T-011 单元测试按测试优先约束保持预期 RED；T-012 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-012，C1 已达成，T-011/T-012 测试优先链已恢复绿色；T-013 及后续任务未获授权
