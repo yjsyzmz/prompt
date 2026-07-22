@@ -1,4 +1,4 @@
-# T-010 面板停止条件探针阶段证据
+# T-010 面板停止条件探针证据
 
 ## 结论
 
@@ -10,7 +10,7 @@ T-010 已完成真实多显示器、主／副屏边缘、全屏 Space、非默�
 - probe 应用 `isActive=false`，展示边界的应用激活调用数为 0；
 - 320×180 point panel 完整包含在目标显示器的安全 frame 内。
 
-已执行样例没有触发“目标焦点与完整面板不能同时成立”的硬停止条件。但是，当前机器始终连接两块显示器；分别在每块屏幕上运行不等于真正的单显示器环境。未能通过当前可访问的 macOS 控件安全停用 HP E223，因此 T-010 **保持部分完成**，`tasks.md` 不勾选，C1 不宣告达成。完成 T-010 需要物理断开副屏后补测单显示器样例。
+用户物理断开 HP E223 后，`NSScreen.screens.count` 从 2 变为 1；补充的 TextEdit 左上角与右下角样例同样通过。全部样例均未触发“目标焦点与完整面板不能同时成立”的硬停止条件。因此 T-010 完成，并与 T-007 共同满足 C1。
 
 ## 环境
 
@@ -33,7 +33,7 @@ T-010 已完成真实多显示器、主／副屏边缘、全屏 Space、非默�
 | Built-in Retina Display | `(0, 0, 1512, 982)` | `(0, 54, 1512, 895)` | 2 | 主屏 |
 | HP E223 | `(-154, 982, 1920, 1080)` | `(-154, 982, 1920, 1050)` | 1 | 位于主屏上方，X 为负坐标 |
 
-这同时覆盖真实异构 scale factor、负坐标和非水平排列。单显示器专用配置尚未覆盖。
+这同时覆盖真实异构 scale factor、负坐标和非水平排列。物理断开 HP E223 后的单屏报告为：Built-in Retina Display，frame `(0, 0, 1512, 982)`，visibleFrame `(0, 54, 1512, 895)`，scale 2，`NSScreen.screens.count=1`。
 
 ## 人工矩阵
 
@@ -45,18 +45,18 @@ T-010 已完成真实多显示器、主／副屏边缘、全屏 Space、非默�
 | Chrome/ChatGPT，普通窗口 | 右下 | `frontmostBefore/After=com.google.Chrome`；ChatGPT textbox 在展示期间仍是 DOM `activeElement`，内容为未发送的 `SYNTHETIC-001`；panel 完整包含 | PASS |
 | Chrome/ChatGPT，全屏 Space | 左上 | full-screen rule；panel=`(12, 769, 320, 180)`；Chrome 保持 frontmost，ChatGPT textbox 仍 active | PASS |
 | TextEdit，非默认缩放 | 右上 | 从系统标注的 `1512×982（默认）` 临时切至 `1352×878`；`NSScreen.frame` 同步变为 1352×878；panel=`(1020, 656, 320, 180)` 并完整包含；输入区保持 focused | PASS |
-| 物理单显示器 | — | 当前无法在不依赖用户物理操作的情况下安全停用 HP E223 | NOT RUN |
+| TextEdit，物理单显示器 | 左上、右下 | `NSScreen.screens.count=1`；两次 `frontmostBefore/After=com.apple.TextEdit`；展示期间输入区保持 focused；`probeApplicationActive=false`、`panelKey=false`、`activationBoundaryCalls=0`；两个 panel frame 均完整包含于 safe frame | PASS |
 
 副屏右下短样例在 panel 已验证后的关闭采样时被另一个后台应用抢到 frontmost；展示后的权威采样仍为 TextEdit，且其他 TextEdit 样例稳定。该环境干扰未归因于 panel，也没有被用作 PASS 的唯一证据。
 
 ## 非默认缩放恢复
 
-探针前内建屏为系统明确标记的 `1512×982（默认）`。探针期间临时选择 1352×878，完成后恢复默认。最终 `NSScreen` 报告重新为：
+探针前内建屏为系统明确标记的 `1512×982（默认）`。探针期间临时选择 1352×878，完成后恢复默认。物理断开 HP E223 前，最终双屏 `NSScreen` 报告为：
 
 - Built-in Retina Display：1512×982，scale 2
 - HP E223：1920×1080，scale 1
 
-没有保留显示器设置变化。
+没有保留显示器设置变化。随后用户物理断开 HP E223 完成单屏补测；该硬件连接变化不是探针自动执行的系统配置修改。
 
 ## 清理与范围
 
@@ -66,6 +66,14 @@ T-010 已完成真实多显示器、主／副屏边缘、全屏 Space、非默�
 - 未执行 T-011 或任何后续任务。
 - 未测试 AX 读取、替换、恢复、剪贴板、提示词处理或正式 UI。
 
-## 下一步与解除条件
+## 单屏补测原始摘要
 
-请物理断开 HP E223，使 `NSScreen.screens.count == 1`，然后重新执行 T-010 的 TextEdit 主屏边缘样例。只有该样例同时满足 frontmost、focused、non-key 与完整包含条件后，才勾选 T-010 并宣告 C1 达成；在此之前不得开始 T-011。
+- 左上：panel frame `(12, 757, 320, 180)`，safe frame `(12, 65, 1488, 872)`，完整包含；展示权威采样前后均为 TextEdit。关闭采样时微信短暂成为 frontmost，属于面板已验证后的环境干扰，不作为 PASS 的唯一证据。
+- 右下：panel frame `(1180, 66, 320, 180)`，safe frame `(12, 66, 1488, 871)`，完整包含；展示及关闭采样均为 TextEdit。
+- 右下样例展示期间，TextEdit 文本输入区保持 focused；测试内容最终恢复为且仅为 `SYNTHETIC-001`。
+
+## 结项
+
+- T-010：完成。
+- C1：T-007 与 T-010 均通过，高风险假设成立。
+- 未执行 T-011 或任何后续任务。
