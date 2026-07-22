@@ -1,6 +1,6 @@
 import Foundation
 
-struct SourceText: Equatable {
+struct SourceText: Equatable, Sendable {
     let value: String
 
     init(_ value: String) {
@@ -8,7 +8,7 @@ struct SourceText: Equatable {
     }
 }
 
-struct TransformedText: Equatable {
+struct TransformedText: Equatable, Sendable {
     let value: String
 }
 
