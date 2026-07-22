@@ -89,7 +89,7 @@ reviewer: "Fable"
 - [x] **T-020 [Implementation] 实现 AX 目标捕获。** 在 `AccessibilityGateway` actor 内持有原始 AX 引用，只向领域层返回不可持久化的句柄和值；按 T-019 规则读取，不做写入。— Depends on: T-019; Covers: FR-003, FR-004, FR-005, NFR-004; Evidence: `evidence/T-020-ax-target-capture-green.md`
 - [x] **T-021 [Test] 编写重新验证、写入与恢复测试。** 先覆盖 Plan 的七项确认前权威检查、原文变化、应用/窗口/元素/范围变化、单一 setter、setter 失败时原文不变、成功后恢复、恢复前结果变化，以及失败后复制路径；证明任何失败都 fail-closed。— Depends on: T-020; Covers: FR-009, FR-010, FR-012, NFR-002, AC-005, AC-006, AC-009, AC-010, AC-012, AC-013, AC-017; Evidence: `evidence/T-021-authoritative-write-recovery-red.md`
 - [x] **T-022 [Implementation] 实现权威验证、替换与恢复。** 在 actor 内按固定顺序重新获取并比较目标，只写最初选区或全文；恢复时仅当目标内容仍等于预期验证结果才写回原文，不增加清空、粘贴或第二写入策略。— Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002; Evidence: `evidence/T-022-authoritative-write-recovery-green.md`
-- [ ] **T-023 [Test] 编写 AXObserver 投递与隔离测试。** 先证明 observer run-loop source 挂载在 main run loop；callback 只捕获 session ID 与 target ID，再异步跳入 `AccessibilityGateway` actor；过期 callback 被忽略，监控通知只能提前禁用按钮，不能授权写入或恢复。— Depends on: T-020; Covers: FR-009, FR-011, NFR-002, AC-009, AC-011; Resolves: Plan Gate NIT-1
+- [x] **T-023 [Test] 编写 AXObserver 投递与隔离测试。** 先证明 observer run-loop source 挂载在 main run loop；callback 只捕获 session ID 与 target ID，再异步跳入 `AccessibilityGateway` actor；过期 callback 被忽略，监控通知只能提前禁用按钮，不能授权写入或恢复。— Depends on: T-020; Covers: FR-009, FR-011, NFR-002, AC-009, AC-011; Resolves: Plan Gate NIT-1; Evidence: `evidence/T-023-ax-observer-delivery-red.md`
 - [ ] **T-024 [Implementation] 实现外部目标监控。** 组合主 run loop 上的 `AXObserver` 与 `NSWorkspace` 通知，按 T-023 的 actor 隔离规则投递；注销 observer 时释放 run-loop source 和 AX 句柄。— Depends on: T-023; Covers: FR-009, FR-011, NFR-002
 - [ ] **T-025 [Test] 编写屏幕几何转换测试。** 先覆盖光标/选区/元素/窗口/活跃显示器锚点优先级、AX 与 AppKit 坐标转换、可见区域收敛、面板大于可用区域和屏幕变化。— Depends on: T-010; Covers: FR-007, NFR-005, AC-015
 - [ ] **T-026 [Implementation] 实现几何转换与面板控制器。** 以 T-025 规则选择锚点、限制完整面板在单一活跃显示器，并保持 nonactivating 行为；不得把获取不到精确边界当作会话失败。— Depends on: T-025; Covers: FR-007, NFR-005
@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-022，C1、C2 已达成；T-021 的 14 项权威重新验证、单次 setter 与恢复契约测试已转绿，全套 68 项单元测试连续两次通过；T-023 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-023，C1、C2 已达成；T-023 的 6 项 AXObserver 投递与隔离契约测试在测试自校正后连续两次按预期 RED，生产构建与仓库门禁保持绿色且 `Sources/` 零改动；T-024 及后续任务未获授权
