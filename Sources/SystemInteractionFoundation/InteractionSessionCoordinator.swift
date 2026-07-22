@@ -3,6 +3,7 @@ import Foundation
 typealias InteractionSessionID = UUID
 
 enum CaptureMode: Equatable {
+    case selectedText(AXTextRange)
     case wholeField
     case clipboardInput
 }

@@ -86,7 +86,7 @@ reviewer: "Fable"
 - [x] **T-017 [Test] 编写剪贴板显式访问测试。** 先用 spy 精确验证取消/普通预览/安全输入的读写次数为 0；只有“从剪贴板读取”“复制结果”“复制原文”分别发生一次预期访问，并要求 `currentHostOnly`。— Depends on: T-014; Covers: FR-008, FR-010, FR-013, NFR-006, AC-003, AC-004, AC-008, AC-010, AC-014; Evidence: `evidence/T-017-clipboard-policy-red.md`
 - [x] **T-018 [Implementation] 实现剪贴板适配器。** 封装显式读写和 `NSPasteboard.WritingOptions.currentHostOnly`；不得后台轮询、自动读取或通过模拟粘贴替代 AX 写入。— Depends on: T-017; Covers: FR-008, FR-010, FR-013, NFR-006; Evidence: `evidence/T-018-clipboard-policy-green.md`
 - [x] **T-019 [Test] 编写 AX 捕获测试。** 先覆盖安全元素拒绝、非空选区优先、零长度选区回退全文、空文本、不支持/只读目标、空白有效、边界可用与不可用、内容读取错误；安全输入路径不得创建任何内容值。— Depends on: T-014; Covers: FR-003, FR-004, FR-005, NFR-004, AC-004, AC-005, AC-006, AC-007, AC-016; Evidence: `evidence/T-019-ax-target-capture-red.md`
-- [ ] **T-020 [Implementation] 实现 AX 目标捕获。** 在 `AccessibilityGateway` actor 内持有原始 AX 引用，只向领域层返回不可持久化的句柄和值；按 T-019 规则读取，不做写入。— Depends on: T-019; Covers: FR-003, FR-004, FR-005, NFR-004
+- [x] **T-020 [Implementation] 实现 AX 目标捕获。** 在 `AccessibilityGateway` actor 内持有原始 AX 引用，只向领域层返回不可持久化的句柄和值；按 T-019 规则读取，不做写入。— Depends on: T-019; Covers: FR-003, FR-004, FR-005, NFR-004; Evidence: `evidence/T-020-ax-target-capture-green.md`
 - [ ] **T-021 [Test] 编写重新验证、写入与恢复测试。** 先覆盖 Plan 的七项确认前权威检查、原文变化、应用/窗口/元素/范围变化、单一 setter、setter 失败时原文不变、成功后恢复、恢复前结果变化，以及失败后复制路径；证明任何失败都 fail-closed。— Depends on: T-020; Covers: FR-009, FR-010, FR-012, NFR-002, AC-005, AC-006, AC-009, AC-010, AC-012, AC-013, AC-017
 - [ ] **T-022 [Implementation] 实现权威验证、替换与恢复。** 在 actor 内按固定顺序重新获取并比较目标，只写最初选区或全文；恢复时仅当目标内容仍等于预期验证结果才写回原文，不增加清空、粘贴或第二写入策略。— Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002
 - [ ] **T-023 [Test] 编写 AXObserver 投递与隔离测试。** 先证明 observer run-loop source 挂载在 main run loop；callback 只捕获 session ID 与 target ID，再异步跳入 `AccessibilityGateway` actor；过期 callback 被忽略，监控通知只能提前禁用按钮，不能授权写入或恢复。— Depends on: T-020; Covers: FR-009, FR-011, NFR-002, AC-009, AC-011; Resolves: Plan Gate NIT-1
@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-019，C1、C2 已达成；T-019 的 11 项 AX 捕获契约测试连续两次保持预期 RED，等待 T-020 最薄实现；T-020 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-020，C1、C2 已达成；T-019/T-020 的 11 项 AX 捕获契约测试已转绿，全套 54 项单元测试连续两次通过；T-021 及后续任务未获授权
