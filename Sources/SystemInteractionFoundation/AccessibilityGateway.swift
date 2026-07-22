@@ -94,11 +94,13 @@ final class AXTargetReference: @unchecked Sendable {
     }
 }
 
-actor AccessibilityGateway {
+actor AccessibilityGateway: AXMonitorEventReceiving {
     private let captureReader: any AXCaptureReading
     private let sourceTextFactory: any AXSourceTextCreating
     private let authoritativeTarget: (any AXAuthoritativeTargetAccessing)?
     private var targetReferences: [TargetHandle: AXTargetReference] = [:]
+    private var activeMonitorEnvelope: AXMonitorCallbackEnvelope?
+    private var monitorInvalidationSink: (any AXMonitorInvalidationReceiving)?
 
     init(
         captureReader: any AXCaptureReading,
@@ -184,6 +186,33 @@ actor AccessibilityGateway {
                 anchorRect: anchorRect
             )
         )
+    }
+
+    func activateMonitoring(
+        sessionID: InteractionSessionID,
+        targetHandle: TargetHandle,
+        invalidationSink: any AXMonitorInvalidationReceiving
+    ) {
+        activeMonitorEnvelope = AXMonitorCallbackEnvelope(
+            sessionID: sessionID,
+            targetHandle: targetHandle
+        )
+        monitorInvalidationSink = invalidationSink
+    }
+
+    func deactivateMonitoring() {
+        activeMonitorEnvelope = nil
+        monitorInvalidationSink = nil
+    }
+
+    func receive(_ envelope: AXMonitorCallbackEnvelope) async {
+        guard
+            envelope == activeMonitorEnvelope,
+            let monitorInvalidationSink
+        else {
+            return
+        }
+        await monitorInvalidationSink.disableDirectActions(for: envelope)
     }
 
     func replaceAfterAuthoritativeValidation(

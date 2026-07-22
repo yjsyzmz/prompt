@@ -96,6 +96,40 @@ final class AXObserverDeliveryIsolationTests: XCTestCase {
         )
     }
 
+    func testCallbackCanEnterAccessibilityGatewayActorDirectly() async {
+        let scheduler = AXObserverRunLoopSchedulerSpy()
+        let sink = AXMonitorInvalidationSinkSpy()
+        let gateway = AccessibilityGateway(captureReader: UnusedAXCaptureReader())
+        await gateway.activateMonitoring(
+            sessionID: sessionID,
+            targetHandle: targetHandle,
+            invalidationSink: sink
+        )
+        let monitor = AXTargetMonitor(
+            runLoopScheduler: scheduler,
+            eventReceiver: gateway,
+            workspaceActivationMonitor: WorkspaceActivationMonitorSpy()
+        )
+        monitor.startMonitoring(
+            sessionID: sessionID,
+            targetHandle: targetHandle
+        )
+
+        scheduler.fireInstalledCallback()
+
+        await waitUntil { await sink.invalidationCount == 1 }
+        let invalidations = await sink.invalidations
+        XCTAssertEqual(
+            invalidations,
+            [
+                AXMonitorCallbackEnvelope(
+                    sessionID: sessionID,
+                    targetHandle: targetHandle
+                )
+            ]
+        )
+    }
+
     func testStopReleasesRunLoopSourceAndWorkspaceObservationOnce() {
         let scheduler = AXObserverRunLoopSchedulerSpy()
         let workspace = WorkspaceActivationMonitorSpy()
@@ -271,5 +305,27 @@ private actor AXMonitorInvalidationSinkSpy: AXMonitorInvalidationReceiving {
         for envelope: AXMonitorCallbackEnvelope
     ) async {
         invalidations.append(envelope)
+    }
+}
+
+private struct UnusedAXCaptureReader: AXCaptureReading {
+    func focusedElementCapability() -> Result<AXFocusedElementCapability, DomainFailure> {
+        fatalError("Capture is outside this monitor-only test")
+    }
+
+    func selectedTextRange() -> Result<AXTextRange, DomainFailure> {
+        fatalError("Capture is outside this monitor-only test")
+    }
+
+    func selectedText(in range: AXTextRange) -> Result<String, DomainFailure> {
+        fatalError("Capture is outside this monitor-only test")
+    }
+
+    func fullValue() -> Result<String, DomainFailure> {
+        fatalError("Capture is outside this monitor-only test")
+    }
+
+    func bounds(for range: AXTextRange) -> Result<CGRect?, DomainFailure> {
+        fatalError("Capture is outside this monitor-only test")
     }
 }

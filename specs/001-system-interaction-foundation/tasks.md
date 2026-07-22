@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-024，C1、C2 已达成；T-024 已实现 main run loop AXObserver、NSWorkspace 提前失效、actor 隔离与资源释放，8 项监控测试及全套 76 项单元测试连续两次通过，生产构建与仓库门禁保持绿色；T-025 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-024，C1、C2 已达成；T-024 已实现 main run loop AXObserver、NSWorkspace 提前失效、直接进入 AccessibilityGateway actor 的隔离投递与资源释放，9 项监控测试及全套 77 项单元测试连续两次通过，生产构建与仓库门禁保持绿色；T-025 及后续任务未获授权
