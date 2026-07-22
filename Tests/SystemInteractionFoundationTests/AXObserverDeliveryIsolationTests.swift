@@ -66,6 +66,56 @@ final class AXObserverDeliveryIsolationTests: XCTestCase {
         )
     }
 
+    func testWorkspaceActivationAlsoEntersActorAsynchronously() async {
+        let scheduler = AXObserverRunLoopSchedulerSpy()
+        let workspace = WorkspaceActivationMonitorSpy()
+        let receiver = AXMonitorIngressSpy()
+        let monitor = AXTargetMonitor(
+            runLoopScheduler: scheduler,
+            eventReceiver: receiver,
+            workspaceActivationMonitor: workspace
+        )
+        monitor.startMonitoring(
+            sessionID: sessionID,
+            targetHandle: targetHandle
+        )
+
+        workspace.fireActivation()
+
+        XCTAssertTrue(workspace.callbackReturnedSynchronously)
+        await waitUntil { await receiver.deliveryCount == 1 }
+        let envelopes = await receiver.envelopes
+        XCTAssertEqual(
+            envelopes,
+            [
+                AXMonitorCallbackEnvelope(
+                    sessionID: sessionID,
+                    targetHandle: targetHandle
+                )
+            ]
+        )
+    }
+
+    func testStopReleasesRunLoopSourceAndWorkspaceObservationOnce() {
+        let scheduler = AXObserverRunLoopSchedulerSpy()
+        let workspace = WorkspaceActivationMonitorSpy()
+        let monitor = AXTargetMonitor(
+            runLoopScheduler: scheduler,
+            eventReceiver: AXMonitorIngressSpy(),
+            workspaceActivationMonitor: workspace
+        )
+        monitor.startMonitoring(
+            sessionID: sessionID,
+            targetHandle: targetHandle
+        )
+
+        monitor.stopMonitoring()
+        monitor.stopMonitoring()
+
+        XCTAssertEqual(scheduler.removalCount, 1)
+        XCTAssertEqual(workspace.stopCount, 1)
+    }
+
     func testStaleSessionCallbackIsIgnoredInsideActorRouter() async {
         let sink = AXMonitorInvalidationSinkSpy()
         let router = AXMonitorEventRouter(invalidationSink: sink)
@@ -106,10 +156,14 @@ final class AXObserverDeliveryIsolationTests: XCTestCase {
     }
 
     func testProductionMonitorCannotAuthorizeReplacementOrRecovery() throws {
-        let sourceURL = repositoryRoot
-            .appendingPathComponent("Sources")
-            .appendingPathComponent("SystemInteractionFoundation")
-            .appendingPathComponent("ExternalTargetMonitor.swift")
+        let testBundle = Bundle(for: AXObserverDeliveryIsolationTests.self)
+        guard let sourceURL = testBundle.url(
+            forResource: "ExternalTargetMonitor",
+            withExtension: "swift"
+        ) else {
+            XCTFail("Expected the production monitor source audit resource")
+            return
+        }
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
         let forbiddenAuthoritySymbols = [
             "replaceAfterAuthoritativeValidation",
@@ -125,13 +179,6 @@ final class AXObserverDeliveryIsolationTests: XCTestCase {
                 "Monitor must not contain write authority: \(symbol)"
             )
         }
-    }
-
-    private var repositoryRoot: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
     }
 
     private func waitUntil(
@@ -155,6 +202,7 @@ private final class AXObserverRunLoopSchedulerSpy: AXObserverRunLoopScheduling {
     private(set) var installationWasOnMainThread = false
     private(set) var installedMode: AXObserverRunLoopMode?
     private(set) var callbackReturnedSynchronously = false
+    private(set) var removalCount = 0
 
     func installObserverSource(
         mode: AXObserverRunLoopMode,
@@ -167,6 +215,33 @@ private final class AXObserverRunLoopSchedulerSpy: AXObserverRunLoopScheduling {
     }
 
     func fireInstalledCallback() {
+        callbackReturnedSynchronously = false
+        callback?()
+        callbackReturnedSynchronously = true
+    }
+
+    func removeObserverSource() {
+        removalCount += 1
+        callback = nil
+    }
+}
+
+@MainActor
+private final class WorkspaceActivationMonitorSpy: WorkspaceActivationMonitoring {
+    private var callback: (@Sendable () -> Void)?
+    private(set) var stopCount = 0
+    private(set) var callbackReturnedSynchronously = false
+
+    func start(callback: @escaping @Sendable () -> Void) {
+        self.callback = callback
+    }
+
+    func stop() {
+        stopCount += 1
+        callback = nil
+    }
+
+    func fireActivation() {
         callbackReturnedSynchronously = false
         callback?()
         callbackReturnedSynchronously = true
