@@ -23,6 +23,7 @@
 		10000000000000000000009E /* InteractionSessionCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000036 /* InteractionSessionCoordinatorTests.swift */; };
 		10000000000000000000009F /* InteractionSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000037 /* InteractionSessionCoordinator.swift */; };
 		1000000000000000000000A0 /* InteractionSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000037 /* InteractionSessionCoordinator.swift */; };
+		1000000000000000000000A1 /* AccessibilityPermissionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000038 /* AccessibilityPermissionFlowTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +64,7 @@
 		100000000000000000000035 /* DomainContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/DomainContracts.swift; sourceTree = "<group>"; };
 		100000000000000000000036 /* InteractionSessionCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/InteractionSessionCoordinatorTests.swift; sourceTree = "<group>"; };
 		100000000000000000000037 /* InteractionSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/InteractionSessionCoordinator.swift; sourceTree = "<group>"; };
+		100000000000000000000038 /* AccessibilityPermissionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/AccessibilityPermissionFlowTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,7 +95,7 @@
 			sourceTree = "<group>";
 		};
 		100000000000000000000004 /* Sources */ = {isa = PBXGroup; children = (100000000000000000000025 /* AppEntry.swift */, 100000000000000000000029 /* SystemInteractionAdapters.swift */, 100000000000000000000033 /* PanelProbeAdapters.swift */, 100000000000000000000035 /* DomainContracts.swift */, 100000000000000000000037 /* InteractionSessionCoordinator.swift */,); path = Sources; sourceTree = "<group>"; };
-		100000000000000000000005 /* Tests */ = {isa = PBXGroup; children = (100000000000000000000026 /* ProjectStructureTests.swift */, 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */, 100000000000000000000030 /* PanelGeometryProbeTests.swift */, 100000000000000000000034 /* DomainValuePrivacyContractTests.swift */, 100000000000000000000036 /* InteractionSessionCoordinatorTests.swift */, 100000000000000000000027 /* AppEntry.swift */,); path = Tests; sourceTree = "<group>"; };
+		100000000000000000000005 /* Tests */ = {isa = PBXGroup; children = (100000000000000000000026 /* ProjectStructureTests.swift */, 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */, 100000000000000000000030 /* PanelGeometryProbeTests.swift */, 100000000000000000000034 /* DomainValuePrivacyContractTests.swift */, 100000000000000000000036 /* InteractionSessionCoordinatorTests.swift */, 100000000000000000000038 /* AccessibilityPermissionFlowTests.swift */, 100000000000000000000027 /* AppEntry.swift */,); path = Tests; sourceTree = "<group>"; };
 		100000000000000000000006 /* Configurations */ = {
 			isa = PBXGroup;
 			children = (100000000000000000000024 /* Shared.xcconfig */,);
@@ -176,7 +178,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		100000000000000000000051 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000091 /* AppEntry.swift in Sources */, 100000000000000000000095 /* SystemInteractionAdapters.swift in Sources */, 100000000000000000000099 /* PanelProbeAdapters.swift in Sources */, 10000000000000000000009C /* DomainContracts.swift in Sources */, 10000000000000000000009F /* InteractionSessionCoordinator.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
-		100000000000000000000052 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000092 /* ProjectStructureTests.swift in Sources */, 100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */, 100000000000000000000098 /* PanelGeometryProbeTests.swift in Sources */, 10000000000000000000009B /* DomainValuePrivacyContractTests.swift in Sources */, 10000000000000000000009E /* InteractionSessionCoordinatorTests.swift in Sources */, 100000000000000000000096 /* SystemInteractionAdapters.swift in Sources */, 10000000000000000000009A /* PanelProbeAdapters.swift in Sources */, 10000000000000000000009D /* DomainContracts.swift in Sources */, 1000000000000000000000A0 /* InteractionSessionCoordinator.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000052 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000092 /* ProjectStructureTests.swift in Sources */, 100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */, 100000000000000000000098 /* PanelGeometryProbeTests.swift in Sources */, 10000000000000000000009B /* DomainValuePrivacyContractTests.swift in Sources */, 10000000000000000000009E /* InteractionSessionCoordinatorTests.swift in Sources */, 1000000000000000000000A1 /* AccessibilityPermissionFlowTests.swift in Sources */, 100000000000000000000096 /* SystemInteractionAdapters.swift in Sources */, 10000000000000000000009A /* PanelProbeAdapters.swift in Sources */, 10000000000000000000009D /* DomainContracts.swift in Sources */, 1000000000000000000000A0 /* InteractionSessionCoordinator.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 		100000000000000000000053 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000093 /* AppEntry.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

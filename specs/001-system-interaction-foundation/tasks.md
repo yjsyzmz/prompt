@@ -81,7 +81,7 @@ reviewer: "Fable"
 
 ### P3 — 系统适配器与预览
 
-- [ ] **T-015 [Test] 编写 Accessibility 权限流程测试。** 先覆盖已授权、未授权、打开具体设置成功、深链失败降级到通用设置、重新检测，以及权限缺失时 AX 读取/写入调用均为 0；剪贴板路径必须由用户点击启动。— Depends on: T-014; Covers: FR-002, NFR-007, AC-003
+- [x] **T-015 [Test] 编写 Accessibility 权限流程测试。** 先覆盖已授权、未授权、打开具体设置成功、深链失败降级到通用设置、重新检测，以及权限缺失时 AX 读取/写入调用均为 0；剪贴板路径必须由用户点击启动。— Depends on: T-014; Covers: FR-002, NFR-007, AC-003; Evidence: `evidence/T-015-accessibility-permission-red.md`
 - [ ] **T-016 [Implementation] 实现权限适配器。** 使用系统信任检查与用户动作驱动的设置跳转，实现说明、重新检测和安全降级，不缓存虚假的授权状态。— Depends on: T-015; Covers: FR-002, NFR-007
 - [ ] **T-017 [Test] 编写剪贴板显式访问测试。** 先用 spy 精确验证取消/普通预览/安全输入的读写次数为 0；只有“从剪贴板读取”“复制结果”“复制原文”分别发生一次预期访问，并要求 `currentHostOnly`。— Depends on: T-014; Covers: FR-008, FR-010, FR-013, NFR-006, AC-003, AC-004, AC-008, AC-010, AC-014
 - [ ] **T-018 [Implementation] 实现剪贴板适配器。** 封装显式读写和 `NSPasteboard.WritingOptions.currentHostOnly`；不得后台轮询、自动读取或通过模拟粘贴替代 AX 写入。— Depends on: T-017; Covers: FR-008, FR-010, FR-013, NFR-006
@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-014，C1、C2 已达成；T-013/T-014 测试优先链已恢复绿色；T-015 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-015，C1、C2 已达成；T-015 的 Accessibility 权限流程测试保持预期 RED，等待用户授权 T-016 最薄实现；T-016 及后续任务未获授权
