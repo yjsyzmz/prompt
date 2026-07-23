@@ -93,7 +93,7 @@ reviewer: "Fable"
 - [x] **T-024 [Implementation] 实现外部目标监控。** 组合主 run loop 上的 `AXObserver` 与 `NSWorkspace` 通知，按 T-023 的 actor 隔离规则投递；注销 observer 时释放 run-loop source 和 AX 句柄。— Depends on: T-023; Covers: FR-009, FR-011, NFR-002; Evidence: `evidence/T-024-external-target-monitor-green.md`
 - [x] **T-025 [Test] 编写屏幕几何转换测试。** 先覆盖光标/选区/元素/窗口/活跃显示器锚点优先级、AX 与 AppKit 坐标转换、可见区域收敛、面板大于可用区域和屏幕变化。— Depends on: T-010; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-025-screen-geometry-red.md`
 - [x] **T-026 [Implementation] 实现几何转换与面板控制器。** 以 T-025 规则选择锚点、限制完整面板在单一活跃显示器，并保持 nonactivating 行为；不得把获取不到精确边界当作会话失败。— Depends on: T-025; Covers: FR-007, NFR-005; Evidence: `evidence/T-026-screen-geometry-green.md`
-- [ ] **T-027 [Test] 编写预览状态与操作测试。** 先覆盖 ready、permissionRequired、secureInput、emptyOrUnsupported、staleTarget、writeFailed、recoveryUnavailable 的文案和按钮矩阵；只有 ready 显示可用确认，所有拒绝/失败状态至少有一个安全下一步，界面不显示原始错误码或敏感内容。— Depends on: T-012, T-014, T-016, T-018, T-022, T-026; Covers: FR-005, FR-007, FR-008, NFR-007, AC-002, AC-003, AC-004, AC-007, AC-008, AC-009, AC-010, AC-013
+- [x] **T-027 [Test] 编写预览状态与操作测试。** 先覆盖 ready、permissionRequired、secureInput、emptyOrUnsupported、staleTarget、writeFailed、recoveryUnavailable 的文案和按钮矩阵；只有 ready 显示可用确认，所有拒绝/失败状态至少有一个安全下一步，界面不显示原始错误码或敏感内容。— Depends on: T-012, T-014, T-016, T-018, T-022, T-026; Covers: FR-005, FR-007, FR-008, NFR-007, AC-002, AC-003, AC-004, AC-007, AC-008, AC-009, AC-010, AC-013; Evidence: `evidence/T-027-preview-state-actions-red.md`
 - [ ] **T-028 [Implementation] 实现预览与应用生命周期装配。** 实现最小 SwiftUI 内容和 `AppLifecycleController`，接入已测试协议；提供确认、复制、取消、恢复、复制原文、打开设置和重新检测，不加入最终视觉系统或设置体验。— Depends on: T-027; Covers: FR-001, FR-002, FR-005, FR-007, FR-008, NFR-007
 
 ### P4 — 合成集成闭环
@@ -138,4 +138,4 @@ reviewer: "Fable"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-026，C1、C2 已达成；T-026 已实现无缓存的屏幕几何转换、锚点降级、显示器选择、可见区域/超大面板收敛与最薄 nonactivating 面板控制器，T-025 的 7 项测试及全套 84 项测试连续两次通过，生产构建与仓库门禁保持绿色；T-027 及后续任务未获授权
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-027，C1、C2 已达成；T-027 已建立七种预览状态的中文说明、按钮矩阵、仅 ready 可确认、安全下一步与无原始错误/敏感内容的稳定 RED 边界，连续两次因缺少 T-028 预览展示契约而按预期失败，生产构建与仓库门禁保持绿色；T-028 及后续任务未获授权
