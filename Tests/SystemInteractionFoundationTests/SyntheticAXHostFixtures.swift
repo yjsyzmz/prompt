@@ -1,0 +1,316 @@
+import CoreGraphics
+import Foundation
+
+/// T-029 synthetic AX host.
+///
+/// An in-process stand-in for an external application's focused text element.
+/// It implements both gateway-facing protocols so `AccessibilityGateway` can
+/// run its full capture and authoritative write/recovery pipeline against
+/// deterministic fixtures without touching any real application.
+///
+/// Synthetic semantics (shared with the T-021 authoritative fake): the
+/// selection identity stays stable across writes — `selectedTextRange()`
+/// always reports the range captured at fixture creation, while the selected
+/// content itself is modeled by `segment`. All content carries the
+/// `SYNTHETIC-001` marker and never comes from a real application.
+final class SyntheticAXTextHost: @unchecked Sendable {
+    static let syntheticMarker = "SYNTHETIC-001"
+
+    let pid: Int32
+
+    private let lock = NSLock()
+    private let selectionLocation: Int
+    private let reportedSelectionLength: Int
+    private let anchorBounds: CGRect?
+
+    private var prefix: String
+    private var segment: String
+    private var suffix: String
+    private var capability: AXFocusedElementCapability
+    private var secureInputActive: Bool
+    private var applicationRunning = true
+    private var frontmostPID: Int32
+    private var windowGeneration = 0
+    private var elementGeneration = 0
+    private var capturedWindowGeneration = -1
+    private var capturedElementGeneration = -1
+    private var remainingForcedSetterFailures = 0
+
+    private var contentReads = 0
+    private var setterAttempts = 0
+    private var selectedSetterAttempts = 0
+    private var wholeFieldSetterAttempts = 0
+
+    private init(
+        prefix: String,
+        segment: String,
+        suffix: String,
+        selectionLength: Int,
+        capability: AXFocusedElementCapability,
+        secureInputActive: Bool,
+        anchorBounds: CGRect?,
+        pid: Int32
+    ) {
+        self.prefix = prefix
+        self.segment = segment
+        self.suffix = suffix
+        selectionLocation = prefix.count
+        reportedSelectionLength = selectionLength
+        self.capability = capability
+        self.secureInputActive = secureInputActive
+        self.anchorBounds = anchorBounds
+        self.pid = pid
+        frontmostPID = pid
+    }
+
+    // MARK: - Fixtures
+
+    static func selectionFixture(pid: Int32 = 4_001) -> SyntheticAXTextHost {
+        let segment = "\(syntheticMarker) 选中的合成文字"
+        return SyntheticAXTextHost(
+            prefix: "\(syntheticMarker) 前缀 ",
+            segment: segment,
+            suffix: " \(syntheticMarker) 后缀",
+            selectionLength: segment.count,
+            capability: .editable,
+            secureInputActive: false,
+            anchorBounds: CGRect(x: 120, y: 240, width: 200, height: 20),
+            pid: pid
+        )
+    }
+
+    static func wholeFieldFixture(pid: Int32 = 4_002) -> SyntheticAXTextHost {
+        SyntheticAXTextHost(
+            prefix: "",
+            segment: "\(syntheticMarker) 整段合成文字",
+            suffix: "",
+            selectionLength: 0,
+            capability: .editable,
+            secureInputActive: false,
+            anchorBounds: nil,
+            pid: pid
+        )
+    }
+
+    static func emptyFixture(pid: Int32 = 4_003) -> SyntheticAXTextHost {
+        SyntheticAXTextHost(
+            prefix: "",
+            segment: "",
+            suffix: "",
+            selectionLength: 0,
+            capability: .editable,
+            secureInputActive: false,
+            anchorBounds: nil,
+            pid: pid
+        )
+    }
+
+    static func readOnlyFixture(pid: Int32 = 4_004) -> SyntheticAXTextHost {
+        SyntheticAXTextHost(
+            prefix: "",
+            segment: "\(syntheticMarker) 只读合成文字",
+            suffix: "",
+            selectionLength: 0,
+            capability: .readOnly,
+            secureInputActive: false,
+            anchorBounds: nil,
+            pid: pid
+        )
+    }
+
+    static func secureInputFixture(pid: Int32 = 4_005) -> SyntheticAXTextHost {
+        SyntheticAXTextHost(
+            prefix: "",
+            segment: "\(syntheticMarker) 安全输入占位",
+            suffix: "",
+            selectionLength: 0,
+            capability: .secure,
+            secureInputActive: true,
+            anchorBounds: nil,
+            pid: pid
+        )
+    }
+
+    // MARK: - Inspection
+
+    var fullText: String {
+        withLock { prefix + segment + suffix }
+    }
+
+    var selectedSegment: String {
+        withLock { segment }
+    }
+
+    var reportedSelectedRange: AXTextRange {
+        withLock {
+            AXTextRange(location: selectionLocation, length: reportedSelectionLength)
+        }
+    }
+
+    var contentReadCount: Int {
+        withLock { contentReads }
+    }
+
+    var setterAttemptCount: Int {
+        withLock { setterAttempts }
+    }
+
+    var selectedSetterAttemptCount: Int {
+        withLock { selectedSetterAttempts }
+    }
+
+    var wholeFieldSetterAttemptCount: Int {
+        withLock { wholeFieldSetterAttempts }
+    }
+
+    // MARK: - Controlled external events
+
+    func switchWindow() {
+        withLock { windowGeneration += 1 }
+    }
+
+    func invalidateElement() {
+        withLock { elementGeneration += 1 }
+    }
+
+    func failNextSetterAttempts(_ count: Int) {
+        withLock { remainingForcedSetterFailures = count }
+    }
+
+    func editSegmentExternally(_ newSegment: String) {
+        withLock { segment = newSegment }
+    }
+
+    func terminateApplication() {
+        withLock { applicationRunning = false }
+    }
+
+    func moveFocusToDifferentApplication() {
+        withLock { frontmostPID = pid &+ 1 }
+    }
+
+    private func withLock<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
+    }
+}
+
+// MARK: - Capture-side protocol
+
+extension SyntheticAXTextHost: AXCaptureReading {
+    func focusedElementCapability() -> Result<AXFocusedElementCapability, DomainFailure> {
+        withLock {
+            capturedWindowGeneration = windowGeneration
+            capturedElementGeneration = elementGeneration
+            return .success(capability)
+        }
+    }
+
+    func selectedTextRange() -> Result<AXTextRange, DomainFailure> {
+        withLock {
+            .success(
+                AXTextRange(
+                    location: selectionLocation,
+                    length: reportedSelectionLength
+                )
+            )
+        }
+    }
+
+    func selectedText(in range: AXTextRange) -> Result<String, DomainFailure> {
+        withLock {
+            guard
+                range.location == selectionLocation,
+                range.length == reportedSelectionLength
+            else {
+                return .failure(.sourceChanged)
+            }
+            contentReads += 1
+            return .success(segment)
+        }
+    }
+
+    func fullValue() -> Result<String, DomainFailure> {
+        withLock {
+            contentReads += 1
+            return .success(prefix + segment + suffix)
+        }
+    }
+
+    func bounds(for range: AXTextRange) -> Result<CGRect?, DomainFailure> {
+        withLock { .success(anchorBounds) }
+    }
+}
+
+// MARK: - Authoritative-side protocol
+
+extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
+    func isTargetApplicationRunning(expectedPID: Int32) -> Bool {
+        withLock { applicationRunning && expectedPID == pid }
+    }
+
+    func currentExternalApplicationPID() -> Int32? {
+        withLock { frontmostPID }
+    }
+
+    func windowIdentityMatches(targetHandle: TargetHandle) -> Bool {
+        withLock { windowGeneration == capturedWindowGeneration }
+    }
+
+    func elementIdentityMatches(targetHandle: TargetHandle) -> Bool {
+        withLock { elementGeneration == capturedElementGeneration }
+    }
+
+    func currentElementCapability() -> AXFocusedElementCapability {
+        withLock { capability }
+    }
+
+    func isGlobalSecureInputActive() -> Bool {
+        withLock { secureInputActive }
+    }
+
+    func isReplacementAttributeSettable(for mode: CaptureMode) -> Bool {
+        withLock { capability == .editable }
+    }
+
+    func setSelectedText(_ value: String) -> Bool {
+        withLock {
+            setterAttempts += 1
+            selectedSetterAttempts += 1
+            guard consumeForcedFailureIfNeeded() else {
+                return false
+            }
+            guard capability == .editable else {
+                return false
+            }
+            segment = value
+            return true
+        }
+    }
+
+    func setWholeValue(_ value: String) -> Bool {
+        withLock {
+            setterAttempts += 1
+            wholeFieldSetterAttempts += 1
+            guard consumeForcedFailureIfNeeded() else {
+                return false
+            }
+            guard capability == .editable else {
+                return false
+            }
+            prefix = ""
+            suffix = ""
+            segment = value
+            return true
+        }
+    }
+
+    private func consumeForcedFailureIfNeeded() -> Bool {
+        guard remainingForcedSetterFailures > 0 else {
+            return true
+        }
+        remainingForcedSetterFailures -= 1
+        return false
+    }
+}
