@@ -99,7 +99,7 @@ reviewer: "Solar, from T-028"
 ### P4 — 合成集成闭环
 
 - [x] **T-029 [Test Harness] 建立合成 AX 宿主。** 只使用 `SYNTHETIC-001`，提供选区、全文、空值、只读、安全输入、元素失效、窗口切换和可控 setter 失败夹具；宿主不读取真实应用内容，不把内容写入日志或测试产物。— Depends on: T-004, T-020; Covers: FR-004, FR-013, NFR-003, NFR-004, NFR-006, AC-005, AC-006, AC-007, AC-009, AC-014, AC-016; Evidence: `evidence/T-029-synthetic-ax-host.md`
-- [ ] **T-030 [Test] 编写端到端集成测试。** 先以合成宿主和 spy 覆盖快捷键→权限→读取→预览→确认→单次写入→恢复，以及取消、复制、过期目标、写入失败、新会话替代、内容清除；每个路径断言确认前 setter 为 0。— Depends on: T-006, T-016, T-018, T-022, T-024, T-026, T-028, T-029; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-016
+- [x] **T-030 [Test] 编写端到端集成测试。** 先以合成宿主和 spy 覆盖快捷键→权限→读取→预览→确认→单次写入→恢复，以及取消、复制、过期目标、写入失败、新会话替代、内容清除；每个路径断言确认前 setter 为 0。— Depends on: T-006, T-016, T-018, T-022, T-024, T-026, T-028, T-029; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-016; Evidence: `evidence/T-030-end-to-end-red.md`
 - [ ] **T-031 [Implementation] 完成最小闭环装配。** 仅补齐 T-030 暴露的依赖注入、事件路由与状态同步，使合成端到端测试通过；不得借机加入未被失败测试要求的功能。— Depends on: T-030; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007
 
 ### P5 — 真实环境验收与证据
@@ -138,4 +138,4 @@ reviewer: "Solar, from T-028"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-027，C1、C2 已达成；T-027 已建立七种预览状态的中文说明、按钮矩阵、仅 ready 可确认、安全下一步与无原始错误/敏感内容的稳定 RED 边界，连续两次因缺少 T-028 预览展示契约而按预期失败，生产构建与仓库门禁保持绿色；T-028 已获用户授权并完成——最薄预览展示契约、最小 SwiftUI 内容与 `AppLifecycleController` 装配使 T-027 五个测试连续两次转绿（89 tests, 0 failures），证据见 `evidence/T-028-preview-lifecycle-green.md`；用户于 2026-07-25 授权：跳过逐任务 Reviewer 审核，剩余任务全部完成后统一审核；T-029 已完成——合成 AX 宿主夹具与 9 个自检测试连续两次通过（98 tests, 0 failures），证据见 `evidence/T-029-synthetic-ax-host.md`
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-027，C1、C2 已达成；T-027 已建立七种预览状态的中文说明、按钮矩阵、仅 ready 可确认、安全下一步与无原始错误/敏感内容的稳定 RED 边界，连续两次因缺少 T-028 预览展示契约而按预期失败，生产构建与仓库门禁保持绿色；T-028 已获用户授权并完成——最薄预览展示契约、最小 SwiftUI 内容与 `AppLifecycleController` 装配使 T-027 五个测试连续两次转绿（89 tests, 0 failures），证据见 `evidence/T-028-preview-lifecycle-green.md`；用户于 2026-07-25 授权：跳过逐任务 Reviewer 审核，剩余任务全部完成后统一审核；T-029 已完成——合成 AX 宿主夹具与 9 个自检测试连续两次通过（98 tests, 0 failures），证据见 `evidence/T-029-synthetic-ax-host.md`；T-030 已完成——11 个合成端到端集成测试建立稳定 RED（连续两次 exit 65，错误仅指向缺失的 T-031 集成契约），证据见 `evidence/T-030-end-to-end-red.md`
