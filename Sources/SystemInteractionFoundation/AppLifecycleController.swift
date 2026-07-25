@@ -20,24 +20,6 @@ final class ExplicitActionSessionPasteboard: @preconcurrency SessionPasteboardAc
     }
 }
 
-// The authoritative AX replace/restore path is owned by the async
-// `AccessibilityGateway` actor; its coordinator integration is driven by the
-// T-030 end-to-end failing tests (T-031). Until then every write request is
-// refused so the target application is never modified.
-final class FailClosedSessionTextTarget: SessionTextTargetAccessing {
-    func replace(_ content: SessionContent) -> Bool {
-        false
-    }
-
-    func validateForRecovery(_ content: SessionContent) -> Bool {
-        false
-    }
-
-    func restore(_ content: SessionContent) -> Bool {
-        false
-    }
-}
-
 @MainActor
 private final class PermissionFlowBridge:
     PermissionProtectedTextAccessing, ExplicitClipboardInputStarting
@@ -67,6 +49,15 @@ private final class SessionObserverBridge: @preconcurrency SessionStateObserving
 }
 
 @MainActor
+private final class MonitorInvalidationBridge: AXMonitorInvalidationReceiving {
+    weak var controller: AppLifecycleController?
+
+    func disableDirectActions(for envelope: AXMonitorCallbackEnvelope) async {
+        controller?.targetDidBecomeStale(envelope)
+    }
+}
+
+@MainActor
 final class AppLifecycleController {
     // The spec keeps the permanent shortcut combination out of scope for 001;
     // this is only the temporary exclusive assembly combination.
@@ -82,11 +73,21 @@ final class AppLifecycleController {
     private let permissionFlow: AccessibilityPermissionFlow
     private let clipboard: ClipboardPolicy
     private let coordinator: InteractionSessionCoordinator
+    private let gateway: AccessibilityGateway
+    private let targetMonitor: any TargetChangeMonitoring
+    private let textTarget: GatewaySessionTextTarget
     private let presenter: any PreviewPresenting
     private let transformer = DeterministicTransformer()
     private let mapper = PreviewPresentationMapper()
     private let sessionObserverBridge: SessionObserverBridge
+    private let monitorBridge: MonitorInvalidationBridge
 
+    private(set) var captureWork: Task<Void, Never>?
+    private(set) var cleanupWork: Task<Void, Never>?
+
+    private var activeSessionID: InteractionSessionID?
+    private var activeTargetHandle: TargetHandle?
+    private var pendingAnchorRect: CGRect?
     private var lastTransformed: TransformedText?
     private var isPresenting = false
 
@@ -96,12 +97,15 @@ final class AppLifecycleController {
         settingsOpener: any AccessibilitySettingsOpening,
         secureInputChecker: any SecureEventInputChecking,
         pasteboard: any PasteboardAccessing,
-        textTarget: any SessionTextTargetAccessing,
+        gateway: AccessibilityGateway,
+        targetMonitor: any TargetChangeMonitoring,
         presenter: any PreviewPresenting
     ) {
         hotKey = GlobalHotKeyRegistrar(systemClient: hotKeySystemClient)
         secureInput = SecureInputGuard(checker: secureInputChecker)
         clipboard = ClipboardPolicy(pasteboard: pasteboard)
+        self.gateway = gateway
+        self.targetMonitor = targetMonitor
         self.presenter = presenter
 
         let permissionBridge = PermissionFlowBridge()
@@ -112,19 +116,25 @@ final class AppLifecycleController {
             clipboardInput: permissionBridge
         )
 
+        let sessionTextTarget = GatewaySessionTextTarget(gateway: gateway)
+        textTarget = sessionTextTarget
+
         let observerBridge = SessionObserverBridge()
         coordinator = InteractionSessionCoordinator(
-            target: textTarget,
+            target: sessionTextTarget,
             pasteboard: ExplicitActionSessionPasteboard(pasteboard: pasteboard),
             observer: observerBridge
         )
         sessionObserverBridge = observerBridge
+        monitorBridge = MonitorInvalidationBridge()
 
         permissionBridge.controller = self
         observerBridge.controller = self
+        monitorBridge.controller = self
     }
 
     convenience init() {
+        let gateway = AccessibilityGateway(captureReader: SystemAXCaptureReader())
         let panelPresenter = PreviewPanelController()
         self.init(
             hotKeySystemClient: HIToolboxHotKeySystemClient(
@@ -137,7 +147,8 @@ final class AppLifecycleController {
             settingsOpener: SystemAccessibilitySettingsOpener(),
             secureInputChecker: HIToolboxSecureEventInputChecker(),
             pasteboard: SystemPasteboardClient(),
-            textTarget: FailClosedSessionTextTarget(),
+            gateway: gateway,
+            targetMonitor: WorkspaceTargetChangeMonitor(eventReceiver: gateway),
             presenter: panelPresenter
         )
         panelPresenter.onAction = { [weak self] action in
@@ -209,14 +220,15 @@ final class AppLifecycleController {
         guard let sessionID = coordinator.currentSessionID else {
             return
         }
-        // Target capture itself is owned by AccessibilityGateway and is
-        // integrated through T-029..T-031.
         coordinator.permissionResolved(granted: true, for: sessionID)
+        captureWork = Task { [weak self] in
+            await self?.captureTarget(for: sessionID)
+        }
     }
 
     fileprivate func protectedWriteDidBegin() {
-        // The authoritative write path stays fail-closed until the T-030/T-031
-        // integration loop wires AccessibilityGateway into the coordinator.
+        // Direct writes are gated per call by the gateway's authoritative
+        // validation; no additional state is required at this hook.
     }
 
     fileprivate func beginClipboardInputSession() {
@@ -234,31 +246,149 @@ final class AppLifecycleController {
         coordinator.beginClipboardSession(source: source, transformed: transformed)
     }
 
+    fileprivate func targetDidBecomeStale(_ envelope: AXMonitorCallbackEnvelope) {
+        guard
+            envelope.sessionID == coordinator.currentSessionID,
+            envelope.targetHandle == activeTargetHandle,
+            coordinator.state == .previewing(.ready)
+        else {
+            return
+        }
+        present(.staleTarget)
+    }
+
     fileprivate func sessionDidTransition(to state: InteractionSessionState) {
         switch state {
         case .previewing(.ready):
-            present(.ready)
+            presentReady()
         case .previewing(.writeFailed):
             present(.writeFailed)
         case .previewing(.recoveryUnavailable):
             present(.recoveryUnavailable)
+        case .recoverable:
+            presentRecoverable()
         case .ended:
-            lastTransformed = nil
-            dismissPresentation()
-        case .idle, .checkingPermission, .capturingTarget, .applying, .recoverable:
-            // Presentation for these transitions is driven by the T-030
-            // end-to-end tests and the T-031 assembly.
+            finishSession()
+        case .idle, .checkingPermission, .capturingTarget, .applying:
             break
         }
     }
 
+    private func captureTarget(for sessionID: InteractionSessionID) async {
+        let result = await gateway.capture(sessionID: sessionID)
+        guard coordinator.currentSessionID == sessionID else {
+            return
+        }
+
+        switch result {
+        case .success(let captured):
+            let pid = await gateway.authoritativePID(for: captured.targetHandle)
+            guard coordinator.currentSessionID == sessionID else {
+                return
+            }
+
+            activeSessionID = sessionID
+            activeTargetHandle = captured.targetHandle
+            pendingAnchorRect = captured.anchorRect
+            textTarget.beginSession(
+                targetHandle: captured.targetHandle,
+                pid: pid
+            )
+            let transformed = transformer.transform(captured.sourceText)
+            lastTransformed = transformed
+
+            await gateway.activateMonitoring(
+                sessionID: sessionID,
+                targetHandle: captured.targetHandle,
+                invalidationSink: monitorBridge
+            )
+            guard coordinator.currentSessionID == sessionID else {
+                return
+            }
+            targetMonitor.startMonitoring(
+                sessionID: sessionID,
+                targetHandle: captured.targetHandle
+            )
+            coordinator.captureCompleted(
+                source: captured.sourceText,
+                transformed: transformed,
+                mode: captured.captureMode,
+                for: sessionID
+            )
+        case .failure(let failure):
+            coordinator.cancel()
+            present(previewStatus(for: failure))
+        }
+    }
+
+    private func previewStatus(for failure: DomainFailure) -> PreviewStatus {
+        switch failure {
+        case .secureInputActive:
+            return .secureInput
+        case .accessibilityPermissionRequired:
+            return .permissionRequired
+        default:
+            return .emptyOrUnsupported
+        }
+    }
+
+    private func presentReady() {
+        var viewState = mapper.viewState(for: .ready)
+        if !coordinator.availableActions.contains(.confirmReplacement) {
+            viewState = PreviewViewState(
+                message: viewState.message,
+                buttons: viewState.buttons.filter {
+                    $0.action != .confirmReplacement
+                }
+            )
+        }
+        presentViewState(viewState)
+    }
+
+    private func presentRecoverable() {
+        presentViewState(
+            PreviewViewState(
+                message: "已替换所选文字，原文仍可恢复。",
+                buttons: [
+                    PreviewButton(
+                        action: .restoreOriginal,
+                        title: "恢复原文",
+                        isEnabled: true
+                    ),
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        )
+    }
+
     private func present(_ status: PreviewStatus) {
-        let viewState = mapper.viewState(for: status)
+        presentViewState(mapper.viewState(for: status))
+    }
+
+    private func presentViewState(_ viewState: PreviewViewState) {
         if isPresenting {
             presenter.update(viewState)
         } else {
-            presenter.show(viewState, anchorRect: nil)
+            presenter.show(viewState, anchorRect: pendingAnchorRect)
             isPresenting = true
+        }
+    }
+
+    private func finishSession() {
+        lastTransformed = nil
+        pendingAnchorRect = nil
+        textTarget.endSession()
+        targetMonitor.stopMonitoring()
+        dismissPresentation()
+
+        if let sessionID = activeSessionID, let targetHandle = activeTargetHandle {
+            activeSessionID = nil
+            activeTargetHandle = nil
+            cleanupWork = Task { [gateway] in
+                await gateway.deactivateMonitoring(for: sessionID)
+                await gateway.releaseTarget(targetHandle)
+            }
         }
     }
 

@@ -205,6 +205,24 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         monitorInvalidationSink = nil
     }
 
+    func deactivateMonitoring(for sessionID: InteractionSessionID) {
+        guard activeMonitorEnvelope?.sessionID == sessionID else {
+            return
+        }
+        deactivateMonitoring()
+    }
+
+    func authoritativePID(for targetHandle: TargetHandle) -> Int32? {
+        if let authoritativeTarget {
+            return authoritativeTarget.currentExternalApplicationPID()
+        }
+        return targetReferences[targetHandle]?.pid
+    }
+
+    func releaseTarget(_ targetHandle: TargetHandle) {
+        targetReferences[targetHandle] = nil
+    }
+
     func receive(_ envelope: AXMonitorCallbackEnvelope) async {
         guard
             envelope == activeMonitorEnvelope,
