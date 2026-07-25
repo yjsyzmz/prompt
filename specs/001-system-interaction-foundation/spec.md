@@ -2,8 +2,8 @@
 feature: "001-system-interaction-foundation"
 stage: implementation
 status: approved
-owner: "Solar"
-reviewer: "Fable"
+owner: "Fable (Comate), from T-028"
+reviewer: "Solar, from T-028"
 product_design: "docs/superpowers/specs/2026-07-17--design.md"
 ---
 

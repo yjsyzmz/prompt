@@ -3,8 +3,8 @@ feature: "001-system-interaction-foundation"
 stage: plan
 status: approved
 spec_version: "501e34584e3ca06a922038d153a96e3b93aa65ab"
-owner: "Solar"
-reviewer: "Fable"
+owner: "Fable (Comate), from T-028"
+reviewer: "Solar, from T-028"
 ---
 
 # 系统交互基础——技术计划

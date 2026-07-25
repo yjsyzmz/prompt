@@ -3,8 +3,8 @@ feature: "001-system-interaction-foundation"
 stage: tasks
 status: approved
 plan_version: "c5666be0aefb4523e21a2544722511f087201360"
-owner: "Solar"
-reviewer: "Fable"
+owner: "Fable (Comate), from T-028"
+reviewer: "Solar, from T-028"
 ---
 
 # 系统交互基础——任务清单

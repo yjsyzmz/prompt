@@ -22,6 +22,7 @@ Chat history is never a durable source of truth. Any decision that changes scope
 - The Owner is the only agent allowed to modify the feature branch.
 - The Reviewer must not push to the Owner branch. Reproduction work belongs in a detached checkout or a temporary `review/<feature>-<agent>` branch.
 - Roles rotate by product feature. Solar owns feature `001`; Fable owns feature `002`.
+- **Approved role transition — Feature `001`:** from T-028 onward, Fable (Comate) is the Owner and Solar is the Reviewer. This exception supersedes the preceding baseline assignment for Feature `001`. It takes effect from parent commit `363c49caeec8a240e8993593c21499103d0ab28b`; Fable alone may push `feature/001-system-interaction-foundation`, while Solar must review from a detached checkout or temporary review branch.
 - Only one product feature may be active until the user explicitly changes the WIP limit.
 - Local worktrees are `.worktrees/solar` and `.worktrees/fable` and must never be committed.
 
