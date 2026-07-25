@@ -1,0 +1,110 @@
+enum PreviewStatus: CaseIterable, Hashable, Sendable {
+    case ready
+    case permissionRequired
+    case secureInput
+    case emptyOrUnsupported
+    case staleTarget
+    case writeFailed
+    case recoveryUnavailable
+}
+
+enum PreviewUserAction: Hashable, Sendable {
+    case confirmReplacement
+    case copyResult
+    case cancel
+    case restoreOriginal
+    case copyOriginal
+    case openSettings
+    case recheckPermission
+    case useClipboard
+    case retry
+    case close
+}
+
+struct PreviewButton: Equatable, Sendable {
+    let action: PreviewUserAction
+    let title: String
+    let isEnabled: Bool
+}
+
+struct PreviewViewState: Equatable, Sendable {
+    let message: String
+    let buttons: [PreviewButton]
+
+    var canConfirmReplacement: Bool {
+        buttons.contains { $0.action == .confirmReplacement && $0.isEnabled }
+    }
+}
+
+struct PreviewPresentationMapper {
+    func viewState(for status: PreviewStatus) -> PreviewViewState {
+        switch status {
+        case .ready:
+            return PreviewViewState(
+                message: "优化结果已准备好，确认后才会替换原文。",
+                buttons: [
+                    PreviewButton(
+                        action: .confirmReplacement,
+                        title: "确认替换",
+                        isEnabled: true
+                    ),
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .cancel, title: "取消", isEnabled: true),
+                ]
+            )
+        case .permissionRequired:
+            return PreviewViewState(
+                message: "需要辅助功能权限才能读取或替换目标文字。",
+                buttons: [
+                    PreviewButton(action: .openSettings, title: "打开设置", isEnabled: true),
+                    PreviewButton(
+                        action: .recheckPermission,
+                        title: "重新检测",
+                        isEnabled: true
+                    ),
+                    PreviewButton(action: .useClipboard, title: "使用剪贴板", isEnabled: true),
+                ]
+            )
+        case .secureInput:
+            return PreviewViewState(
+                message: "当前是安全输入环境，应用不会读取或处理其中的内容。",
+                buttons: [
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        case .emptyOrUnsupported:
+            return PreviewViewState(
+                message: "没有可处理的文字，或当前输入位置不支持直接读取。",
+                buttons: [
+                    PreviewButton(action: .retry, title: "重试", isEnabled: true),
+                    PreviewButton(action: .useClipboard, title: "使用剪贴板", isEnabled: true),
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        case .staleTarget:
+            return PreviewViewState(
+                message: "原输入位置已经变化，不能安全替换。",
+                buttons: [
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .cancel, title: "取消", isEnabled: true),
+                ]
+            )
+        case .writeFailed:
+            return PreviewViewState(
+                message: "未能安全替换原文，结果仍可复制。",
+                buttons: [
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .cancel, title: "取消", isEnabled: true),
+                ]
+            )
+        case .recoveryUnavailable:
+            return PreviewViewState(
+                message: "目标内容已经变化，无法直接恢复。",
+                buttons: [
+                    PreviewButton(action: .copyOriginal, title: "复制原文", isEnabled: true),
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        }
+    }
+}
