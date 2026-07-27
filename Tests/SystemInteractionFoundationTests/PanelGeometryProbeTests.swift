@@ -12,6 +12,8 @@ final class PanelGeometryProbeTests: XCTestCase {
         )
 
         XCTAssertTrue(panel.styleMask.contains(.nonactivatingPanel))
+        XCTAssertTrue(panel.canBecomeKey)
+        XCTAssertFalse(panel.canBecomeMain)
         XCTAssertEqual(panel.level, .floating)
         XCTAssertFalse(panel.hidesOnDeactivate)
         XCTAssertTrue(panel.becomesKeyOnlyIfNeeded)

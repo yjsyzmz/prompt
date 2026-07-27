@@ -65,6 +65,7 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
     private var targetHandle: TargetHandle?
     private var targetPID: Int32?
     private var recoveryContext: AXRecoveryContext?
+    private(set) var lastRecoveryFailure: DomainFailure?
 
     init(gateway: AccessibilityGateway) {
         self.gateway = gateway
@@ -74,12 +75,14 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
         self.targetHandle = targetHandle
         targetPID = pid
         recoveryContext = nil
+        lastRecoveryFailure = nil
     }
 
     func endSession() {
         targetHandle = nil
         targetPID = nil
         recoveryContext = nil
+        lastRecoveryFailure = nil
     }
 
     func replace(_ content: SessionContent) -> Bool {
@@ -127,8 +130,10 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
         switch result {
         case .success:
             self.recoveryContext = nil
+            self.lastRecoveryFailure = nil
             return true
-        case .failure:
+        case .failure(let failure):
+            self.lastRecoveryFailure = failure
             return false
         }
     }

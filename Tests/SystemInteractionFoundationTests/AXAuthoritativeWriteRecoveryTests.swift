@@ -39,6 +39,8 @@ final class AXAuthoritativeWriteRecoveryTests: XCTestCase {
                 .selectedText,
                 .attributeSettable,
                 .setSelectedText,
+                .selectedRange,
+                .selectedText,
             ]
         )
     }
@@ -205,6 +207,46 @@ final class AXAuthoritativeWriteRecoveryTests: XCTestCase {
         )
     }
 
+    func testSilentSelectedSetterFailureFailsClosedViaReadback() async {
+        let fixture = makeFixture(mode: .selectedText(range))
+        fixture.authority.setterAppliesValue = false
+
+        let result = await fixture.gateway.replaceAfterAuthoritativeValidation(
+            fixture.snapshot
+        )
+
+        assertFailure(.writeFailed, result: result)
+        XCTAssertEqual(fixture.authority.selectedSetterCount, 1)
+        XCTAssertEqual(fixture.authority.currentSelectedText, original.value)
+    }
+
+    func testSilentWholeFieldSetterFailureFailsClosedViaReadback() async {
+        let fixture = makeFixture(mode: .wholeField)
+        fixture.authority.setterAppliesValue = false
+
+        let result = await fixture.gateway.replaceAfterAuthoritativeValidation(
+            fixture.snapshot
+        )
+
+        assertFailure(.writeFailed, result: result)
+        XCTAssertEqual(fixture.authority.wholeFieldSetterCount, 1)
+        XCTAssertEqual(fixture.authority.currentWholeValue, original.value)
+    }
+
+    func testSilentSetterFailureDuringRecoveryFailsClosed() async {
+        let fixture = makeFixture(mode: .selectedText(range))
+        let replacement = await fixture.gateway
+            .replaceAfterAuthoritativeValidation(fixture.snapshot)
+        let recovery = requireRecovery(replacement)
+        fixture.authority.setterAppliesValue = false
+
+        let restoration = await fixture.gateway
+            .restoreAfterAuthoritativeValidation(recovery)
+
+        assertFailure(.recoveryTargetChanged, result: restoration)
+        XCTAssertEqual(fixture.authority.currentSelectedText, transformed.value)
+    }
+
     func testSuccessfulReplacementCanRestoreOriginalWithOneAdditionalSetter() async {
         let fixture = makeFixture(mode: .selectedText(range))
         let replacement = await fixture.gateway
@@ -219,7 +261,8 @@ final class AXAuthoritativeWriteRecoveryTests: XCTestCase {
         XCTAssertEqual(fixture.authority.selectedSetterCount, 2)
         XCTAssertEqual(fixture.authority.wholeFieldSetterCount, 0)
         XCTAssertEqual(fixture.authority.currentSelectedText, original.value)
-        XCTAssertEqual(fixture.authority.calls.last, .setSelectedText)
+        XCTAssertTrue(fixture.authority.calls.contains(.setSelectedText))
+        XCTAssertNotEqual(fixture.authority.calls.last, .setSelectedText)
     }
 
     func testChangedResultBeforeRecoveryBlocksSetterAndOffersCopyOriginal() async {
@@ -351,6 +394,7 @@ private final class AXAuthoritativeTargetSpy: AXAuthoritativeTargetAccessing,
     var currentWholeValue: String
     var replacementAttributeIsSettable = true
     var setterSucceeds = true
+    var setterAppliesValue = true
 
     private(set) var calls: [AXAuthorityCall] = []
     private(set) var selectedSetterCount = 0
@@ -428,7 +472,14 @@ private final class AXAuthoritativeTargetSpy: AXAuthoritativeTargetAccessing,
         guard setterSucceeds else {
             return false
         }
+        guard setterAppliesValue else {
+            return true
+        }
         currentSelectedText = value
+        currentSelectedRange = AXTextRange(
+            location: currentSelectedRange.location,
+            length: value.utf16.count
+        )
         return true
     }
 
@@ -437,6 +488,9 @@ private final class AXAuthoritativeTargetSpy: AXAuthoritativeTargetAccessing,
         wholeFieldSetterCount += 1
         guard setterSucceeds else {
             return false
+        }
+        guard setterAppliesValue else {
+            return true
         }
         currentWholeValue = value
         return true

@@ -9,9 +9,9 @@ import Foundation
 /// deterministic fixtures without touching any real application.
 ///
 /// Synthetic semantics (shared with the T-021 authoritative fake): the
-/// selection identity stays stable across writes — `selectedTextRange()`
-/// always reports the range captured at fixture creation, while the selected
-/// content itself is modeled by `segment`. All content carries the
+/// selection start stays stable across writes, while the selected range length
+/// follows the current selected content and the selected content itself is
+/// modeled by `segment`. All content carries the
 /// `SYNTHETIC-001` marker and never comes from a real application.
 final class SyntheticAXTextHost: @unchecked Sendable {
     static let syntheticMarker = "SYNTHETIC-001"
@@ -20,7 +20,8 @@ final class SyntheticAXTextHost: @unchecked Sendable {
 
     private let lock = NSLock()
     private let selectionLocation: Int
-    private let reportedSelectionLength: Int
+    private var reportedSelectionLocation: Int
+    private var reportedSelectionLength: Int
     private let anchorBounds: CGRect?
 
     private var prefix: String
@@ -54,7 +55,8 @@ final class SyntheticAXTextHost: @unchecked Sendable {
         self.prefix = prefix
         self.segment = segment
         self.suffix = suffix
-        selectionLocation = prefix.count
+        selectionLocation = prefix.utf16.count
+        reportedSelectionLocation = selectionLocation
         reportedSelectionLength = selectionLength
         self.capability = capability
         self.secureInputActive = secureInputActive
@@ -143,7 +145,7 @@ final class SyntheticAXTextHost: @unchecked Sendable {
 
     var reportedSelectedRange: AXTextRange {
         withLock {
-            AXTextRange(location: selectionLocation, length: reportedSelectionLength)
+            AXTextRange(location: reportedSelectionLocation, length: reportedSelectionLength)
         }
     }
 
@@ -181,6 +183,13 @@ final class SyntheticAXTextHost: @unchecked Sendable {
         withLock { segment = newSegment }
     }
 
+    func collapseSelectionAfterWrite() {
+        withLock {
+            reportedSelectionLocation = selectionLocation + segment.utf16.count
+            reportedSelectionLength = 0
+        }
+    }
+
     func terminateApplication() {
         withLock { applicationRunning = false }
     }
@@ -211,7 +220,7 @@ extension SyntheticAXTextHost: AXCaptureReading {
         withLock {
             .success(
                 AXTextRange(
-                    location: selectionLocation,
+                    location: reportedSelectionLocation,
                     length: reportedSelectionLength
                 )
             )
@@ -220,14 +229,11 @@ extension SyntheticAXTextHost: AXCaptureReading {
 
     func selectedText(in range: AXTextRange) -> Result<String, DomainFailure> {
         withLock {
-            guard
-                range.location == selectionLocation,
-                range.length == reportedSelectionLength
-            else {
+            guard range.location == selectionLocation else {
                 return .failure(.sourceChanged)
             }
             contentReads += 1
-            return .success(segment)
+            return .success(reportedSelectionLength == 0 ? "" : segment)
         }
     }
 
@@ -285,6 +291,7 @@ extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
                 return false
             }
             segment = value
+            reportedSelectionLength = value.utf16.count
             return true
         }
     }

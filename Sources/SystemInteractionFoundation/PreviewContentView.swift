@@ -30,6 +30,21 @@ protocol PreviewPresenting: AnyObject {
     func dismiss()
 }
 
+/// The panel never activates the app, so the first click must not be
+/// swallowed as a window-focusing click; deliver it straight to the control.
+private final class FirstMouseHostingView: NSHostingView<PreviewContentView> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    required init(rootView: PreviewContentView) {
+        super.init(rootView: rootView)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+}
+
 @MainActor
 final class PreviewPanelController: PreviewPresenting {
     private static let panelSize = CGSize(width: 380, height: 140)
@@ -37,20 +52,20 @@ final class PreviewPanelController: PreviewPresenting {
     var onAction: (PreviewUserAction) -> Void = { _ in }
 
     private let panel: NSPanel
-    private let hosting: NSHostingController<PreviewContentView>
+    private let hostingView: FirstMouseHostingView
     private let placementController: NonactivatingPanelController
 
     init() {
         panel = PanelProbeFactory().makePanel(
             contentRect: CGRect(origin: .zero, size: Self.panelSize)
         )
-        hosting = NSHostingController(
+        hostingView = FirstMouseHostingView(
             rootView: PreviewContentView(
                 state: PreviewViewState(message: "", buttons: []),
                 onAction: { _ in }
             )
         )
-        panel.contentViewController = hosting
+        panel.contentView = hostingView
         placementController = NonactivatingPanelController(
             panel: panel,
             geometry: ScreenGeometryConverter(safeMargin: 8)
@@ -90,7 +105,7 @@ final class PreviewPanelController: PreviewPresenting {
     }
 
     private func applyRootView(_ state: PreviewViewState) {
-        hosting.rootView = PreviewContentView(state: state) { [weak self] action in
+        hostingView.rootView = PreviewContentView(state: state) { [weak self] action in
             self?.onAction(action)
         }
     }

@@ -1,9 +1,18 @@
 import AppKit
 
+/// Borderless panels refuse key status by default, which silently breaks
+/// every SwiftUI control hosted inside. The preview panel must be able to
+/// become key so its buttons receive clicks, while `.nonactivatingPanel`
+/// still keeps the application itself from activating.
+final class KeyableNonactivatingPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
 @MainActor
 struct PanelProbeFactory {
     func makePanel(contentRect: CGRect) -> NSPanel {
-        let panel = NSPanel(
+        let panel = KeyableNonactivatingPanel(
             contentRect: contentRect,
             styleMask: [.nonactivatingPanel],
             backing: .buffered,

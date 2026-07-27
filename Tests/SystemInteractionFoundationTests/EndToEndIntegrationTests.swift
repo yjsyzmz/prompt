@@ -51,6 +51,7 @@ final class EndToEndIntegrationTests: XCTestCase {
         )
         XCTAssertFalse(recoverableState.message.isEmpty)
 
+        env.host.collapseSelectionAfterWrite()
         env.controller.handle(.restoreOriginal)
         await env.controller.cleanupWork?.value
 
@@ -130,6 +131,28 @@ final class EndToEndIntegrationTests: XCTestCase {
         XCTAssertEqual(
             env.presenter.lastState,
             mapper.viewState(for: .permissionRequired)
+        )
+        XCTAssertEqual(env.host.contentReadCount, 0)
+        XCTAssertEqual(env.host.setterAttemptCount, 0)
+    }
+
+    func testFailedPermissionRecheckExplainsThatPermissionIsStillMissing() async {
+        let env = IntegrationEnvironment.make(host: .selectionFixture())
+        env.permission.status = .notAuthorized
+
+        env.hotKey.press()
+        let presentedBeforeRecheck = env.presenter.presentedStateCount
+
+        env.controller.handle(.recheckPermission)
+
+        XCTAssertEqual(env.presenter.presentedStateCount, presentedBeforeRecheck + 1)
+        XCTAssertEqual(
+            env.presenter.lastState?.buttons,
+            mapper.viewState(for: .permissionRequired).buttons
+        )
+        XCTAssertEqual(
+            env.presenter.lastState?.message,
+            "仍未检测到辅助功能权限。请在系统设置中启用本应用后，关闭并重新打开应用，再重新检测。"
         )
         XCTAssertEqual(env.host.contentReadCount, 0)
         XCTAssertEqual(env.host.setterAttemptCount, 0)
@@ -219,8 +242,12 @@ final class EndToEndIntegrationTests: XCTestCase {
         env.controller.handle(.restoreOriginal)
 
         XCTAssertEqual(
-            env.presenter.lastState,
-            mapper.viewState(for: .recoveryUnavailable)
+            env.presenter.lastState?.message,
+            "目标文字已经变化，无法直接恢复。"
+        )
+        XCTAssertEqual(
+            env.presenter.lastState?.buttons,
+            mapper.viewState(for: .recoveryUnavailable).buttons
         )
         XCTAssertEqual(
             env.host.setterAttemptCount,

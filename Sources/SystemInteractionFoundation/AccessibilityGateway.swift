@@ -261,6 +261,14 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return .failure(.writeFailed)
         }
 
+        guard writtenTextConfirmed(
+            snapshot.transformedText.value,
+            mode: snapshot.captureMode,
+            targetHandle: snapshot.targetHandle
+        ) else {
+            return .failure(.writeFailed)
+        }
+
         return .success(
             AXRecoveryContext(
                 targetHandle: snapshot.targetHandle,
@@ -279,6 +287,23 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return .failure(.recoveryTargetChanged)
         }
 
+        let requiresWholeFieldRestoration: Bool
+        switch recovery.captureMode {
+        case .selectedText(let expectedRange):
+            switch currentSelectedRange(targetHandle: recovery.targetHandle) {
+            case .success(let currentRange):
+                let transformedRange = AXTextRange(
+                    location: expectedRange.location,
+                    length: recovery.expectedTransformedText.value.utf16.count
+                )
+                requiresWholeFieldRestoration = currentRange != transformedRange
+            case .failure:
+                requiresWholeFieldRestoration = true
+            }
+        case .wholeField, .clipboardInput:
+            requiresWholeFieldRestoration = false
+        }
+
         switch validate(
             targetHandle: recovery.targetHandle,
             pid: recovery.pid,
@@ -292,11 +317,27 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return .failure(failure)
         }
 
-        guard setText(
-            recovery.originalText.value,
-            mode: recovery.captureMode,
-            targetHandle: recovery.targetHandle
-        ) else {
+        let restoration: Bool
+        if requiresWholeFieldRestoration,
+           case .selectedText(let expectedRange) = recovery.captureMode {
+            restoration = restoreCollapsedSelection(
+                expectedRange: expectedRange,
+                transformedText: recovery.expectedTransformedText.value,
+                originalText: recovery.originalText.value,
+                targetHandle: recovery.targetHandle
+            )
+        } else {
+            restoration = setText(
+                recovery.originalText.value,
+                mode: recovery.captureMode,
+                targetHandle: recovery.targetHandle
+            ) && writtenTextConfirmed(
+                recovery.originalText.value,
+                mode: recovery.captureMode,
+                targetHandle: recovery.targetHandle
+            )
+        }
+        guard restoration else {
             return .failure(.recoveryTargetChanged)
         }
         return .success(())
@@ -340,7 +381,12 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         let contentFailure: DomainFailure = isRecovery
             ? .recoveryTargetChanged
             : .sourceChanged
-        switch currentText(mode: mode, targetHandle: targetHandle) {
+        switch currentText(
+            mode: mode,
+            targetHandle: targetHandle,
+            expectedText: expectedText,
+            isRecovery: isRecovery
+        ) {
         case .success(let currentText):
             guard currentText == expectedText else {
                 return .failure(contentFailure)
@@ -360,20 +406,43 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
 
     private func currentText(
         mode: CaptureMode,
-        targetHandle: TargetHandle
+        targetHandle: TargetHandle,
+        expectedText: String,
+        isRecovery: Bool
     ) -> Result<String, DomainFailure> {
         switch mode {
         case .selectedText(let expectedRange):
+            let rangeMatches: Bool
             switch currentSelectedRange(targetHandle: targetHandle) {
             case .success(let currentRange):
-                guard currentRange == expectedRange else {
-                    return .failure(.sourceChanged)
-                }
+                rangeMatches = isRecovery
+                    ? currentRange.location == expectedRange.location
+                    : currentRange == expectedRange
             case .failure(let failure):
                 return .failure(failure)
             }
-            return selectedText(
-                in: expectedRange,
+
+            if rangeMatches {
+                switch selectedText(in: expectedRange, targetHandle: targetHandle) {
+                case .success(let value) where !isRecovery || value == expectedText:
+                    return .success(value)
+                case .success:
+                    break
+                case .failure(let failure) where !isRecovery:
+                    return .failure(failure)
+                case .failure:
+                    break
+                }
+            } else if !isRecovery {
+                return .failure(.sourceChanged)
+            }
+
+            guard isRecovery else {
+                return .failure(.recoveryTargetChanged)
+            }
+            return recoveryTextFromFullValue(
+                expectedRange: expectedRange,
+                expectedText: expectedText,
                 targetHandle: targetHandle
             )
         case .wholeField:
@@ -381,6 +450,79 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         case .clipboardInput:
             return .failure(.unsupportedTarget)
         }
+    }
+
+    private func restoreCollapsedSelection(
+        expectedRange: AXTextRange,
+        transformedText: String,
+        originalText: String,
+        targetHandle: TargetHandle
+    ) -> Bool {
+        guard replacementAttributeIsSettable(
+            mode: .wholeField,
+            targetHandle: targetHandle
+        ) else {
+            return false
+        }
+        guard case .success(let fullValue) = wholeValue(targetHandle: targetHandle) else {
+            return false
+        }
+        let transformedLength = (transformedText as NSString).length
+        let originalRange = NSRange(
+            location: expectedRange.location,
+            length: transformedLength
+        )
+        guard originalRange.location >= 0,
+              NSMaxRange(originalRange) <= (fullValue as NSString).length,
+              (fullValue as NSString).substring(with: originalRange) == transformedText
+        else {
+            return false
+        }
+        let restoredValue = (fullValue as NSString).replacingCharacters(
+            in: originalRange,
+            with: originalText
+        )
+        guard setText(
+            restoredValue,
+            mode: .wholeField,
+            targetHandle: targetHandle
+        ) else {
+            return false
+        }
+        return writtenTextConfirmed(
+            restoredValue,
+            mode: .wholeField,
+            targetHandle: targetHandle
+        )
+    }
+
+    private func recoveryTextFromFullValue(
+        expectedRange: AXTextRange,
+        expectedText: String,
+        targetHandle: TargetHandle
+    ) -> Result<String, DomainFailure> {
+        guard case .success(let fullValue) = wholeValue(targetHandle: targetHandle) else {
+            return .failure(.recoveryTargetChanged)
+        }
+        let fullUTF16Length = (fullValue as NSString).length
+        let expectedUTF16Length = (expectedText as NSString).length
+        guard
+            expectedRange.location >= 0,
+            expectedUTF16Length >= 0,
+            expectedRange.location + expectedUTF16Length <= fullUTF16Length
+        else {
+            return .failure(.recoveryTargetChanged)
+        }
+        let candidate = (fullValue as NSString).substring(
+            with: NSRange(
+                location: expectedRange.location,
+                length: expectedUTF16Length
+            )
+        )
+        guard candidate == expectedText else {
+            return .failure(.recoveryTargetChanged)
+        }
+        return .success(candidate)
     }
 
     private func targetApplicationIsRunning(pid: Int32) -> Bool {
@@ -512,6 +654,62 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return attributeIsSettable(kAXSelectedTextAttribute, on: element) == true
         case .wholeField:
             return attributeIsSettable(kAXValueAttribute, on: element) == true
+        case .clipboardInput:
+            return false
+        }
+    }
+
+    /// Some targets (notably Chromium web content) report a successful
+    /// AXSelectedText/AXValue write without applying it. A write only counts
+    /// as successful when the new text can be read back (FR-010: replacement
+    /// must be confirmed, otherwise keep the result and report writeFailed).
+    private func writtenTextConfirmed(
+        _ expectedText: String,
+        mode: CaptureMode,
+        targetHandle: TargetHandle
+    ) -> Bool {
+        switch mode {
+        case .selectedText(let expectedRange):
+            let expectedLength = (expectedText as NSString).length
+            if case .success(let currentRange) = currentSelectedRange(
+                targetHandle: targetHandle
+            ),
+                currentRange == AXTextRange(
+                    location: expectedRange.location,
+                    length: expectedLength
+                ),
+                case .success(let selectionValue) = selectedText(
+                    in: currentRange,
+                    targetHandle: targetHandle
+                ),
+                selectionValue == expectedText
+            {
+                return true
+            }
+            guard
+                case .success(let fullValue) = wholeValue(targetHandle: targetHandle)
+            else {
+                return false
+            }
+            let candidateRange = NSRange(
+                location: expectedRange.location,
+                length: expectedLength
+            )
+            guard candidateRange.location >= 0,
+                NSMaxRange(candidateRange) <= (fullValue as NSString).length,
+                (fullValue as NSString).substring(with: candidateRange) == expectedText
+            else {
+                return false
+            }
+            return true
+        case .wholeField:
+            guard
+                case .success(let fullValue) = wholeValue(targetHandle: targetHandle),
+                fullValue == expectedText
+            else {
+                return false
+            }
+            return true
         case .clipboardInput:
             return false
         }
@@ -681,10 +879,15 @@ final class SystemAXCaptureReader: AXCaptureReading, @unchecked Sendable {
         focusedWindow = nil
         focusedPID = nil
         let systemWide = AXUIElementCreateSystemWide()
-        let elementResult = copyAttribute(
+        var elementResult = copyAttribute(
             kAXFocusedUIElementAttribute,
             from: systemWide
         )
+        if case .failure = elementResult {
+            if let fallback = focusedElementFromFrontmostApplication() {
+                elementResult = fallback
+            }
+        }
 
         let element: AXUIElement
         switch elementResult {
@@ -726,13 +929,52 @@ final class SystemAXCaptureReader: AXCaptureReading, @unchecked Sendable {
             on: element
         )
         let valueSettable = attributeIsSettable(kAXValueAttribute, on: element)
+        let role = copyStringAttribute(kAXRoleAttribute, from: element)
         if selectedTextSettable == true || valueSettable == true {
             return .success(.editable)
         }
 
-        let role = copyStringAttribute(kAXRoleAttribute, from: element)
         let textRoles = [kAXTextFieldRole, kAXTextAreaRole, kAXComboBoxRole]
         return .success(textRoles.contains(role ?? "") ? .readOnly : .unsupported)
+    }
+
+    /// Chromium- and Electron-based apps keep their accessibility tree
+    /// disabled until an assistive client is detected, so the system-wide
+    /// focus query returns no value for them. Enabling the manual
+    /// accessibility attributes on the frontmost application and querying
+    /// its focused element directly switches the tree on.
+    private func focusedElementFromFrontmostApplication()
+        -> Result<CFTypeRef, DomainFailure>?
+    {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+            return nil
+        }
+        let appElement = AXUIElementCreateApplication(
+            frontmost.processIdentifier
+        )
+        _ = AXUIElementSetAttributeValue(
+            appElement,
+            "AXManualAccessibility" as CFString,
+            kCFBooleanTrue
+        )
+        _ = AXUIElementSetAttributeValue(
+            appElement,
+            "AXEnhancedUserInterface" as CFString,
+            kCFBooleanTrue
+        )
+        for attempt in 0 ..< 6 {
+            if attempt > 0 {
+                usleep(150_000)
+            }
+            let result = copyAttribute(
+                kAXFocusedUIElementAttribute,
+                from: appElement
+            )
+            if case .success = result {
+                return result
+            }
+        }
+        return nil
     }
 
     func selectedTextRange() -> Result<AXTextRange, DomainFailure> {

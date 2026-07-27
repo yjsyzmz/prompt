@@ -121,19 +121,34 @@ final class AXTargetMonitor {
 @MainActor
 final class NSWorkspaceActivationMonitor: WorkspaceActivationMonitoring {
     private let notificationCenter: NotificationCenter
+    private let currentProcessIdentifier: pid_t
     private var token: NSObjectProtocol?
 
-    init(notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter) {
+    init(
+        notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        currentProcessIdentifier: pid_t = ProcessInfo.processInfo.processIdentifier
+    ) {
         self.notificationCenter = notificationCenter
+        self.currentProcessIdentifier = currentProcessIdentifier
     }
 
     func start(callback: @escaping @Sendable () -> Void) {
         stop()
+        let ownProcessIdentifier = currentProcessIdentifier
         token = notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
-        ) { _ in
+        ) { notification in
+            // Activating this app itself (e.g. clicking the preview panel)
+            // must not invalidate the captured target; only a switch to a
+            // different application is a stale-target signal.
+            if let activated = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                as? NSRunningApplication,
+                activated.processIdentifier == ownProcessIdentifier
+            {
+                return
+            }
             callback()
         }
     }

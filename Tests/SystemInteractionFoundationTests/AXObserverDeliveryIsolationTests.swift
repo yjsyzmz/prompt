@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 
@@ -150,6 +151,42 @@ final class AXObserverDeliveryIsolationTests: XCTestCase {
         XCTAssertEqual(workspace.stopCount, 1)
     }
 
+    func testWorkspaceMonitorIgnoresOwnApplicationActivation() {
+        guard
+            let ownApplication = NSWorkspace.shared.runningApplications
+                .first(where: { $0.processIdentifier > 0 })
+        else {
+            XCTFail("No running application available for the fixture")
+            return
+        }
+
+        let center = NotificationCenter()
+        let monitor = NSWorkspaceActivationMonitor(
+            notificationCenter: center,
+            currentProcessIdentifier: ownApplication.processIdentifier
+        )
+        let counter = ActivationCallbackCounter()
+        monitor.start { counter.increment() }
+
+        center.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            userInfo: [
+                NSWorkspace.applicationUserInfoKey: ownApplication
+            ]
+        )
+
+        XCTAssertEqual(counter.count, 0)
+
+        center.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil
+        )
+
+        XCTAssertEqual(counter.count, 1)
+        monitor.stop()
+    }
+
     func testStaleSessionCallbackIsIgnoredInsideActorRouter() async {
         let sink = AXMonitorInvalidationSinkSpy()
         let router = AXMonitorEventRouter(invalidationSink: sink)
@@ -257,6 +294,14 @@ private final class AXObserverRunLoopSchedulerSpy: AXObserverRunLoopScheduling {
     func removeObserverSource() {
         removalCount += 1
         callback = nil
+    }
+}
+
+private final class ActivationCallbackCounter: @unchecked Sendable {
+    private(set) var count = 0
+
+    func increment() {
+        count += 1
     }
 }
 

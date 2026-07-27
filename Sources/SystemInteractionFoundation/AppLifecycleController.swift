@@ -201,7 +201,7 @@ final class AppLifecycleController {
         case .recheckPermission:
             permissionFlow.recheckAfterExplicitAction()
             if permissionFlow.state != .authorized {
-                present(.permissionRequired)
+                presentPermissionRequiredAfterFailedRecheck()
             }
         case .useClipboard:
             beginClipboardInputSession()
@@ -264,7 +264,7 @@ final class AppLifecycleController {
         case .previewing(.writeFailed):
             present(.writeFailed)
         case .previewing(.recoveryUnavailable):
-            present(.recoveryUnavailable)
+            presentRecoveryUnavailable()
         case .recoverable:
             presentRecoverable()
         case .ended:
@@ -362,8 +362,38 @@ final class AppLifecycleController {
         )
     }
 
+    private func presentRecoveryUnavailable() {
+        let baseState = mapper.viewState(for: .recoveryUnavailable)
+        let message: String
+        switch textTarget.lastRecoveryFailure {
+        case .invalidTarget:
+            message = "目标应用、窗口或输入位置已经变化，无法直接恢复。"
+        case .recoveryTargetChanged:
+            message = "目标文字已经变化，无法直接恢复。"
+        case .attributeNotSettable:
+            message = "当前输入位置已经不可写，无法直接恢复。"
+        case .secureInputActive:
+            message = "当前输入位置处于安全输入状态，无法直接恢复。"
+        default:
+            message = baseState.message
+        }
+        presentViewState(
+            PreviewViewState(message: message, buttons: baseState.buttons)
+        )
+    }
+
     private func present(_ status: PreviewStatus) {
         presentViewState(mapper.viewState(for: status))
+    }
+
+    private func presentPermissionRequiredAfterFailedRecheck() {
+        let baseState = mapper.viewState(for: .permissionRequired)
+        presentViewState(
+            PreviewViewState(
+                message: "仍未检测到辅助功能权限。请在系统设置中启用本应用后，关闭并重新打开应用，再重新检测。",
+                buttons: baseState.buttons
+            )
+        )
     }
 
     private func presentViewState(_ viewState: PreviewViewState) {
