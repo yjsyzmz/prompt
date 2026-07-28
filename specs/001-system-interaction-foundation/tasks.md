@@ -1,474 +1,141 @@
-<file>
-     1→---
-     2→feature: "001-system-interaction-foundation"
-     3→stage: tasks
-     4→status: approved
-     5→plan_version: "c5666be0aefb4523e21a2544722511f087201360"
-     6→owner: "Fable (Comate), from T-028"
-     7→reviewer: "Solar, from T-028"
-     8→---
-     9→
-    10→# 系统交互基础——任务清单
-    11→
-    12→## 本阶段边界
-    13→
-    14→- 本文件只拆解已批准 Spec 与 Plan，不新增产品范围或技术决策。
-    15→- 在用户确认本文件且 Fable 对准确 SHA 给出 Tasks Gate `PASS` 前，任何 Agent 都不得执行以下任务。
-    16→- 本轮不安装依赖、不安装 Xcode、不创建工程、不编写应用代码或测试代码，也不开展人工兼容性验证。
-    17→- 001 不接入网络、模型、API Key、提示词库、账号、遥测或持久化；实现任务不得为这些范围外能力预留抽象。
-    18→- 所有实现任务都必须由前置测试、探针或验证任务驱动。发现测试无法先写时，Owner 必须暂停并在 PR 说明原因，不得直接实现。
-    19→- 测试与证据只能使用标为 `SYNTHETIC-001` 的非敏感合成文字，不得包含真实用户内容或类似凭据的字符串。
-    20→
-    21→## 依赖顺序
-    22→
-    23→1. **P0 — 环境与工程门禁：** T-001 → T-002 → T-003 → T-004。
-    24→2. **P1 — 高风险能力探针：** T-005 → T-006 → T-007；T-008 → T-009 → T-010。两条探针链可在 P0 后并行，但 T-007 与 T-010 均通过前不得进入 P2。
-    25→3. **P2 — 领域核心：** T-011 → T-012；T-013 → T-014。两条测试优先链可并行，均依赖 P1 通过。
-    26→4. **P3 — 系统适配器：** 权限 T-015 → T-016、剪贴板 T-017 → T-018、AX 读取 T-019 → T-020 可并行；随后执行写入与恢复 T-021 → T-022、目标监控 T-023 → T-024、几何 T-025 → T-026、预览 T-027 → T-028。
-    27→5. **P4 — 集成闭环：** T-029 → T-030 → T-031，必须在 P2、P3 全部通过后执行。
-    28→6. **P5 — 验收证据：** T-032 至 T-038 可按测试环境分组执行，最后由 T-039 汇总；T-039 通过后才可请求 Implementation Gate 最终审核。
-    29→
-    30→任何停止条件触发时，后续依赖任务全部暂停，Owner 返回对应 SDD Gate 更新 research/plan/spec 或请求用户裁决，不得通过静默降级绕过。
-    31→
-    32→## 需求追踪
-    33→
-    34→| 需求 | 验收场景 | 测试／探针任务 | 实现任务 | 验收证据任务 |
-    35→| --- | --- | --- | --- | --- |
-    36→| FR-001 | AC-001, AC-002 | T-005, T-007 | T-006, T-028 | T-032, T-036 |
-    37→| FR-002 | AC-003 | T-015 | T-016, T-028 | T-035 |
-    38→| FR-003 | AC-004 | T-005, T-019 | T-006, T-020 | T-035, T-038 |
-    39→| FR-004 | AC-005, AC-006 | T-019, T-029, T-030 | T-020, T-031 | T-032, T-033 |
-    40→| FR-005 | AC-007 | T-019, T-027, T-030 | T-020, T-028, T-031 | T-035 |
-    41→| FR-006 | AC-005, AC-006, AC-016 | T-011, T-030 | T-012, T-031 | T-032, T-033, T-037 |
-    42→| FR-007 | AC-005, AC-006, AC-015 | T-008, T-025, T-027 | T-009, T-026, T-028 | T-032, T-033, T-036 |
-    43→| FR-008 | AC-005, AC-006, AC-008, AC-009 | T-013, T-017, T-027, T-030 | T-014, T-018, T-028, T-031 | T-032, T-033, T-035 |
-    44→| FR-009 | AC-009, AC-012, AC-013 | T-013, T-021, T-023, T-030 | T-014, T-022, T-024, T-031 | T-032, T-033, T-035 |
-    45→| FR-010 | AC-005, AC-006, AC-010 | T-017, T-021, T-030 | T-018, T-022, T-031 | T-032, T-033, T-034 |
-    46→| FR-011 | AC-011 | T-013, T-023, T-030 | T-014, T-024, T-031 | T-035 |
-    47→| FR-012 | AC-012, AC-013, AC-017 | T-013, T-021, T-030 | T-014, T-022, T-031 | T-032, T-033, T-039 |
-    48→| FR-013 | AC-014 | T-011, T-013, T-017, T-030 | T-012, T-014, T-018, T-031 | T-038 |
-    49→| NFR-001 | AC-001 | T-005, T-030 | T-006, T-031 | T-036 |
-    50→| NFR-002 | AC-003 至 AC-016 | T-013, T-021, T-030 | T-014, T-022, T-031 | T-032 至 T-038 |
-    51→| NFR-003 | AC-005, AC-006, AC-010 | T-029, T-030 | T-031 | T-032, T-033, T-034 |
-    52→| NFR-004 | AC-007, AC-016 | T-011, T-019, T-029, T-030 | T-012, T-020, T-031 | T-037 |
-    53→| NFR-005 | AC-015 | T-008, T-025, T-030 | T-009, T-026, T-031 | T-036 |
-    54→| NFR-006 | AC-003, AC-004, AC-008, AC-014 | T-011, T-017, T-030 | T-012, T-018, T-031 | T-038 |
-    55→| NFR-007 | AC-002, AC-003, AC-004, AC-007, AC-009, AC-010, AC-013 | T-011, T-013, T-015, T-027, T-030 | T-012, T-014, T-016, T-028, T-031 | T-035 |
-    56→
-    57→## 任务
-    58→
-    59→### P0 — 环境与工程门禁
-    60→
-    61→- [x] **T-001 [Environment] 记录可复现工具链。** 安装并选择稳定版完整 Xcode，记录 Xcode、Swift、macOS、Mac 型号和 CPU 架构；若只有 Command Line Tools 或 Swift 6 不可用，立即停止。此任务只能在 Tasks Gate `PASS` 和用户授权 Implementation Gate 后执行。— Covers: Plan 阶段出口 1；Evidence: `evidence/T-001-toolchain.md`
-    62→- [x] **T-002 [Test] 编写工程结构失败检查。** 先定义并运行一个预期失败的结构检查，要求存在 macOS 14.0+、Swift 6、arm64+x86_64 的应用目标、单元测试目标和合成 AX 宿主目标，同时拒绝 App Sandbox、网络 entitlement、第三方运行时依赖和范围外模块。— Depends on: T-001; Covers: Constitution IV, VII; Evidence: `evidence/T-002-project-structure-red.md`
-    63→- [x] **T-003 [Implementation] 创建最小 Xcode 工程。** 只创建 T-002 要求的目标、配置和目录，不加入产品行为；使结构检查通过。— Depends on: T-002; Covers: Constitution IV, VII; Evidence: `evidence/T-003-minimal-xcode-project.md`
-    64→- [x] **T-004 [Verification] 建立基础构建基线。** 在本地与 GitHub Actions 运行 universal Debug build、单元测试发现、`sdd-check` 和 `secret-scan`；记录命令和结果，不绕过无法执行的 Xcode 检查。— Depends on: T-003; Covers: Constitution V, VI; Evidence: `evidence/T-004-build-baseline.md`
-    65→
-    66→### P1 — 高风险能力探针
-    67→
-    68→- [x] **T-005 [Test] 定义快捷键与 Secure Event Input 探针。** 用协议替身先覆盖注册成功、冲突、注销、重复回调、Secure Event Input 开启时零内容读取，以及从 hot-key callback 开始的单调时钟采样；测试必须证明不需要 Input Monitoring 或通用按键监听。— Depends on: T-004; Covers: FR-001, FR-003, NFR-001, AC-001, AC-002, AC-004
-    69→- [x] **T-006 [Implementation] 实现最薄快捷键与安全输入适配器。** 使用 `RegisterEventHotKey`、`UnregisterEventHotKey` 与 `IsSecureEventInputEnabled`，将状态交给协调器；不得加入键盘监听替代路径。— Depends on: T-005; Covers: FR-001, FR-003, NFR-001
-    70→- [x] **T-007 [Probe] 验证快捷键停止条件。** 在普通输入、Secure Event Input 和快捷键冲突环境人工复核；若 Secure Event Input 完全抑制回调，记录 AC-004 未满足并返回 Gate，不得声称已实现应用内拒绝。— Depends on: T-006; Covers: FR-001, FR-003, AC-001, AC-002, AC-004; Evidence: `evidence/T-007-hot-key-stop-conditions.md`
-    71→- [x] **T-008 [Test] 定义非激活面板与显示几何探针。** 先覆盖 `NSPanel` 不抢焦点、后备锚点、屏幕边缘、负坐标、副显示器、不同缩放和全屏空间的预期几何；失败样例必须可复现。— Depends on: T-004; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-008-panel-geometry-red.md`
-    72→- [x] **T-009 [Implementation] 实现最小面板探针。** 创建 nonactivating `NSPanel` 和最小 SwiftUI 占位内容，只验证不抢焦点、层级与几何，不实现正式交互界面。— Depends on: T-008; Covers: FR-007, NFR-005; Evidence: `evidence/T-009-panel-geometry-green.md`
-    73→- [x] **T-010 [Probe] 验证面板停止条件。** 在单屏、多屏、全屏、边缘位置和非默认缩放下记录结果；若 TextEdit 或 Chrome/ChatGPT 中无法既保持目标又显示完整面板，返回 Gate。— Depends on: T-009; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-010-panel-stop-conditions.md`
-    74→
-    75→### P2 — 领域核心
-    76→
-    77→- [x] **T-011 [Test] 编写领域值与隐私契约测试。** 先覆盖确定性标记逐字符保真、中文/英文/混合/空白/多行/长文本/特殊字符、错误到可理解状态的映射、敏感值不可 `Codable`、错误和日志不得携带内容。— Depends on: T-007, T-010; Covers: FR-006, FR-013, NFR-004, NFR-006, NFR-007, AC-014, AC-016; Evidence: `evidence/T-011-domain-privacy-red.md`
-    78→- [x] **T-012 [Implementation] 实现领域值、协议与确定性转换器。** 仅实现 Plan 已定义的值类型、错误、协议和 `【系统交互验证】\n<原文>` 转换；不引用 AppKit、网络或持久化。— Depends on: T-011; Covers: FR-006, FR-013, NFR-004, NFR-006, NFR-007; Evidence: `evidence/T-012-domain-privacy-green.md`
-    79→- [x] **T-013 [Test] 编写会话状态机与副作用测试。** 先覆盖完整状态路径、一次仅一个会话、旧 session callback 无效、确认前 setter 为 0、取消零写入/零剪贴板、clipboardInput 禁止直接替换，以及 `recoverable → previewing(recoveryUnavailable)` 后只允许复制原文或关闭、不得再次写入。— Depends on: T-007, T-010; Covers: FR-008, FR-009, FR-011, FR-012, FR-013, NFR-002, NFR-007, AC-008, AC-009, AC-011, AC-012, AC-013, AC-014; Evidence: `evidence/T-013-session-coordinator-red.md`
-    80→- [x] **T-014 [Implementation] 实现会话协调器。** 以最小状态转移满足 T-013，使用 session ID 隔离旧回调，结束或替换会话时释放句柄并清除敏感内存引用。— Depends on: T-012, T-013; Covers: FR-008, FR-009, FR-011, FR-012, FR-013, NFR-002, NFR-007; Evidence: `evidence/T-014-session-coordinator-green.md`
-    81→
-    82→### P3 — 系统适配器与预览
-    83→
-    84→- [x] **T-015 [Test] 编写 Accessibility 权限流程测试。** 先覆盖已授权、未授权、打开具体设置成功、深链失败降级到通用设置、重新检测，以及权限缺失时 AX 读取/写入调用均为 0；剪贴板路径必须由用户点击启动。— Depends on: T-014; Covers: FR-002, NFR-007, AC-003; Evidence: `evidence/T-015-accessibility-permission-red.md`
-    85→- [x] **T-016 [Implementation] 实现权限适配器。** 使用系统信任检查与用户动作驱动的设置跳转，实现说明、重新检测和安全降级，不缓存虚假的授权状态。— Depends on: T-015; Covers: FR-002, NFR-007; Evidence: `evidence/T-016-accessibility-permission-green.md`
-    86→- [x] **T-017 [Test] 编写剪贴板显式访问测试。** 先用 spy 精确验证取消/普通预览/安全输入的读写次数为 0；只有“从剪贴板读取”“复制结果”“复制原文”分别发生一次预期访问，并要求 `currentHostOnly`。— Depends on: T-014; Covers: FR-008, FR-010, FR-013, NFR-006, AC-003, AC-004, AC-008, AC-010, AC-014; Evidence: `evidence/T-017-clipboard-policy-red.md`
-    87→- [x] **T-018 [Implementation] 实现剪贴板适配器。** 封装显式读写和 `NSPasteboard.WritingOptions.currentHostOnly`；不得后台轮询、自动读取或通过模拟粘贴替代 AX 写入。— Depends on: T-017; Covers: FR-008, FR-010, FR-013, NFR-006; Evidence: `evidence/T-018-clipboard-policy-green.md`
-    88→- [x] **T-019 [Test] 编写 AX 捕获测试。** 先覆盖安全元素拒绝、非空选区优先、零长度选区回退全文、空文本、不支持/只读目标、空白有效、边界可用与不可用、内容读取错误；安全输入路径不得创建任何内容值。— Depends on: T-014; Covers: FR-003, FR-004, FR-005, NFR-004, AC-004, AC-005, AC-006, AC-007, AC-016; Evidence: `evidence/T-019-ax-target-capture-red.md`
-    89→- [x] **T-020 [Implementation] 实现 AX 目标捕获。** 在 `AccessibilityGateway` actor 内持有原始 AX 引用，只向领域层返回不可持久化的句柄和值；按 T-019 规则读取，不做写入。— Depends on: T-019; Covers: FR-003, FR-004, FR-005, NFR-004; Evidence: `evidence/T-020-ax-target-capture-green.md`
-    90→- [x] **T-021 [Test] 编写重新验证、写入与恢复测试。** 先覆盖 Plan 的七项确认前权威检查、原文变化、应用/窗口/元素/范围变化、单一 setter、setter 失败时原文不变、成功后恢复、恢复前结果变化，以及失败后复制路径；证明任何失败都 fail-closed。— Depends on: T-020; Covers: FR-009, FR-010, FR-012, NFR-002, AC-005, AC-006, AC-009, AC-010, AC-012, AC-013, AC-017; Evidence: `evidence/T-021-authoritative-write-recovery-red.md`
-    91→- [x] **T-022 [Implementation] 实现权威验证、替换与恢复。** 在 actor 内按固定顺序重新获取并比较目标，只写最初选区或全文；恢复时仅当目标内容仍等于预期验证结果才写回原文，不增加清空、粘贴或第二写入策略。— Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002; Evidence: `evidence/T-022-authoritative-write-recovery-green.md`
-    92→- [x] **T-023 [Test] 编写 AXObserver 投递与隔离测试。** 先证明 observer run-loop source 挂载在 main run loop；callback 只捕获 session ID 与 target ID，再异步跳入 `AccessibilityGateway` actor；过期 callback 被忽略，监控通知只能提前禁用按钮，不能授权写入或恢复。— Depends on: T-020; Covers: FR-009, FR-011, NFR-002, AC-009, AC-011; Resolves: Plan Gate NIT-1; Evidence: `evidence/T-023-ax-observer-delivery-red.md`
-    93→- [x] **T-024 [Implementation] 实现外部目标监控。** 组合主 run loop 上的 `AXObserver` 与 `NSWorkspace` 通知，按 T-023 的 actor 隔离规则投递；注销 observer 时释放 run-loop source 和 AX 句柄。— Depends on: T-023; Covers: FR-009, FR-011, NFR-002; Evidence: `evidence/T-024-external-target-monitor-green.md`
-    94→- [x] **T-025 [Test] 编写屏幕几何转换测试。** 先覆盖光标/选区/元素/窗口/活跃显示器锚点优先级、AX 与 AppKit 坐标转换、可见区域收敛、面板大于可用区域和屏幕变化。— Depends on: T-010; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-025-screen-geometry-red.md`
-    95→- [x] **T-026 [Implementation] 实现几何转换与面板控制器。** 以 T-025 规则选择锚点、限制完整面板在单一活跃显示器，并保持 nonactivating 行为；不得把获取不到精确边界当作会话失败。— Depends on: T-025; Covers: FR-007, NFR-005; Evidence: `evidence/T-026-screen-geometry-green.md`
-    96→- [x] **T-027 [Test] 编写预览状态与操作测试。** 先覆盖 ready、permissionRequired、secureInput、emptyOrUnsupported、staleTarget、writeFailed、recoveryUnavailable 的文案和按钮矩阵；只有 ready 显示可用确认，所有拒绝/失败状态至少有一个安全下一步，界面不显示原始错误码或敏感内容。— Depends on: T-012, T-014, T-016, T-018, T-022, T-026; Covers: FR-005, FR-007, FR-008, NFR-007, AC-002, AC-003, AC-004, AC-007, AC-008, AC-009, AC-010, AC-013; Evidence: `evidence/T-027-preview-state-actions-red.md`
-    97→- [x] **T-028 [Implementation] 实现预览与应用生命周期装配。** 实现最小 SwiftUI 内容和 `AppLifecycleController`，接入已测试协议；提供确认、复制、取消、恢复、复制原文、打开设置和重新检测，不加入最终视觉系统或设置体验。— Depends on: T-027; Covers: FR-001, FR-002, FR-005, FR-007, FR-008, NFR-007; Evidence: `evidence/T-028-preview-lifecycle-green.md`
-    98→
-    99→### P4 — 合成集成闭环
-   100→
-   101→- [x] **T-029 [Test Harness] 建立合成 AX 宿主。** 只使用 `SYNTHETIC-001`，提供选区、全文、空值、只读、安全输入、元素失效、窗口切换和可控 setter 失败夹具；宿主不读取真实应用内容，不把内容写入日志或测试产物。— Depends on: T-004, T-020; Covers: FR-004, FR-013, NFR-003, NFR-004, NFR-006, AC-005, AC-006, AC-007, AC-009, AC-014, AC-016; Evidence: `evidence/T-029-synthetic-ax-host.md`
-   102→- [x] **T-030 [Test] 编写端到端集成测试。** 先以合成宿主和 spy 覆盖快捷键→权限→读取→预览→确认→单次写入→恢复，以及取消、复制、过期目标、写入失败、新会话替代、内容清除；每个路径断言确认前 setter 为 0。— Depends on: T-006, T-016, T-018, T-022, T-024, T-026, T-028, T-029; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-016; Evidence: `evidence/T-030-end-to-end-red.md`
-   103→- [x] **T-031 [Implementation] 完成最小闭环装配。** 仅补齐 T-030 暴露的依赖注入、事件路由与状态同步，使合成端到端测试通过；不得借机加入未被失败测试要求的功能。— Depends on: T-030; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007; Evidence: `evidence/T-031-end-to-end-green.md`
-   104→
-   105→### P5 — 真实环境验收与证据
-   106→
-   107→- [x] **T-032 [Verification] 验证 TextEdit 完整闭环。** 使用合成输入记录选区前后字节不变、预览前零写入、确认后只替换选区、恢复原文和关闭恢复状态后的标准 Undo 行为。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-005, AC-008, AC-009, AC-012, AC-017; Evidence: `evidence/T-032-textedit-closed-loop.md`
-   108→- [x] **T-033 [Verification] 验证 Chrome/ChatGPT 完整闭环。** 使用合成输入记录无选区时读取全文、预览前零写入、确认后只替换目标输入框、目标切换拦截、恢复原文和标准 Undo；若完整闭环失败，触发硬停止条件。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-006, AC-008, AC-009, AC-012, AC-017; Evidence: `evidence/T-033-chrome-chatgpt-closed-loop.md`
-   109→- [ ] **T-034 [Verification] 验证 VS Code 后备闭环。** 先记录直接读写实际能力；无可靠支持时验证用户主动剪贴板输入、明确复制结果和手动粘贴路径，证明无自动剪贴板访问且不修改无关文字。— Depends on: T-031; Covers: FR-010, NFR-002, NFR-003, NFR-006, AC-010
-   110→- [ ] **T-035 [Verification] 验证权限、安全与失败恢复矩阵。** 覆盖权限缺失/重新授权、设置深链降级、安全输入、快捷键冲突、空/不支持目标、过期目标、写入/恢复失败和重复触发；逐项记录可理解文案、安全下一步及写入/剪贴板计数。— Depends on: T-031; Covers: FR-001 至 FR-005, FR-008 至 FR-012, NFR-002, NFR-006, NFR-007, AC-002, AC-003, AC-004, AC-007, AC-008, AC-009, AC-010, AC-011, AC-013
-   111→- [ ] **T-036 [Evidence] 采集性能与显示证据。** 在 TextEdit 和 Chrome/ChatGPT 各连续触发 10 次，至少 9 次从 hot-key callback 到可见外壳/明确状态不超过 300ms；记录 callback 是可观测起点且**不包含物理按键到 callback 的操作系统投递延迟**，并记录 Mac、macOS、应用版本、全屏、显示器布局和缩放。不得为获得物理按键时间戳引入按键监听。— Depends on: T-032, T-033; Covers: FR-001, FR-007, NFR-001, NFR-005, AC-001, AC-015; Resolves: Plan Gate NIT-2
-   112→- [ ] **T-037 [Verification] 验证代表性文字矩阵。** 在必须支持的应用中执行中文、英文、中英混合、空文本、多行、10,000 字符长文本和特殊字符；记录具体长度与应用限制，核对无崩溃、静默截断或无关修改。— Depends on: T-032, T-033, T-034; Covers: FR-006, NFR-004, AC-007, AC-016
-   113→- [ ] **T-038 [Audit] 执行隐私与安全审计。** 检查文件、配置、日志、崩溃自定义字段、截图、测试结果和遥测均无真实内容；复核安全输入零读取/转换/展示/复制/写入，正常路径剪贴板访问次数和会话结束后的敏感引用释放。— Depends on: T-035, T-037; Covers: FR-003, FR-013, NFR-006, AC-004, AC-008, AC-014
-   114→- [ ] **T-039 [Evidence] 汇总可复现验收包。** 汇总所有自动测试、探针、人工矩阵、性能数据、环境版本、已知限制和 Undo 观察；逐项核对本文件所有 FR/NFR/AC，运行 build、unit-tests、`sdd-check`、`secret-scan`、`git diff --check`，确认无未解释失败后再发 Implementation Gate `HANDOFF`。— Depends on: T-032 至 T-038; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017
-   115→
-   116→## 检查点
-   117→
-   118→- **C0 — 工具链可执行：** T-004 通过；完整 Xcode、目标配置、CI 与基础测试发现均可复现。
-   119→- **C1 — 高风险假设成立：** T-007 与 T-010 已通过；快捷键/安全输入和非激活面板没有触发 Plan 的硬停止条件。
-   120→- **C2 — 领域安全不变量成立：** T-014 通过；确认前零 setter、单会话、会话清理及 `recoverable → previewing(recoveryUnavailable)` 已由失败优先测试证明。
-   121→- **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。
-   122→- **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。
-   123→- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。
-   124→
-   125→## Plan Gate NIT 处置约束
-   126→
-   127→| Finding | Tasks Gate 的强制落实 | 关闭条件 |
-   128→| --- | --- | --- |
-   129→| NIT-1 | T-023/T-024 明确 AXObserver source 挂载于 main run loop，callback 再跳入 actor，监控不是写入授权 | Fable 确认任务表述覆盖并在 Tasks Gate 关闭 |
-   130→| NIT-2 | T-036 明确 300ms 证据从 hot-key callback 起算，不包含 OS 投递延迟，且禁止增加按键监听 | Fable 确认测量边界可审计并在 Tasks Gate 关闭 |
-   131→| NIT-3 | T-013/T-014 明确测试并实现 `recoverable → previewing(recoveryUnavailable)`，仅允许复制原文或关闭 | Fable 确认状态、动作与禁止写入均被覆盖后关闭 |
-   132→
-   133→## Tasks Gate 记录
-   134→
-   135→- Plan Gate 通过提交：`c5666be0aefb4523e21a2544722511f087201360`
-   136→- 用户授权：已授权编写 `tasks.md`；未授权安装依赖、创建工程或开发
-   137→- 用户书面确认：2026-07-20 已确认本任务清单，可以交给 Fable 进行 Tasks Gate 审核
-   138→- Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
-   139→- 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
-   140→- PR 审核位置：PR #2
-   141→- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-027，C1、C2 已达成；T-027 已建立七种预览状态的中文说明、按钮矩阵、仅 ready 可确认、安全下一步与无原始错误/敏感内容的稳定 RED 边界，连续两次因缺少 T-028 预览展示契约而按预期失败，生产构建与仓库门禁保持绿色；T-028 已获用户授权并完成——最薄预览展示契约、最小 SwiftUI 内容与 `AppLifecycleController` 装配使 T-027 五个测试连续两次转绿（89 tests, 0 failures），证据见 `evidence/T-028-preview-lifecycle-green.md`；用户于 2026-07-25 授权：跳过逐任务 Reviewer 审核，剩余任务全部完成后统一审核；T-029 已完成——合成 AX 宿主夹具与 9 个自检测试连续两次通过（98 tests, 0 failures），证据见 `evidence/T-029-synthetic-ax-host.md`；T-030 已完成——11 个合成端到端集成测试建立稳定 RED（连续两次 exit 65，错误仅指向缺失的 T-031 集成契约），证据见 `evidence/T-030-end-to-end-red.md`；T-031 已完成——最小闭环装配（GatewaySessionTextTarget 桥接、捕获/监控/清理路由、恢复呈现）使 11 个端到端测试连续两次转绿（109 tests, 0 failures），C4 达成，build/structure/sdd/secret 门禁全绿，证据见 `evidence/T-031-end-to-end-green.md`；T-032、T-033 已于 2026-07-28 完成真实环境人工验证（证据见 `evidence/T-032-textedit-closed-loop.md`、`evidence/T-033-chrome-chatgpt-closed-loop.md`），NFR-003 最低兼容标准达标、硬停止未触发；用户于 2026-07-28 决策（方案 A）：Chrome 选区替换与"所有输入框无差别可用"两项硬需求超出本 Feature 范围，作为新 Feature 走独立 Spec Gate，Feature 001 按现有规格收尾（决策与微信范围外观察见 `evidence/out-of-scope-observations.md`）；T-034 至 T-039 需真实环境与人工验证，尚未执行
-   142→
-</file>
-<metadata>The file has 142 lines in total.</metadata>
-
-<rule name="AGENTS.md">
-# Solar × Fable Collaboration Protocol
-
-This file applies to the entire repository. It is the primary operating contract for every agent session.
-
-## 1. Source of truth
-
-Read authoritative context in this order before acting:
-
-1. `AGENTS.md`
-2. `.specify/memory/constitution.md`
-3. `docs/superpowers/specs/2026-07-17--design.md`
-4. The active feature's `spec.md`, `plan.md`, `research.md`, and `tasks.md`
-5. The active pull request description, handoff comments, review comments, and checks
-6. The current commit diff
-
-Chat history is never a durable source of truth. Any decision that changes scope, behavior, architecture, testing, or risk acceptance must be written back to an approved artifact or the pull request.
-
-## 2. Agents, roles, and worktrees
-
-- Solar and Fable share one GitHub account but must identify themselves in every handoff, review, and stage-changing comment.
-- Every feature has exactly one `Owner` and one `Reviewer`.
-- The Owner is the only agent allowed to modify the feature branch.
-- The Reviewer must not push to the Owner branch. Reproduction work belongs in a detached checkout or a temporary `review/<feature>-<agent>` branch.
-- Roles rotate by product feature. Solar owns feature `001`; Fable owns feature `002`.
-- **Approved role transition — Feature `001`:** from T-028 onward, Fable (Comate) is the Owner and Solar is the Reviewer. This exception supersedes the preceding baseline assignment for Feature `001`. It takes effect from parent commit `363c49caeec8a240e8993593c21499103d0ab28b`; Fable alone may push `feature/001-system-interaction-foundation`, while Solar must review from a detached checkout or temporary review branch.
-- Only one product feature may be active until the user explicitly changes the WIP limit.
-- Local worktrees are `.worktrees/solar` and `.worktrees/fable` and must never be committed.
-
-## 3. Session Start
-
-Every agent must complete this sequence before changing files or reviewing:
-
-1. Confirm the repository and worktree path.
-2. Run `git status --short --branch`. Stop if unexpected changes exist.
-3. If `origin` exists, run `git fetch origin --prune`.
-4. Read the sources of truth listed in section 1.
-5. Discover the one active feature PR and record its head SHA, stage, Owner, and Reviewer.
-6. Reviewer sessions must inspect the exact handoff SHA, not an unspecified moving branch.
-7. Publish an `ALIGNMENT ACK` in the PR. During local bootstrap, return it to the user for posting.
-
-No development or review may start before the acknowledgement is complete.
-
-```text
-ALIGNMENT ACK
-Acting-Agent: Solar | Fable
-Repository:
-HEAD SHA:
-Main SHA:
-Active PR:
-Feature:
-Current Stage:
-Role: Owner | Reviewer
-Authoritative files read:
-Current approved decisions:
-Actions I must not perform:
-Required checks:
-My exact next action:
-Unresolved questions:
-```
-
-## 4. SDD lifecycle
-
-One feature uses one branch and one evolving Draft PR. Its stages are strictly ordered:
-
-1. `Spec Gate`: approve problem, scope, requirements, and acceptance scenarios.
-2. `Plan Gate`: approve architecture, interfaces, data flow, risk handling, and test strategy.
-3. `Tasks Gate`: approve requirement coverage, dependency order, task size, and test-first execution.
-4. `Implementation Gate`: approve code, automated checks, manual evidence, privacy, and known limitations.
-
-The Owner may not start the next stage without a Reviewer `PASS` for the current stage. A material change to an approved artifact reopens that gate and all downstream gates.
-
-## 5. Branch, commit, and PR rules
-
-- Product branch: `feature/NNN-short-name`.
-- Process branch: `chore/NNN-short-name`.
-- Never commit directly to `main` after repository bootstrap.
-- Never force-push shared branches.
-- Keep the PR as Draft until the Implementation Gate is ready for final review.
-- Every stage-changing commit message must be concise and include these trailers:
-
-```text
-Acting-Agent: Solar | Fable
-SDD-Stage: Spec | Plan | Tasks | Implementation
-Feature: NNN
-```
-
-- Do not commit secrets, user content, API keys, signing assets, generated credentials, local environment files, or agent worktrees.
-
-## 6. Handoff contract
-
-Before requesting review, the Owner must commit and push all intended work, verify a clean worktree, run the relevant checks, and freeze the branch.
-
-```text
-HANDOFF
-Acting-Agent:
-Feature / Stage:
-Owner / Reviewer:
-Review commit SHA:
-Changed artifacts:
-Requirements covered:
-Decisions made:
-Validation and results:
-Known risks:
-Open questions:
-Exact review request:
-```
-
-Any push after `HANDOFF` invalidates the review request. The Owner must issue a new handoff with the new SHA.
-
-## 7. Review contract
-
-```text
-REVIEW
-Acting-Agent:
-Reviewed commit SHA:
-Gate:
-Verdict: PASS | CHANGES REQUESTED
-Findings:
-Independent validation:
-Residual risks:
-Next required action:
-```
-
-Finding levels:
-
-- `BLOCKER`: security, data loss, or fundamental specification conflict.
-- `MUST`: violation of an approved requirement, plan, or acceptance criterion.
-- `SHOULD`: material quality improvement that may be deferred only with a recorded reason.
-- `QUESTION`: clarification request; non-blocking unless promoted with evidence.
-- `NIT`: minor, non-blocking suggestion.
-
-The Owner replies to each finding with `FIXED`, `DECLINED`, or `NEEDS DECISION` and supporting evidence. Only the Reviewer closes findings. `BLOCKER` and `MUST` findings prevent `PASS`.
-
-## 8. Merge and dispute rules
-
-- The user is the only person who performs the final GitHub merge.
-- Merge only when the Reviewer passed the current head SHA, required checks are green, and no blocking findings remain.
-- Use `Squash and merge`, then delete the remote feature branch.
-- Resolve disagreements using, in order: approved product design, constitution, current feature spec, reproducible tests, and documented evidence.
-- If evidence cannot resolve the disagreement, record `NEEDS DECISION` and ask the user. Do not continue by assumption.
-
-## 9. Recovery rules
-
-- Only pushed commits are recoverable state. Uncommitted work is not a handoff.
-- A replacement Reviewer performs a full review of the current SHA and does not inherit verbal approval.
-- Merge-conflict resolution belongs to the Owner and requires checks to be rerun.
-- If conflict resolution changes an approved specification or plan, reopen the corresponding gate.
-- A flaky check may be rerun once. A repeated failure must be investigated and cannot be bypassed.
-
-## 10. Fable wake-up message
-
-The user may start a Fable session with only this message:
-
-```text
-项目路径：
-/Users/daidong/Documents/prompt/.worktrees/fable
-
-请执行 AGENTS.md 中的 Session Start 和 Alignment ACK 流程。
-自行查找当前打开的功能 PR。
-在完成信息对齐、确认当前 commit SHA 和你的角色前，不要修改文件、分支或 PR。
-```
-
-</rule>
-
-<rule name="AGENTS.md">
-# Solar × Fable Collaboration Protocol
-
-This file applies to the entire repository. It is the primary operating contract for every agent session.
-
-## 1. Source of truth
-
-Read authoritative context in this order before acting:
-
-1. `AGENTS.md`
-2. `.specify/memory/constitution.md`
-3. `docs/superpowers/specs/2026-07-17--design.md`
-4. The active feature's `spec.md`, `plan.md`, `research.md`, and `tasks.md`
-5. The active pull request description, handoff comments, review comments, and checks
-6. The current commit diff
-
-Chat history is never a durable source of truth. Any decision that changes scope, behavior, architecture, testing, or risk acceptance must be written back to an approved artifact or the pull request.
-
-## 2. Agents, roles, and worktrees
-
-- Solar and Fable share one GitHub account but must identify themselves in every handoff, review, and stage-changing comment.
-- Every feature has exactly one `Owner` and one `Reviewer`.
-- The Owner is the only agent allowed to modify the feature branch.
-- The Reviewer must not push to the Owner branch. Reproduction work belongs in a detached checkout or a temporary `review/<feature>-<agent>` branch.
-- Roles rotate by product feature. Solar owns feature `001`; Fable owns feature `002`.
-- Only one product feature may be active until the user explicitly changes the WIP limit.
-- Local worktrees are `.worktrees/solar` and `.worktrees/fable` and must never be committed.
-
-## 3. Session Start
-
-Every agent must complete this sequence before changing files or reviewing:
-
-1. Confirm the repository and worktree path.
-2. Run `git status --short --branch`. Stop if unexpected changes exist.
-3. If `origin` exists, run `git fetch origin --prune`.
-4. Read the sources of truth listed in section 1.
-5. Discover the one active feature PR and record its head SHA, stage, Owner, and Reviewer.
-6. Reviewer sessions must inspect the exact handoff SHA, not an unspecified moving branch.
-7. Publish an `ALIGNMENT ACK` in the PR. During local bootstrap, return it to the user for posting.
-
-No development or review may start before the acknowledgement is complete.
-
-```text
-ALIGNMENT ACK
-Acting-Agent: Solar | Fable
-Repository:
-HEAD SHA:
-Main SHA:
-Active PR:
-Feature:
-Current Stage:
-Role: Owner | Reviewer
-Authoritative files read:
-Current approved decisions:
-Actions I must not perform:
-Required checks:
-My exact next action:
-Unresolved questions:
-```
-
-## 4. SDD lifecycle
-
-One feature uses one branch and one evolving Draft PR. Its stages are strictly ordered:
-
-1. `Spec Gate`: approve problem, scope, requirements, and acceptance scenarios.
-2. `Plan Gate`: approve architecture, interfaces, data flow, risk handling, and test strategy.
-3. `Tasks Gate`: approve requirement coverage, dependency order, task size, and test-first execution.
-4. `Implementation Gate`: approve code, automated checks, manual evidence, privacy, and known limitations.
-
-The Owner may not start the next stage without a Reviewer `PASS` for the current stage. A material change to an approved artifact reopens that gate and all downstream gates.
-
-## 5. Branch, commit, and PR rules
-
-- Product branch: `feature/NNN-short-name`.
-- Process branch: `chore/NNN-short-name`.
-- Never commit directly to `main` after repository bootstrap.
-- Never force-push shared branches.
-- Keep the PR as Draft until the Implementation Gate is ready for final review.
-- Every stage-changing commit message must be concise and include these trailers:
-
-```text
-Acting-Agent: Solar | Fable
-SDD-Stage: Spec | Plan | Tasks | Implementation
-Feature: NNN
-```
-
-- Do not commit secrets, user content, API keys, signing assets, generated credentials, local environment files, or agent worktrees.
-
-## 6. Handoff contract
-
-Before requesting review, the Owner must commit and push all intended work, verify a clean worktree, run the relevant checks, and freeze the branch.
-
-```text
-HANDOFF
-Acting-Agent:
-Feature / Stage:
-Owner / Reviewer:
-Review commit SHA:
-Changed artifacts:
-Requirements covered:
-Decisions made:
-Validation and results:
-Known risks:
-Open questions:
-Exact review request:
-```
-
-Any push after `HANDOFF` invalidates the review request. The Owner must issue a new handoff with the new SHA.
-
-## 7. Review contract
-
-```text
-REVIEW
-Acting-Agent:
-Reviewed commit SHA:
-Gate:
-Verdict: PASS | CHANGES REQUESTED
-Findings:
-Independent validation:
-Residual risks:
-Next required action:
-```
-
-Finding levels:
-
-- `BLOCKER`: security, data loss, or fundamental specification conflict.
-- `MUST`: violation of an approved requirement, plan, or acceptance criterion.
-- `SHOULD`: material quality improvement that may be deferred only with a recorded reason.
-- `QUESTION`: clarification request; non-blocking unless promoted with evidence.
-- `NIT`: minor, non-blocking suggestion.
-
-The Owner replies to each finding with `FIXED`, `DECLINED`, or `NEEDS DECISION` and supporting evidence. Only the Reviewer closes findings. `BLOCKER` and `MUST` findings prevent `PASS`.
-
-## 8. Merge and dispute rules
-
-- The user is the only person who performs the final GitHub merge.
-- Merge only when the Reviewer passed the current head SHA, required checks are green, and no blocking findings remain.
-- Use `Squash and merge`, then delete the remote feature branch.
-- Resolve disagreements using, in order: approved product design, constitution, current feature spec, reproducible tests, and documented evidence.
-- If evidence cannot resolve the disagreement, record `NEEDS DECISION` and ask the user. Do not continue by assumption.
-
-## 9. Recovery rules
-
-- Only pushed commits are recoverable state. Uncommitted work is not a handoff.
-- A replacement Reviewer performs a full review of the current SHA and does not inherit verbal approval.
-- Merge-conflict resolution belongs to the Owner and requires checks to be rerun.
-- If conflict resolution changes an approved specification or plan, reopen the corresponding gate.
-- A flaky check may be rerun once. A repeated failure must be investigated and cannot be bypassed.
-
-## 10. Fable wake-up message
-
-The user may start a Fable session with only this message:
-
-```text
-项目路径：
-/Users/daidong/Documents/prompt/.worktrees/fable
-
-请执行 AGENTS.md 中的 Session Start 和 Alignment ACK 流程。
-自行查找当前打开的功能 PR。
-在完成信息对齐、确认当前 commit SHA 和你的角色前，不要修改文件、分支或 PR。
-```
-
-</rule>
+---
+feature: "001-system-interaction-foundation"
+stage: tasks
+status: approved
+plan_version: "c5666be0aefb4523e21a2544722511f087201360"
+owner: "Fable (Comate), from T-028"
+reviewer: "Solar, from T-028"
+---
+
+# 系统交互基础——任务清单
+
+## 本阶段边界
+
+- 本文件只拆解已批准 Spec 与 Plan，不新增产品范围或技术决策。
+- 在用户确认本文件且 Fable 对准确 SHA 给出 Tasks Gate `PASS` 前，任何 Agent 都不得执行以下任务。
+- 本轮不安装依赖、不安装 Xcode、不创建工程、不编写应用代码或测试代码，也不开展人工兼容性验证。
+- 001 不接入网络、模型、API Key、提示词库、账号、遥测或持久化；实现任务不得为这些范围外能力预留抽象。
+- 所有实现任务都必须由前置测试、探针或验证任务驱动。发现测试无法先写时，Owner 必须暂停并在 PR 说明原因，不得直接实现。
+- 测试与证据只能使用标为 `SYNTHETIC-001` 的非敏感合成文字，不得包含真实用户内容或类似凭据的字符串。
+
+## 依赖顺序
+
+1. **P0 — 环境与工程门禁：** T-001 → T-002 → T-003 → T-004。
+2. **P1 — 高风险能力探针：** T-005 → T-006 → T-007；T-008 → T-009 → T-010。两条探针链可在 P0 后并行，但 T-007 与 T-010 均通过前不得进入 P2。
+3. **P2 — 领域核心：** T-011 → T-012；T-013 → T-014。两条测试优先链可并行，均依赖 P1 通过。
+4. **P3 — 系统适配器：** 权限 T-015 → T-016、剪贴板 T-017 → T-018、AX 读取 T-019 → T-020 可并行；随后执行写入与恢复 T-021 → T-022、目标监控 T-023 → T-024、几何 T-025 → T-026、预览 T-027 → T-028。
+5. **P4 — 集成闭环：** T-029 → T-030 → T-031，必须在 P2、P3 全部通过后执行。
+6. **P5 — 验收证据：** T-032 至 T-038 可按测试环境分组执行，最后由 T-039 汇总；T-039 通过后才可请求 Implementation Gate 最终审核。
+
+任何停止条件触发时，后续依赖任务全部暂停，Owner 返回对应 SDD Gate 更新 research/plan/spec 或请求用户裁决，不得通过静默降级绕过。
+
+## 需求追踪
+
+| 需求 | 验收场景 | 测试／探针任务 | 实现任务 | 验收证据任务 |
+| --- | --- | --- | --- | --- |
+| FR-001 | AC-001, AC-002 | T-005, T-007 | T-006, T-028 | T-032, T-036 |
+| FR-002 | AC-003 | T-015 | T-016, T-028 | T-035 |
+| FR-003 | AC-004 | T-005, T-019 | T-006, T-020 | T-035, T-038 |
+| FR-004 | AC-005, AC-006 | T-019, T-029, T-030 | T-020, T-031 | T-032, T-033 |
+| FR-005 | AC-007 | T-019, T-027, T-030 | T-020, T-028, T-031 | T-035 |
+| FR-006 | AC-005, AC-006, AC-016 | T-011, T-030 | T-012, T-031 | T-032, T-033, T-037 |
+| FR-007 | AC-005, AC-006, AC-015 | T-008, T-025, T-027 | T-009, T-026, T-028 | T-032, T-033, T-036 |
+| FR-008 | AC-005, AC-006, AC-008, AC-009 | T-013, T-017, T-027, T-030 | T-014, T-018, T-028, T-031 | T-032, T-033, T-035 |
+| FR-009 | AC-009, AC-012, AC-013 | T-013, T-021, T-023, T-030 | T-014, T-022, T-024, T-031 | T-032, T-033, T-035 |
+| FR-010 | AC-005, AC-006, AC-010 | T-017, T-021, T-030 | T-018, T-022, T-031 | T-032, T-033, T-034 |
+| FR-011 | AC-011 | T-013, T-023, T-030 | T-014, T-024, T-031 | T-035 |
+| FR-012 | AC-012, AC-013, AC-017 | T-013, T-021, T-030 | T-014, T-022, T-031 | T-032, T-033, T-039 |
+| FR-013 | AC-014 | T-011, T-013, T-017, T-030 | T-012, T-014, T-018, T-031 | T-038 |
+| NFR-001 | AC-001 | T-005, T-030 | T-006, T-031 | T-036 |
+| NFR-002 | AC-003 至 AC-016 | T-013, T-021, T-030 | T-014, T-022, T-031 | T-032 至 T-038 |
+| NFR-003 | AC-005, AC-006, AC-010 | T-029, T-030 | T-031 | T-032, T-033, T-034 |
+| NFR-004 | AC-007, AC-016 | T-011, T-019, T-029, T-030 | T-012, T-020, T-031 | T-037 |
+| NFR-005 | AC-015 | T-008, T-025, T-030 | T-009, T-026, T-031 | T-036 |
+| NFR-006 | AC-003, AC-004, AC-008, AC-014 | T-011, T-017, T-030 | T-012, T-018, T-031 | T-038 |
+| NFR-007 | AC-002, AC-003, AC-004, AC-007, AC-009, AC-010, AC-013 | T-011, T-013, T-015, T-027, T-030 | T-012, T-014, T-016, T-028, T-031 | T-035 |
+
+## 任务
+
+### P0 — 环境与工程门禁
+
+- [x] **T-001 [Environment] 记录可复现工具链。** 安装并选择稳定版完整 Xcode，记录 Xcode、Swift、macOS、Mac 型号和 CPU 架构；若只有 Command Line Tools 或 Swift 6 不可用，立即停止。此任务只能在 Tasks Gate `PASS` 和用户授权 Implementation Gate 后执行。— Covers: Plan 阶段出口 1；Evidence: `evidence/T-001-toolchain.md`
+- [x] **T-002 [Test] 编写工程结构失败检查。** 先定义并运行一个预期失败的结构检查，要求存在 macOS 14.0+、Swift 6、arm64+x86_64 的应用目标、单元测试目标和合成 AX 宿主目标，同时拒绝 App Sandbox、网络 entitlement、第三方运行时依赖和范围外模块。— Depends on: T-001; Covers: Constitution IV, VII; Evidence: `evidence/T-002-project-structure-red.md`
+- [x] **T-003 [Implementation] 创建最小 Xcode 工程。** 只创建 T-002 要求的目标、配置和目录，不加入产品行为；使结构检查通过。— Depends on: T-002; Covers: Constitution IV, VII; Evidence: `evidence/T-003-minimal-xcode-project.md`
+- [x] **T-004 [Verification] 建立基础构建基线。** 在本地与 GitHub Actions 运行 universal Debug build、单元测试发现、`sdd-check` 和 `secret-scan`；记录命令和结果，不绕过无法执行的 Xcode 检查。— Depends on: T-003; Covers: Constitution V, VI; Evidence: `evidence/T-004-build-baseline.md`
+
+### P1 — 高风险能力探针
+
+- [x] **T-005 [Test] 定义快捷键与 Secure Event Input 探针。** 用协议替身先覆盖注册成功、冲突、注销、重复回调、Secure Event Input 开启时零内容读取，以及从 hot-key callback 开始的单调时钟采样；测试必须证明不需要 Input Monitoring 或通用按键监听。— Depends on: T-004; Covers: FR-001, FR-003, NFR-001, AC-001, AC-002, AC-004
+- [x] **T-006 [Implementation] 实现最薄快捷键与安全输入适配器。** 使用 `RegisterEventHotKey`、`UnregisterEventHotKey` 与 `IsSecureEventInputEnabled`，将状态交给协调器；不得加入键盘监听替代路径。— Depends on: T-005; Covers: FR-001, FR-003, NFR-001
+- [x] **T-007 [Probe] 验证快捷键停止条件。** 在普通输入、Secure Event Input 和快捷键冲突环境人工复核；若 Secure Event Input 完全抑制回调，记录 AC-004 未满足并返回 Gate，不得声称已实现应用内拒绝。— Depends on: T-006; Covers: FR-001, FR-003, AC-001, AC-002, AC-004; Evidence: `evidence/T-007-hot-key-stop-conditions.md`
+- [x] **T-008 [Test] 定义非激活面板与显示几何探针。** 先覆盖 `NSPanel` 不抢焦点、后备锚点、屏幕边缘、负坐标、副显示器、不同缩放和全屏空间的预期几何；失败样例必须可复现。— Depends on: T-004; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-008-panel-geometry-red.md`
+- [x] **T-009 [Implementation] 实现最小面板探针。** 创建 nonactivating `NSPanel` 和最小 SwiftUI 占位内容，只验证不抢焦点、层级与几何，不实现正式交互界面。— Depends on: T-008; Covers: FR-007, NFR-005; Evidence: `evidence/T-009-panel-geometry-green.md`
+- [x] **T-010 [Probe] 验证面板停止条件。** 在单屏、多屏、全屏、边缘位置和非默认缩放下记录结果；若 TextEdit 或 Chrome/ChatGPT 中无法既保持目标又显示完整面板，返回 Gate。— Depends on: T-009; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-010-panel-stop-conditions.md`
+
+### P2 — 领域核心
+
+- [x] **T-011 [Test] 编写领域值与隐私契约测试。** 先覆盖确定性标记逐字符保真、中文/英文/混合/空白/多行/长文本/特殊字符、错误到可理解状态的映射、敏感值不可 `Codable`、错误和日志不得携带内容。— Depends on: T-007, T-010; Covers: FR-006, FR-013, NFR-004, NFR-006, NFR-007, AC-014, AC-016; Evidence: `evidence/T-011-domain-privacy-red.md`
+- [x] **T-012 [Implementation] 实现领域值、协议与确定性转换器。** 仅实现 Plan 已定义的值类型、错误、协议和 `【系统交互验证】\n<原文>` 转换；不引用 AppKit、网络或持久化。— Depends on: T-011; Covers: FR-006, FR-013, NFR-004, NFR-006, NFR-007; Evidence: `evidence/T-012-domain-privacy-green.md`
+- [x] **T-013 [Test] 编写会话状态机与副作用测试。** 先覆盖完整状态路径、一次仅一个会话、旧 session callback 无效、确认前 setter 为 0、取消零写入/零剪贴板、clipboardInput 禁止直接替换，以及 `recoverable → previewing(recoveryUnavailable)` 后只允许复制原文或关闭、不得再次写入。— Depends on: T-007, T-010; Covers: FR-008, FR-009, FR-011, FR-012, FR-013, NFR-002, NFR-007, AC-008, AC-009, AC-011, AC-012, AC-013, AC-014; Evidence: `evidence/T-013-session-coordinator-red.md`
+- [x] **T-014 [Implementation] 实现会话协调器。** 以最小状态转移满足 T-013，使用 session ID 隔离旧回调，结束或替换会话时释放句柄并清除敏感内存引用。— Depends on: T-012, T-013; Covers: FR-008, FR-009, FR-011, FR-012, FR-013, NFR-002, NFR-007; Evidence: `evidence/T-014-session-coordinator-green.md`
+
+### P3 — 系统适配器与预览
+
+- [x] **T-015 [Test] 编写 Accessibility 权限流程测试。** 先覆盖已授权、未授权、打开具体设置成功、深链失败降级到通用设置、重新检测，以及权限缺失时 AX 读取/写入调用均为 0；剪贴板路径必须由用户点击启动。— Depends on: T-014; Covers: FR-002, NFR-007, AC-003; Evidence: `evidence/T-015-accessibility-permission-red.md`
+- [x] **T-016 [Implementation] 实现权限适配器。** 使用系统信任检查与用户动作驱动的设置跳转，实现说明、重新检测和安全降级，不缓存虚假的授权状态。— Depends on: T-015; Covers: FR-002, NFR-007; Evidence: `evidence/T-016-accessibility-permission-green.md`
+- [x] **T-017 [Test] 编写剪贴板显式访问测试。** 先用 spy 精确验证取消/普通预览/安全输入的读写次数为 0；只有“从剪贴板读取”“复制结果”“复制原文”分别发生一次预期访问，并要求 `currentHostOnly`。— Depends on: T-014; Covers: FR-008, FR-010, FR-013, NFR-006, AC-003, AC-004, AC-008, AC-010, AC-014; Evidence: `evidence/T-017-clipboard-policy-red.md`
+- [x] **T-018 [Implementation] 实现剪贴板适配器。** 封装显式读写和 `NSPasteboard.WritingOptions.currentHostOnly`；不得后台轮询、自动读取或通过模拟粘贴替代 AX 写入。— Depends on: T-017; Covers: FR-008, FR-010, FR-013, NFR-006; Evidence: `evidence/T-018-clipboard-policy-green.md`
+- [x] **T-019 [Test] 编写 AX 捕获测试。** 先覆盖安全元素拒绝、非空选区优先、零长度选区回退全文、空文本、不支持/只读目标、空白有效、边界可用与不可用、内容读取错误；安全输入路径不得创建任何内容值。— Depends on: T-014; Covers: FR-003, FR-004, FR-005, NFR-004, AC-004, AC-005, AC-006, AC-007, AC-016; Evidence: `evidence/T-019-ax-target-capture-red.md`
+- [x] **T-020 [Implementation] 实现 AX 目标捕获。** 在 `AccessibilityGateway` actor 内持有原始 AX 引用，只向领域层返回不可持久化的句柄和值；按 T-019 规则读取，不做写入。— Depends on: T-019; Covers: FR-003, FR-004, FR-005, NFR-004; Evidence: `evidence/T-020-ax-target-capture-green.md`
+- [x] **T-021 [Test] 编写重新验证、写入与恢复测试。** 先覆盖 Plan 的七项确认前权威检查、原文变化、应用/窗口/元素/范围变化、单一 setter、setter 失败时原文不变、成功后恢复、恢复前结果变化，以及失败后复制路径；证明任何失败都 fail-closed。— Depends on: T-020; Covers: FR-009, FR-010, FR-012, NFR-002, AC-005, AC-006, AC-009, AC-010, AC-012, AC-013, AC-017; Evidence: `evidence/T-021-authoritative-write-recovery-red.md`
+- [x] **T-022 [Implementation] 实现权威验证、替换与恢复。** 在 actor 内按固定顺序重新获取并比较目标，只写最初选区或全文；恢复时仅当目标内容仍等于预期验证结果才写回原文，不增加清空、粘贴或第二写入策略。— Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002; Evidence: `evidence/T-022-authoritative-write-recovery-green.md`
+- [x] **T-023 [Test] 编写 AXObserver 投递与隔离测试。** 先证明 observer run-loop source 挂载在 main run loop；callback 只捕获 session ID 与 target ID，再异步跳入 `AccessibilityGateway` actor；过期 callback 被忽略，监控通知只能提前禁用按钮，不能授权写入或恢复。— Depends on: T-020; Covers: FR-009, FR-011, NFR-002, AC-009, AC-011; Resolves: Plan Gate NIT-1; Evidence: `evidence/T-023-ax-observer-delivery-red.md`
+- [x] **T-024 [Implementation] 实现外部目标监控。** 组合主 run loop 上的 `AXObserver` 与 `NSWorkspace` 通知，按 T-023 的 actor 隔离规则投递；注销 observer 时释放 run-loop source 和 AX 句柄。— Depends on: T-023; Covers: FR-009, FR-011, NFR-002; Evidence: `evidence/T-024-external-target-monitor-green.md`
+- [x] **T-025 [Test] 编写屏幕几何转换测试。** 先覆盖光标/选区/元素/窗口/活跃显示器锚点优先级、AX 与 AppKit 坐标转换、可见区域收敛、面板大于可用区域和屏幕变化。— Depends on: T-010; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-025-screen-geometry-red.md`
+- [x] **T-026 [Implementation] 实现几何转换与面板控制器。** 以 T-025 规则选择锚点、限制完整面板在单一活跃显示器，并保持 nonactivating 行为；不得把获取不到精确边界当作会话失败。— Depends on: T-025; Covers: FR-007, NFR-005; Evidence: `evidence/T-026-screen-geometry-green.md`
+- [x] **T-027 [Test] 编写预览状态与操作测试。** 先覆盖 ready、permissionRequired、secureInput、emptyOrUnsupported、staleTarget、writeFailed、recoveryUnavailable 的文案和按钮矩阵；只有 ready 显示可用确认，所有拒绝/失败状态至少有一个安全下一步，界面不显示原始错误码或敏感内容。— Depends on: T-012, T-014, T-016, T-018, T-022, T-026; Covers: FR-005, FR-007, FR-008, NFR-007, AC-002, AC-003, AC-004, AC-007, AC-008, AC-009, AC-010, AC-013; Evidence: `evidence/T-027-preview-state-actions-red.md`
+- [x] **T-028 [Implementation] 实现预览与应用生命周期装配。** 实现最小 SwiftUI 内容和 `AppLifecycleController`，接入已测试协议；提供确认、复制、取消、恢复、复制原文、打开设置和重新检测，不加入最终视觉系统或设置体验。— Depends on: T-027; Covers: FR-001, FR-002, FR-005, FR-007, FR-008, NFR-007; Evidence: `evidence/T-028-preview-lifecycle-green.md`
+
+### P4 — 合成集成闭环
+
+- [x] **T-029 [Test Harness] 建立合成 AX 宿主。** 只使用 `SYNTHETIC-001`，提供选区、全文、空值、只读、安全输入、元素失效、窗口切换和可控 setter 失败夹具；宿主不读取真实应用内容，不把内容写入日志或测试产物。— Depends on: T-004, T-020; Covers: FR-004, FR-013, NFR-003, NFR-004, NFR-006, AC-005, AC-006, AC-007, AC-009, AC-014, AC-016; Evidence: `evidence/T-029-synthetic-ax-host.md`
+- [x] **T-030 [Test] 编写端到端集成测试。** 先以合成宿主和 spy 覆盖快捷键→权限→读取→预览→确认→单次写入→恢复，以及取消、复制、过期目标、写入失败、新会话替代、内容清除；每个路径断言确认前 setter 为 0。— Depends on: T-006, T-016, T-018, T-022, T-024, T-026, T-028, T-029; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-016; Evidence: `evidence/T-030-end-to-end-red.md`
+- [x] **T-031 [Implementation] 完成最小闭环装配。** 仅补齐 T-030 暴露的依赖注入、事件路由与状态同步，使合成端到端测试通过；不得借机加入未被失败测试要求的功能。— Depends on: T-030; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007; Evidence: `evidence/T-031-end-to-end-green.md`
+
+### P5 — 真实环境验收与证据
+
+- [x] **T-032 [Verification] 验证 TextEdit 完整闭环。** 使用合成输入记录选区前后字节不变、预览前零写入、确认后只替换选区、恢复原文和关闭恢复状态后的标准 Undo 行为。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-005, AC-008, AC-009, AC-012, AC-017; Evidence: `evidence/T-032-textedit-closed-loop.md`
+- [x] **T-033 [Verification] 验证 Chrome/ChatGPT 完整闭环。** 使用合成输入记录无选区时读取全文、预览前零写入、确认后只替换目标输入框、目标切换拦截、恢复原文和标准 Undo；若完整闭环失败，触发硬停止条件。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-006, AC-008, AC-009, AC-012, AC-017; Evidence: `evidence/T-033-chrome-chatgpt-closed-loop.md`
+- [ ] **T-034 [Verification] 验证 VS Code 后备闭环。** 先记录直接读写实际能力；无可靠支持时验证用户主动剪贴板输入、明确复制结果和手动粘贴路径，证明无自动剪贴板访问且不修改无关文字。— Depends on: T-031; Covers: FR-010, NFR-002, NFR-003, NFR-006, AC-010
+- [ ] **T-035 [Verification] 验证权限、安全与失败恢复矩阵。** 覆盖权限缺失/重新授权、设置深链降级、安全输入、快捷键冲突、空/不支持目标、过期目标、写入/恢复失败和重复触发；逐项记录可理解文案、安全下一步及写入/剪贴板计数。— Depends on: T-031; Covers: FR-001 至 FR-005, FR-008 至 FR-012, NFR-002, NFR-006, NFR-007, AC-002, AC-003, AC-004, AC-007, AC-008, AC-009, AC-010, AC-011, AC-013
+- [ ] **T-036 [Evidence] 采集性能与显示证据。** 在 TextEdit 和 Chrome/ChatGPT 各连续触发 10 次，至少 9 次从 hot-key callback 到可见外壳/明确状态不超过 300ms；记录 callback 是可观测起点且**不包含物理按键到 callback 的操作系统投递延迟**，并记录 Mac、macOS、应用版本、全屏、显示器布局和缩放。不得为获得物理按键时间戳引入按键监听。— Depends on: T-032, T-033; Covers: FR-001, FR-007, NFR-001, NFR-005, AC-001, AC-015; Resolves: Plan Gate NIT-2
+- [ ] **T-037 [Verification] 验证代表性文字矩阵。** 在必须支持的应用中执行中文、英文、中英混合、空文本、多行、10,000 字符长文本和特殊字符；记录具体长度与应用限制，核对无崩溃、静默截断或无关修改。— Depends on: T-032, T-033, T-034; Covers: FR-006, NFR-004, AC-007, AC-016
+- [ ] **T-038 [Audit] 执行隐私与安全审计。** 检查文件、配置、日志、崩溃自定义字段、截图、测试结果和遥测均无真实内容；复核安全输入零读取/转换/展示/复制/写入，正常路径剪贴板访问次数和会话结束后的敏感引用释放。— Depends on: T-035, T-037; Covers: FR-003, FR-013, NFR-006, AC-004, AC-008, AC-014
+- [ ] **T-039 [Evidence] 汇总可复现验收包。** 汇总所有自动测试、探针、人工矩阵、性能数据、环境版本、已知限制和 Undo 观察；逐项核对本文件所有 FR/NFR/AC，运行 build、unit-tests、`sdd-check`、`secret-scan`、`git diff --check`，确认无未解释失败后再发 Implementation Gate `HANDOFF`。— Depends on: T-032 至 T-038; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017
+
+## 检查点
+
+- **C0 — 工具链可执行：** T-004 通过；完整 Xcode、目标配置、CI 与基础测试发现均可复现。
+- **C1 — 高风险假设成立：** T-007 与 T-010 已通过；快捷键/安全输入和非激活面板没有触发 Plan 的硬停止条件。
+- **C2 — 领域安全不变量成立：** T-014 通过；确认前零 setter、单会话、会话清理及 `recoverable → previewing(recoveryUnavailable)` 已由失败优先测试证明。
+- **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。
+- **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。
+- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。
+
+## Plan Gate NIT 处置约束
+
+| Finding | Tasks Gate 的强制落实 | 关闭条件 |
+| --- | --- | --- |
+| NIT-1 | T-023/T-024 明确 AXObserver source 挂载于 main run loop，callback 再跳入 actor，监控不是写入授权 | Fable 确认任务表述覆盖并在 Tasks Gate 关闭 |
+| NIT-2 | T-036 明确 300ms 证据从 hot-key callback 起算，不包含 OS 投递延迟，且禁止增加按键监听 | Fable 确认测量边界可审计并在 Tasks Gate 关闭 |
+| NIT-3 | T-013/T-014 明确测试并实现 `recoverable → previewing(recoveryUnavailable)`，仅允许复制原文或关闭 | Fable 确认状态、动作与禁止写入均被覆盖后关闭 |
+
+## Tasks Gate 记录
+
+- Plan Gate 通过提交：`c5666be0aefb4523e21a2544722511f087201360`
+- 用户授权：已授权编写 `tasks.md`；未授权安装依赖、创建工程或开发
+- 用户书面确认：2026-07-20 已确认本任务清单，可以交给 Fable 进行 Tasks Gate 审核
+- Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
+- 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
+- PR 审核位置：PR #2
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-027，C1、C2 已达成；T-027 已建立七种预览状态的中文说明、按钮矩阵、仅 ready 可确认、安全下一步与无原始错误/敏感内容的稳定 RED 边界，连续两次因缺少 T-028 预览展示契约而按预期失败，生产构建与仓库门禁保持绿色；T-028 已获用户授权并完成——最薄预览展示契约、最小 SwiftUI 内容与 `AppLifecycleController` 装配使 T-027 五个测试连续两次转绿（89 tests, 0 failures），证据见 `evidence/T-028-preview-lifecycle-green.md`；用户于 2026-07-25 授权：跳过逐任务 Reviewer 审核，剩余任务全部完成后统一审核；T-029 已完成——合成 AX 宿主夹具与 9 个自检测试连续两次通过（98 tests, 0 failures），证据见 `evidence/T-029-synthetic-ax-host.md`；T-030 已完成——11 个合成端到端集成测试建立稳定 RED（连续两次 exit 65，错误仅指向缺失的 T-031 集成契约），证据见 `evidence/T-030-end-to-end-red.md`；T-031 已完成——最小闭环装配（GatewaySessionTextTarget 桥接、捕获/监控/清理路由、恢复呈现）使 11 个端到端测试连续两次转绿（109 tests, 0 failures），C4 达成，build/structure/sdd/secret 门禁全绿，证据见 `evidence/T-031-end-to-end-green.md`；T-032、T-033 已于 2026-07-28 完成真实环境人工验证（证据见 `evidence/T-032-textedit-closed-loop.md`、`evidence/T-033-chrome-chatgpt-closed-loop.md`），NFR-003 最低兼容标准达标、硬停止未触发；用户于 2026-07-28 决策（方案 A）：Chrome 选区替换与「所有输入框无差别可用」两项硬需求超出本 Feature 范围，作为新 Feature 走独立 Spec Gate，Feature 001 按现有规格收尾（决策与微信范围外观察见 `evidence/out-of-scope-observations.md`）；T-034 至 T-039 需真实环境与人工验证，尚未执行
