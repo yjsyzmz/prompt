@@ -663,7 +663,29 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     /// AXSelectedText/AXValue write without applying it. A write only counts
     /// as successful when the new text can be read back (FR-010: replacement
     /// must be confirmed, otherwise keep the result and report writeFailed).
+    /// Chromium applies accessibility writes asynchronously in the renderer
+    /// process, so the readback retries briefly before failing closed.
     private func writtenTextConfirmed(
+        _ expectedText: String,
+        mode: CaptureMode,
+        targetHandle: TargetHandle
+    ) -> Bool {
+        for attempt in 0 ..< 5 {
+            if attempt > 0 {
+                usleep(100_000)
+            }
+            if writeReadbackMatches(
+                expectedText,
+                mode: mode,
+                targetHandle: targetHandle
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func writeReadbackMatches(
         _ expectedText: String,
         mode: CaptureMode,
         targetHandle: TargetHandle

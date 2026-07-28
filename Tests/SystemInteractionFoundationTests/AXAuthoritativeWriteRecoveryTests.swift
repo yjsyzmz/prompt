@@ -247,6 +247,18 @@ final class AXAuthoritativeWriteRecoveryTests: XCTestCase {
         XCTAssertEqual(fixture.authority.currentSelectedText, transformed.value)
     }
 
+    func testDelayedSetterApplicationIsConfirmedByReadbackRetry() async {
+        let fixture = makeFixture(mode: .selectedText(range))
+        fixture.authority.readbacksBeforeValueApplies = 2
+
+        let result = await fixture.gateway.replaceAfterAuthoritativeValidation(
+            fixture.snapshot
+        )
+
+        _ = requireRecovery(result)
+        XCTAssertEqual(fixture.authority.currentSelectedText, transformed.value)
+    }
+
     func testSuccessfulReplacementCanRestoreOriginalWithOneAdditionalSetter() async {
         let fixture = makeFixture(mode: .selectedText(range))
         let replacement = await fixture.gateway
@@ -395,6 +407,8 @@ private final class AXAuthoritativeTargetSpy: AXAuthoritativeTargetAccessing,
     var replacementAttributeIsSettable = true
     var setterSucceeds = true
     var setterAppliesValue = true
+    var readbacksBeforeValueApplies = 0
+    private var pendingSelectedText: String?
 
     private(set) var calls: [AXAuthorityCall] = []
     private(set) var selectedSetterCount = 0
@@ -448,6 +462,17 @@ private final class AXAuthoritativeTargetSpy: AXAuthoritativeTargetAccessing,
 
     func selectedTextRange() -> Result<AXTextRange, DomainFailure> {
         calls.append(.selectedRange)
+        if let pending = pendingSelectedText {
+            readbacksBeforeValueApplies -= 1
+            if readbacksBeforeValueApplies <= 0 {
+                currentSelectedText = pending
+                currentSelectedRange = AXTextRange(
+                    location: currentSelectedRange.location,
+                    length: pending.utf16.count
+                )
+                pendingSelectedText = nil
+            }
+        }
         return .success(currentSelectedRange)
     }
 
@@ -473,6 +498,10 @@ private final class AXAuthoritativeTargetSpy: AXAuthoritativeTargetAccessing,
             return false
         }
         guard setterAppliesValue else {
+            return true
+        }
+        if readbacksBeforeValueApplies > 0 {
+            pendingSelectedText = value
             return true
         }
         currentSelectedText = value
