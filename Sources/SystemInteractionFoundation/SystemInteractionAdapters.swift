@@ -1,5 +1,6 @@
 import Carbon.HIToolbox
 import Dispatch
+import os
 
 struct HotKeyRegistrationToken: Equatable, Sendable {
     let id: UInt32
@@ -229,5 +230,26 @@ struct CapabilityProbeClock {
 
     func sampleAtHotKeyCallback() -> UInt64 {
         clock.now()
+    }
+}
+
+/// T-036 observability: the 300ms budget is measured from the hot-key
+/// callback to the first presented state. Only elapsed time is recorded —
+/// never captured text — so this stays inside the FR-013 privacy boundary.
+@MainActor
+protocol PresentationLatencyRecording {
+    func recordPresentationLatency(nanoseconds: UInt64)
+}
+
+@MainActor
+struct OSLogPresentationLatencyRecorder: PresentationLatencyRecording {
+    private let log = Logger(
+        subsystem: "com.systeminteractionfoundation.verification",
+        category: "presentation-latency"
+    )
+
+    func recordPresentationLatency(nanoseconds: UInt64) {
+        let milliseconds = Double(nanoseconds) / 1_000_000
+        log.info("presentation-latency-ms=\(milliseconds, format: .fixed(precision: 1))")
     }
 }

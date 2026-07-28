@@ -81,6 +81,8 @@ final class AppLifecycleController {
     private let mapper = PreviewPresentationMapper()
     private let sessionObserverBridge: SessionObserverBridge
     private let monitorBridge: MonitorInvalidationBridge
+    private let clock: any MonotonicClockReading
+    private let latencyRecorder: any PresentationLatencyRecording
 
     private(set) var captureWork: Task<Void, Never>?
     private(set) var cleanupWork: Task<Void, Never>?
@@ -90,6 +92,7 @@ final class AppLifecycleController {
     private var pendingAnchorRect: CGRect?
     private var lastTransformed: TransformedText?
     private var isPresenting = false
+    private var pendingLatencyStart: UInt64?
 
     init(
         hotKeySystemClient: any HotKeySystemClient,
@@ -99,9 +102,14 @@ final class AppLifecycleController {
         pasteboard: any PasteboardAccessing,
         gateway: AccessibilityGateway,
         targetMonitor: any TargetChangeMonitoring,
-        presenter: any PreviewPresenting
+        presenter: any PreviewPresenting,
+        clock: any MonotonicClockReading = SystemMonotonicClock(),
+        latencyRecorder: any PresentationLatencyRecording =
+            OSLogPresentationLatencyRecorder()
     ) {
         hotKey = GlobalHotKeyRegistrar(systemClient: hotKeySystemClient)
+        self.clock = clock
+        self.latencyRecorder = latencyRecorder
         secureInput = SecureInputGuard(checker: secureInputChecker)
         clipboard = ClipboardPolicy(pasteboard: pasteboard)
         self.gateway = gateway
@@ -170,6 +178,10 @@ final class AppLifecycleController {
     }
 
     func beginDirectInteraction() {
+        // First observable point inside the app; the OS delivery delay before
+        // this callback is deliberately outside the measured window.
+        pendingLatencyStart = clock.now()
+
         guard secureInput.performIfContentReadAllowed({}) == .allowed else {
             present(.secureInput)
             return
@@ -402,6 +414,13 @@ final class AppLifecycleController {
         } else {
             presenter.show(viewState, anchorRect: pendingAnchorRect)
             isPresenting = true
+        }
+
+        if let start = pendingLatencyStart {
+            pendingLatencyStart = nil
+            latencyRecorder.recordPresentationLatency(
+                nanoseconds: clock.now() &- start
+            )
         }
     }
 
