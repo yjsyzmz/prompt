@@ -104,8 +104,8 @@ reviewer: "Solar, from T-028"
 
 ### P5 — 真实环境验收与证据
 
-- [ ] **T-032 [Verification] 验证 TextEdit 完整闭环。** 使用合成输入记录选区前后字节不变、预览前零写入、确认后只替换选区、恢复原文和关闭恢复状态后的标准 Undo 行为。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-005, AC-008, AC-009, AC-012, AC-017
-- [ ] **T-033 [Verification] 验证 Chrome/ChatGPT 完整闭环。** 使用合成输入记录无选区时读取全文、预览前零写入、确认后只替换目标输入框、目标切换拦截、恢复原文和标准 Undo；若完整闭环失败，触发硬停止条件。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-006, AC-008, AC-009, AC-012, AC-017
+- [x] **T-032 [Verification] 验证 TextEdit 完整闭环。** 使用合成输入记录选区前后字节不变、预览前零写入、确认后只替换选区、恢复原文和关闭恢复状态后的标准 Undo 行为。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-005, AC-008, AC-009, AC-012, AC-017; Evidence: `evidence/T-032-textedit-closed-loop.md`
+- [x] **T-033 [Verification] 验证 Chrome/ChatGPT 完整闭环。** 使用合成输入记录无选区时读取全文、预览前零写入、确认后只替换目标输入框、目标切换拦截、恢复原文和标准 Undo；若完整闭环失败，触发硬停止条件。— Depends on: T-031; Covers: FR-001, FR-004, FR-006 至 FR-010, FR-012, NFR-002, NFR-003, AC-001, AC-006, AC-008, AC-009, AC-012, AC-017; Evidence: `evidence/T-033-chrome-chatgpt-closed-loop.md`
 - [ ] **T-034 [Verification] 验证 VS Code 后备闭环。** 先记录直接读写实际能力；无可靠支持时验证用户主动剪贴板输入、明确复制结果和手动粘贴路径，证明无自动剪贴板访问且不修改无关文字。— Depends on: T-031; Covers: FR-010, NFR-002, NFR-003, NFR-006, AC-010
 - [ ] **T-035 [Verification] 验证权限、安全与失败恢复矩阵。** 覆盖权限缺失/重新授权、设置深链降级、安全输入、快捷键冲突、空/不支持目标、过期目标、写入/恢复失败和重复触发；逐项记录可理解文案、安全下一步及写入/剪贴板计数。— Depends on: T-031; Covers: FR-001 至 FR-005, FR-008 至 FR-012, NFR-002, NFR-006, NFR-007, AC-002, AC-003, AC-004, AC-007, AC-008, AC-009, AC-010, AC-011, AC-013
 - [ ] **T-036 [Evidence] 采集性能与显示证据。** 在 TextEdit 和 Chrome/ChatGPT 各连续触发 10 次，至少 9 次从 hot-key callback 到可见外壳/明确状态不超过 300ms；记录 callback 是可观测起点且**不包含物理按键到 callback 的操作系统投递延迟**，并记录 Mac、macOS、应用版本、全屏、显示器布局和缩放。不得为获得物理按键时间戳引入按键监听。— Depends on: T-032, T-033; Covers: FR-001, FR-007, NFR-001, NFR-005, AC-001, AC-015; Resolves: Plan Gate NIT-2
