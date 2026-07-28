@@ -6,6 +6,7 @@ enum PreviewStatus: CaseIterable, Hashable, Sendable {
     case staleTarget
     case writeFailed
     case recoveryUnavailable
+    case hotKeyConflict
 }
 
 enum PreviewUserAction: Hashable, Sendable {
@@ -102,6 +103,13 @@ struct PreviewPresentationMapper {
                 message: "目标内容已经变化，无法直接恢复。",
                 buttons: [
                     PreviewButton(action: .copyOriginal, title: "复制原文", isEnabled: true),
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        case .hotKeyConflict:
+            return PreviewViewState(
+                message: "快捷键当前不可用，可能已被其他应用占用。",
+                buttons: [
                     PreviewButton(action: .close, title: "关闭", isEnabled: true),
                 ]
             )

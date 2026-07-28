@@ -10,6 +10,7 @@ final class PreviewStateActionTests: XCTestCase {
             .staleTarget: "原输入位置已经变化，不能安全替换。",
             .writeFailed: "未能安全替换原文，结果仍可复制。",
             .recoveryUnavailable: "目标内容已经变化，无法直接恢复。",
+            .hotKeyConflict: "快捷键当前不可用，可能已被其他应用占用。",
         ]
 
         for status in PreviewStatus.allCases {
@@ -55,6 +56,9 @@ final class PreviewStateActionTests: XCTestCase {
             ],
             .recoveryUnavailable: [
                 PreviewButton(action: .copyOriginal, title: "复制原文", isEnabled: true),
+                PreviewButton(action: .close, title: "关闭", isEnabled: true),
+            ],
+            .hotKeyConflict: [
                 PreviewButton(action: .close, title: "关闭", isEnabled: true),
             ],
         ]

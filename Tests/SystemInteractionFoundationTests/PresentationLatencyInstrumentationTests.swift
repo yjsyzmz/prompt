@@ -67,6 +67,7 @@ private struct LatencyEnvironment {
     let secureInput: LatencySecureInputCheckerFake
     let clock: LatencyClockFake
     let recorder: LatencyRecorderSpy
+    let presenter: LatencyPresenterSpy
 
     static func make(host: SyntheticAXTextHost) -> LatencyEnvironment {
         let gateway = AccessibilityGateway(
@@ -77,6 +78,7 @@ private struct LatencyEnvironment {
         let secureInput = LatencySecureInputCheckerFake()
         let clock = LatencyClockFake()
         let recorder = LatencyRecorderSpy()
+        let presenter = LatencyPresenterSpy()
         let controller = AppLifecycleController(
             hotKeySystemClient: hotKey,
             permissionChecker: LatencyPermissionCheckerFake(),
@@ -85,7 +87,7 @@ private struct LatencyEnvironment {
             pasteboard: LatencyPasteboardSpy(),
             gateway: gateway,
             targetMonitor: LatencyTargetMonitorSpy(),
-            presenter: LatencyPresenterSpy(),
+            presenter: presenter,
             clock: clock,
             latencyRecorder: recorder
         )
@@ -96,7 +98,8 @@ private struct LatencyEnvironment {
             hotKey: hotKey,
             secureInput: secureInput,
             clock: clock,
-            recorder: recorder
+            recorder: recorder,
+            presenter: presenter
         )
     }
 }
@@ -128,13 +131,27 @@ private final class LatencyRecorderSpy: PresentationLatencyRecording {
 
 @MainActor
 private final class LatencyHotKeyClientFake: HotKeySystemClient {
+    enum Outcome {
+        case registered
+        case conflict
+        case failed
+    }
+
+    var nextOutcome: Outcome = .registered
     private var callback: (() -> Void)?
 
     func registerExclusive(
         callback: @escaping () -> Void
     ) -> HotKeySystemRegistrationOutcome {
-        self.callback = callback
-        return .registered(HotKeyRegistrationToken(id: 1))
+        switch nextOutcome {
+        case .registered:
+            self.callback = callback
+            return .registered(HotKeyRegistrationToken(id: 1))
+        case .conflict:
+            return .conflict
+        case .failed:
+            return .failed
+        }
     }
 
     func unregister(_ token: HotKeyRegistrationToken) {
@@ -189,9 +206,15 @@ private final class LatencyPasteboardSpy: PasteboardAccessing {
 
 @MainActor
 private final class LatencyPresenterSpy: PreviewPresenting {
-    func show(_ viewState: PreviewViewState, anchorRect: CGRect?) {}
+    var lastState: PreviewViewState?
 
-    func update(_ viewState: PreviewViewState) {}
+    func show(_ viewState: PreviewViewState, anchorRect: CGRect?) {
+        lastState = viewState
+    }
+
+    func update(_ viewState: PreviewViewState) {
+        lastState = viewState
+    }
 
     func dismiss() {}
 }
@@ -204,4 +227,48 @@ private final class LatencyTargetMonitorSpy: TargetChangeMonitoring {
     ) {}
 
     func stopMonitoring() {}
+}
+
+// MARK: - FR-001 / AC-002: hot-key registration failure must be explained
+
+/// A conflicting or failed registration must surface an understandable state
+/// instead of leaving the app silently unresponsive.
+@MainActor
+final class HotKeyRegistrationFailurePresentationTests: XCTestCase {
+    private let mapper = PreviewPresentationMapper()
+
+    func testConflictingRegistrationPresentsTheConflictState() {
+        let env = LatencyEnvironment.make(host: .selectionFixture())
+        env.hotKey.nextOutcome = .conflict
+
+        let outcome = env.controller.start()
+
+        XCTAssertEqual(outcome, .conflict)
+        XCTAssertEqual(
+            env.presenter.lastState,
+            mapper.viewState(for: .hotKeyConflict),
+            "a conflicting hot key must be explained to the user"
+        )
+    }
+
+    func testFailedRegistrationPresentsTheConflictState() {
+        let env = LatencyEnvironment.make(host: .selectionFixture())
+        env.hotKey.nextOutcome = .failed
+
+        let outcome = env.controller.start()
+
+        XCTAssertEqual(outcome, .failed)
+        XCTAssertEqual(env.presenter.lastState, mapper.viewState(for: .hotKeyConflict))
+    }
+
+    func testSuccessfulRegistrationPresentsNothing() {
+        let env = LatencyEnvironment.make(host: .selectionFixture())
+
+        _ = env.controller.start()
+
+        XCTAssertNil(
+            env.presenter.lastState,
+            "a healthy registration must not show any panel"
+        )
+    }
 }

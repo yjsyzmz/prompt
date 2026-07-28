@@ -166,9 +166,17 @@ final class AppLifecycleController {
 
     @discardableResult
     func start() -> GlobalHotKeyRegistrationOutcome {
-        hotKey.register { [weak self] in
+        let outcome = hotKey.register { [weak self] in
             self?.beginDirectInteraction()
         }
+
+        // FR-001 / AC-002: a shortcut that cannot be registered must be
+        // explained instead of leaving the app silently unresponsive.
+        if outcome != .registered {
+            present(.hotKeyConflict)
+        }
+
+        return outcome
     }
 
     func stop() {
