@@ -4,13 +4,15 @@ final class PreviewStateActionTests: XCTestCase {
     func testEveryPreviewStateHasTheApprovedUnderstandableMessage() {
         let expectedMessages: [PreviewStatus: String] = [
             .ready: "优化结果已准备好，确认后才会替换原文。",
-            .permissionRequired: "需要辅助功能权限才能读取或替换目标文字。",
+            .permissionRequired: "需要辅助功能权限才能读取或替换目标文字。打开设置后，请前往「隐私与安全性」→「辅助功能」并启用本应用。",
             .secureInput: "当前是安全输入环境，应用不会读取或处理其中的内容。",
             .emptyOrUnsupported: "没有可处理的文字，或当前输入位置不支持直接读取。",
             .staleTarget: "原输入位置已经变化，不能安全替换。",
             .writeFailed: "未能安全替换原文，结果仍可复制。",
             .recoveryUnavailable: "目标内容已经变化，无法直接恢复。",
-            .hotKeyConflict: "快捷键当前不可用，可能已被其他应用占用。",
+            .hotKeyConflict: "快捷键当前不可用，可能已被其他应用占用。关闭占用它的应用后可以重新注册。",
+            .clipboardReadFailed: "未能读取剪贴板文字，请重新复制后重试。",
+            .clipboardWriteFailed: "未能复制到剪贴板，结果仍保留在预览中，可以重试。",
         ]
 
         for status in PreviewStatus.allCases {
@@ -59,6 +61,19 @@ final class PreviewStateActionTests: XCTestCase {
                 PreviewButton(action: .close, title: "关闭", isEnabled: true),
             ],
             .hotKeyConflict: [
+                PreviewButton(
+                    action: .retryRegistration,
+                    title: "重新注册",
+                    isEnabled: true
+                ),
+                PreviewButton(action: .close, title: "关闭", isEnabled: true),
+            ],
+            .clipboardReadFailed: [
+                PreviewButton(action: .useClipboard, title: "重试", isEnabled: true),
+                PreviewButton(action: .close, title: "关闭", isEnabled: true),
+            ],
+            .clipboardWriteFailed: [
+                PreviewButton(action: .retry, title: "重试", isEnabled: true),
                 PreviewButton(action: .close, title: "关闭", isEnabled: true),
             ],
         ]

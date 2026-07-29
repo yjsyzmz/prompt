@@ -259,17 +259,27 @@ final class AppLifecycleController {
         case .confirmReplacement:
             coordinator.confirmReplacement()
         case .copyResult:
-            if let lastTransformed {
-                clipboard.copyResultAfterExplicitAction(lastTransformed)
+            if let lastTransformed,
+               !clipboard.copyResultAfterExplicitAction(lastTransformed) {
+                // NFR-007: an explicit copy that failed must not look like it
+                // succeeded.
+                present(.clipboardWriteFailed)
             }
         case .cancel:
             coordinator.cancel()
         case .restoreOriginal:
             coordinator.recoverOriginal()
         case .copyOriginal:
-            coordinator.copyOriginal()
+            if !coordinator.copyOriginal() {
+                present(.clipboardWriteFailed)
+            }
         case .openSettings:
             permissionFlow.openSettingsAfterExplicitAction()
+            // FR-002/AC-003: the Accessibility deep link is not a stable
+            // contract, so any fallback must still tell the user where to go.
+            if permissionFlow.state != .accessibilitySettingsOpened {
+                presentSettingsFallbackGuidance()
+            }
         case .recheckPermission:
             permissionFlow.recheckAfterExplicitAction()
             if permissionFlow.state != .authorized {
@@ -279,6 +289,10 @@ final class AppLifecycleController {
             beginClipboardInputSession()
         case .retry:
             beginDirectInteraction()
+        case .retryRegistration:
+            if start() == .registered {
+                dismissPresentation()
+            }
         case .close:
             if coordinator.currentSessionID != nil {
                 coordinator.close()
@@ -304,10 +318,12 @@ final class AppLifecycleController {
     }
 
     fileprivate func beginClipboardInputSession() {
-        guard
-            let text = clipboard.readFromClipboardAfterExplicitAction(),
-            !text.isEmpty
-        else {
+        guard let text = clipboard.readFromClipboardAfterExplicitAction() else {
+            // NFR-007: an unreadable clipboard is not the same as empty content.
+            present(.clipboardReadFailed)
+            return
+        }
+        guard !text.isEmpty else {
             present(.emptyOrUnsupported)
             return
         }
@@ -511,6 +527,16 @@ final class AppLifecycleController {
 
     private func present(_ status: PreviewStatus) {
         presentViewState(mapper.viewState(for: status))
+    }
+
+    private func presentSettingsFallbackGuidance() {
+        let baseState = mapper.viewState(for: .permissionRequired)
+        presentViewState(
+            PreviewViewState(
+                message: "未能直接打开辅助功能设置。请在「系统设置」中前往「隐私与安全性」→「辅助功能」，启用本应用后再点重新检测。",
+                buttons: baseState.buttons
+            )
+        )
     }
 
     private func presentPermissionRequiredAfterFailedRecheck() {

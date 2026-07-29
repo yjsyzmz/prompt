@@ -7,6 +7,8 @@ enum PreviewStatus: CaseIterable, Hashable, Sendable {
     case writeFailed
     case recoveryUnavailable
     case hotKeyConflict
+    case clipboardReadFailed
+    case clipboardWriteFailed
 }
 
 enum PreviewUserAction: Hashable, Sendable {
@@ -19,6 +21,7 @@ enum PreviewUserAction: Hashable, Sendable {
     case recheckPermission
     case useClipboard
     case retry
+    case retryRegistration
     case close
 }
 
@@ -72,7 +75,7 @@ struct PreviewPresentationMapper {
             )
         case .permissionRequired:
             return PreviewViewState(
-                message: "需要辅助功能权限才能读取或替换目标文字。",
+                message: "需要辅助功能权限才能读取或替换目标文字。打开设置后，请前往「隐私与安全性」→「辅助功能」并启用本应用。",
                 buttons: [
                     PreviewButton(action: .openSettings, title: "打开设置", isEnabled: true),
                     PreviewButton(
@@ -125,8 +128,29 @@ struct PreviewPresentationMapper {
             )
         case .hotKeyConflict:
             return PreviewViewState(
-                message: "快捷键当前不可用，可能已被其他应用占用。",
+                message: "快捷键当前不可用，可能已被其他应用占用。关闭占用它的应用后可以重新注册。",
                 buttons: [
+                    PreviewButton(
+                        action: .retryRegistration,
+                        title: "重新注册",
+                        isEnabled: true
+                    ),
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        case .clipboardReadFailed:
+            return PreviewViewState(
+                message: "未能读取剪贴板文字，请重新复制后重试。",
+                buttons: [
+                    PreviewButton(action: .useClipboard, title: "重试", isEnabled: true),
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        case .clipboardWriteFailed:
+            return PreviewViewState(
+                message: "未能复制到剪贴板，结果仍保留在预览中，可以重试。",
+                buttons: [
+                    PreviewButton(action: .retry, title: "重试", isEnabled: true),
                     PreviewButton(action: .close, title: "关闭", isEnabled: true),
                 ]
             )

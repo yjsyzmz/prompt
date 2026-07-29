@@ -32,15 +32,17 @@ final class ClipboardPolicy {
         pasteboard.readStringAfterExplicitAction()
     }
 
-    func copyResultAfterExplicitAction(_ result: TransformedText) {
-        _ = pasteboard.writeLocalStringAfterExplicitAction(
+    @discardableResult
+    func copyResultAfterExplicitAction(_ result: TransformedText) -> Bool {
+        pasteboard.writeLocalStringAfterExplicitAction(
             result.value,
             privacy: .currentHostOnly
         )
     }
 
-    func copyOriginalAfterExplicitAction(_ source: SourceText) {
-        _ = pasteboard.writeLocalStringAfterExplicitAction(
+    @discardableResult
+    func copyOriginalAfterExplicitAction(_ source: SourceText) -> Bool {
+        pasteboard.writeLocalStringAfterExplicitAction(
             source.value,
             privacy: .currentHostOnly
         )

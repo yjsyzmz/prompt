@@ -187,15 +187,18 @@ final class InteractionSessionCoordinator {
         }
     }
 
-    func copyOriginal() {
+    /// Returns whether the explicit copy reached the pasteboard. A no-op in a
+    /// state that does not offer the action is not reported as a failure.
+    @discardableResult
+    func copyOriginal() -> Bool {
         guard
             state == .previewing(.recoveryUnavailable),
             let original = content?.source.value
         else {
-            return
+            return true
         }
 
-        _ = pasteboard.writeLocalStringAfterExplicitAction(original)
+        return pasteboard.writeLocalStringAfterExplicitAction(original)
     }
 
     func cancel() {
