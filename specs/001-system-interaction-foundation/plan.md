@@ -191,16 +191,31 @@ idle
 外部监控用于尽快禁用按钮，但不是写入授权。replacement 与 recovery 使用
 **两套明确区分的算法**，共享同一组目标有效性前置检查。
 
-#### 共享前置检查（A1–A5，两条路径都必须先全部通过）
+#### 共享前置检查（A1–A4，两条路径都必须先全部通过）
 
 1. target 应用仍在运行，PID 与保存值一致；
 2. 除工具自身 non-activating panel 外，没有其他应用成为用户的新外部目标；
 3. AX 窗口和元素仍有效且身份一致；
-4. 当前元素仍可编辑且不是 secure subrole，全局 Secure Event Input 未开启；
-5. 目标属性仍可设置。
+4. 当前元素仍可编辑且不是 secure subrole，全局 Secure Event Input 未开启。
 
-A1–A5 任一失败立即返回 `staleTarget` 或具体安全错误，零 setter。
+A1–A4 任一失败立即返回 `staleTarget` 或具体安全错误，零 setter。
 AX 通知缺失、延迟或失败不能放宽该门禁。
+
+**settable 检查不属于共享前置检查。** 属性可设置性与"将要写入哪个属性"
+绑定，而后者在 recovery 中要到分类完成后才确定，因此该检查一律**下沉到
+各条路径**，且只检查该路径实际使用的那一个属性：
+
+- replacement：检查捕获模式对应属性（selected 模式检查
+  `kAXSelectedTextAttribute`，whole-field 模式检查 `kAXValueAttribute`）；
+- whole-field recovery：检查 `kAXValueAttribute`；
+- selected recovery 类别 R1：检查 `kAXSelectedTextAttribute`；
+- selected recovery 类别 R2（fallback）：由六项前置条件的第 1 项检查
+  `kAXValueAttribute`，**不得**因 `kAXSelectedTextAttribute` 不可设置而
+  阻断该路径。
+
+任何路径的 settable 检查失败都返回该路径对应的失败状态
+（replacement 为 `attributeNotSettable`／`writeFailed`，recovery 为
+`recoveryTargetChanged`），零 setter。
 
 #### AX 范围单位约定
 
@@ -222,25 +237,68 @@ Emoji、组合字符与代理对必须按 UTF-16 长度参与上述计算。
 
 #### recovery 重新验证（restore 路径）
 
+**入口分支：** 通过 A1–A4 后，recovery 首先按 `RecoverySnapshot` 记录的
+capture mode 分成两条互不相干的算法。clipboardInput 模式不支持直接恢复，
+立即返回 `recoveryTargetChanged`。
+
+##### whole-field recovery（capture mode = whole-field）
+
+本路径**不计算也不读取 selected range**，不依赖任何 selected-range 能力：
+
+- W1：读取目标完整 value，必须逐 UTF-16 code unit 等于 expected transformed
+  text；不相等返回 `recoveryTargetChanged`，零 setter；
+- W2：检查 `kAXValueAttribute` 可设置；不可设置返回 `recoveryTargetChanged`，
+  零 setter；
+- W3：对 `kAXValueAttribute` 执行**恰好一次** setter，写入捕获的原文全文；
+- W4：写入后回读完整 value 并确认等于原文；不一致返回
+  `recoveryTargetChanged`；
+- 本路径不得使用 `kAXSelectedTextAttribute`，setter 失败或回读失败都不得
+  重试第二次写入或改用其他属性。
+
+##### selected recovery（capture mode = selected）
+
 - C1：先计算 expected result range（见范围单位约定）；
 - C2：读取当前 selected range，并按结果分为三类：
   - **类别 R1 — 范围仍覆盖结果**：当前 selected range 等于 expected result
-    range。走默认恢复，只使用捕获模式对应的同一 setter，写入一次原文。
-  - **类别 R2 — 可接受的范围不匹配或能力缺失**，仅限以下两种情形：
-    1. 成功读到 selected range，但它是**零长度插入点**，且位置落在
-       expected result range 内（含两端）——即目标应用在写入后塌陷了选区；
+    range。走默认恢复：检查 `kAXSelectedTextAttribute` 可设置后，对该属性
+    执行恰好一次 setter 写入原文。
+  - **类别 R2 — 范围内零长度插入点，或范围能力缺失**，仅限以下两种情形：
+    1. 成功读到 selected range，且它是**零长度插入点**，位置落在
+       expected result range 内（含两端）；
     2. selected range 属性**不受支持、无值，或经能力探针确认无法可靠读取**。
     这两种情形可以进入下述六项 whole-field 前置条件。
   - **类别 R3 — 安全性或目标有效性错误**：`invalid element`／invalid UI
     element、权限错误、Secure Input、timeout、`cannotComplete`，以及任何
     非能力缺失的读取失败。**必须立即 fail-closed**，返回 `staleTarget` 或
-    对应安全错误，零 setter，不得进入例外。
-  - 用户主动移动或改变选区（读到非零长度且不等于 expected result range 的
-    范围）不属于 R2，按 R1 的不匹配处理即 `recoveryTargetChanged`，零 setter。
-- C3：R1 与 R2 都必须额外满足"当前位置内容等于 expected transformed text"
-  （R1 比较选区内容，R2 由下述前置条件 4 比较范围内容）；不满足只允许复制原文。
-- C4：任何 whole-field 前置条件失败、setter 失败或回读失败都返回
-  `recoveryTargetChanged`，**不得再尝试 selected setter，也不得第二次写入**。
+    对应安全错误，零 setter，不得进入 fallback。
+  - 其余情形——读到**非零长度**且不等于 expected result range 的范围，或
+    零长度插入点**落在结果范围之外**——一律返回 `recoveryTargetChanged`，
+    零 setter。
+- C3：R1 必须额外满足"当前选区内容等于 expected transformed text"；R2 的
+  等值校验由六项前置条件的第 4 项完成。不满足只允许复制原文。
+- C4：任何前置条件失败、setter 失败或回读失败都返回
+  `recoveryTargetChanged`，**不得再尝试另一种 setter，也不得第二次写入**。
+
+##### R2 判定语义的唯一化（本次修订明确）
+
+`kAXSelectedTextRange` 只能反映**当前**状态，无法证明零长度插入点的产生
+原因。因此本计划**唯一化**其语义如下：
+
+- R2 情形 1 授权的是"**expected result range 内（含两端）的任意零长度
+  插入点**"这一**可观察状态**，**不推断其产生原因**。
+- **如实披露的残余行为**：用户在替换成功后把光标移动到结果范围内，与目标
+  应用自动塌陷选区，在 AX 层面产生完全相同的可观察状态，实现无法区分，
+  两者都会进入受约束 fallback。因此前一版"用户主动移动或改变选区已排除"
+  的表述**不成立，特此收窄**为：只有"非零长度且不等于结果范围"以及
+  "零长度插入点落在结果范围之外"这两类用户改动会被排除。
+- 该残余行为可接受的理由：fallback 的安全性**不依赖插入点来源**，而依赖
+  六项前置条件——尤其是第 4 项要求基值中 expected result range 内的文本
+  仍逐 code unit 等于 expected transformed text，以及第 5 项要求范围外
+  code unit 与基值完全一致。若用户在移动光标之外还改动了文字，第 4 项
+  必然失败并 fail-closed；若文字未被改动，则写回原文正是用户点击"恢复
+  原文"所要求的结果，插入点位置不影响写入内容的正确性。
+- 明确排除的替代方案：不得依赖 AXObserver 通知来授权 fallback，因为本计划
+  已规定监控只用于提前禁用按钮，不是写入授权。
 
 任何一步失败都不执行 setter；恢复失败时保留原文并只允许复制原文。
 
@@ -256,8 +314,11 @@ Emoji、组合字符与代理对必须按 UTF-16 长度参与上述计算。
 
 **恢复（restore 路径）——本次修订新增 selected-range recovery fallback：**
 
-- 默认规则（类别 R1）不变：恢复沿用捕获时的同一 setter，selected 模式写
-  `kAXSelectedTextAttribute`，whole-field 模式写 `kAXValueAttribute`；
+- 恢复按 capture mode 分支（算法见"recovery 重新验证"）：
+  - whole-field 捕获走独立的 W1–W4 路径，只写 `kAXValueAttribute` 一次，
+    不计算也不读取 selected range；
+  - selected 捕获走 C1–C4，类别 R1 写 `kAXSelectedTextAttribute` 一次，
+    类别 R2 进入下述 fallback；
 - 恢复前要求目标内容仍等于 expected transformed text；不相等时只允许复制原文；
 - **selected-range recovery fallback**（原稿称"塌陷选区例外"，因同时覆盖
   范围能力缺失，改用此更准确的名称）：T-032 真实环境验证发现，TextEdit 在
@@ -270,7 +331,7 @@ Emoji、组合字符与代理对必须按 UTF-16 长度参与上述计算。
   确认不可可靠读取）时，恢复改为一次 `kAXValueAttribute` 写入，且必须满足
   全部前置条件：
   1. `kAXValueAttribute` 可写（`replacementAttributeIsSettable`）；
-  2. 能读到目标全文；该全文即下述基值，必须在 A1–A5 与 C2 全部通过之后、
+  2. 能读到目标全文；该全文即下述基值，必须在 A1–A4 与 C2 全部通过之后、
      **紧邻 setter 之前**获取，不得复用捕获阶段或验证早期读到的旧值；
   3. expected result range（`location` + expected transformed text 的
      UTF-16 长度）完全落在基值的 UTF-16 长度内，且 `location >= 0`；
@@ -380,11 +441,21 @@ Emoji、组合字符与代理对必须按 UTF-16 长度参与上述计算。
 - `ConfirmationSafetyTests`：所有确认前路径 setter 调用数为 0；只有 `ready + valid` 触发一次 setter；
 - `TargetValidationTests`：PID、窗口、元素、range、内容、settable、secure input 任一变化都阻断；
 - `RecoveryTests`：只有 expected transformed text 仍存在时恢复，其他情况只允许复制原文；
+  **whole-field recovery（W1–W4）必须独立覆盖：** 内容仍等于 expected
+  transformed text 时恢复成功且 `kAXValueAttribute` setter 恰好 1 次、
+  selected setter 为 0；完整 value 已变化时零 setter 返回
+  `recoveryTargetChanged`；`kAXValueAttribute` 不可设置时零 setter；
+  写后回读不一致时返回 `recoveryTargetChanged`；且断言该路径从不读取或计算
+  selected range（selected-range 读取调用计数为 0）；
   selected-range recovery fallback 必须逐项覆盖以下门禁与失败分支：
   - **类别判定**：R1（范围仍等于 expected result range）走 selected setter；
-    R2 之情形 1（零长度插入点落在结果范围内）与情形 2（range 属性不受支持／
-    无值／能力探针确认不可可靠读取）进入 fallback；读到非零长度且不等于结果
-    范围（用户主动改选区）返回 `recoveryTargetChanged` 且零 setter；
+    R2 之情形 1（零长度插入点落在结果范围内，含两端）与情形 2（range 属性
+    不受支持／无值／能力探针确认不可可靠读取）进入 fallback；读到非零长度且
+    不等于结果范围、或零长度插入点落在结果范围之外，均返回
+    `recoveryTargetChanged` 且零 setter；
+  - **R2 语义**：必须有测试证明"范围内零长度插入点"无论产生原因都进入
+    fallback（不推断来源），且此时若范围内文本已被改动则由前置条件 4
+    拦截并零 setter；
   - **R3 零 setter**：`invalid element`、权限错误、Secure Input、timeout、
     `cannotComplete` 等安全性或有效性错误一律立即拒绝，不进入 fallback，
     selected 与 whole-field setter 计数均为 0；
@@ -488,6 +559,11 @@ Tasks Gate 必须为 FR-001 至 FR-013、NFR-001 至 NFR-007、AC-001 至 AC-017
    "类别 R2 限定 + 六项前置条件 + 紧邻基值校验 + 回读确认 + 范围外零改动"约束；
    但 AX whole-field setter 无 compare-and-swap 语义，基值读取与 setter 之间的
    TOCTOU 残余风险只能降低、不能消除，回读只能检测不能撤销。
+   另有一项如实披露的残余行为：`kAXSelectedTextRange` 只反映当前状态，
+   无法区分"应用写入后自动塌陷"与"用户随后把光标移动到结果范围内"，两者
+   都会进入受约束 fallback。该行为可接受的依据是 fallback 的安全性来自
+   六项前置条件的内容与范围外一致性校验，而非插入点来源；若用户同时改动了
+   文字，前置条件 4 必然拦截。
    闭合本风险还需要新增单元测试与 TextEdit 选区路径的真实环境恢复证据。
 
 ## Plan Gate record
@@ -507,7 +583,7 @@ Tasks Gate 必须为 FR-001 至 FR-013、NFR-001 至 NFR-007、AC-001 至 AC-017
   第一版修订（`1333438`）内容：新增"塌陷选区例外"及六项前置条件、补充
   `RecoveryTests` 覆盖要求、新增技术风险第 8 条。
   **第二版修订（本次，回应 Solar 对 `1333438` 的 Plan Gate REVIEW 三项 MUST）：**
-  拆分共享前置检查（A1–A5）、replacement 算法（B1–B2）与 recovery 算法
+  拆分共享前置检查（初版为 A1–A5，第三版缩为 A1–A4）、replacement 算法（B1–B2）与 recovery 算法
   （C1–C4），并把 recovery 的范围读取结果分类为 R1／R2／R3——仅 R2
   （零长度插入点落在结果范围内，或 range 能力缺失）可进入 fallback，R3
   安全性与有效性错误必须立即零 setter 拒绝；明确 AX 范围一律使用 UTF-16
@@ -515,6 +591,16 @@ Tasks Gate 必须为 FR-001 至 FR-013、NFR-001 至 NFR-007、AC-001 至 AC-017
   recovery fallback；前置条件 2 要求紧邻 setter 获取并校验基值；逐项补齐
   `RecoveryTests` 对六项前置条件、R3 分支、setter 计数与 UTF-16 夹具的
   覆盖要求；如实记录 TOCTOU 残余风险不可原子消除、回读只能检测不能撤销。
+  **第三版修订（回应 Solar 对 `dd939a4` 的 Plan Gate REVIEW 两项 MUST）：**
+  recovery 入口按 capture mode 分支，新增 whole-field recovery 的独立算法
+  W1–W4（不计算也不读取 selected range，只写 `kAXValueAttribute` 一次）；
+  settable 检查从共享前置检查中移除并下沉到各路径，明确每条路径检查哪一个
+  属性（共享检查缩为 A1–A4）；唯一化 R2 判定语义——授权的是"结果范围内
+  任意零长度插入点"这一可观察状态，不推断产生原因，并如实披露用户移动光标
+  到范围内无法与应用塌陷区分、仍会进入受约束 fallback，相应收窄前一版
+  "用户主动改变选区已排除"的表述；`RecoveryTests` 增加 whole-field recovery
+  的成功、内容变化、不可写、setter 计数与"从不读取 selected range"覆盖，
+  以及 R2 不推断来源的语义测试。
   修订使下游 Tasks 与 Implementation Gate 一并重开：Tasks Gate 需要重写
   T-021／T-022 使其与批准后的恢复算法一致，Implementation 的其余修复
   （原 REVIEW 的 Finding 1、2、4、5、6）在 Plan Gate 与 Tasks Gate 依次
