@@ -166,9 +166,10 @@ T-031 之后的 `d95228e` 与 `c3c1fa2`。Solar 在 Implementation Gate 审核�
    与权限重新检测文案；所有直接写入与恢复增加回读确认。
    **其中包含一项未经 Plan Gate 批准的设计变更**：
    `restoreCollapsedSelection` 在 selected 模式恢复时改用 whole-field
-   setter，以应对 TextEdit 写入后选区塌陷。该变更已按用户 2026-07-28 的
-   决策重开 Plan Gate 正式批准（见 `plan.md` 的"塌陷选区例外"与
-   Plan Gate record 修订记录）。
+   setter，以应对 TextEdit 写入后选区塌陷。用户于 2026-07-28 批准**重开
+   Plan Gate 并保留该设计方向**，相应修订已提交 Reviewer 审核；在 Plan Gate
+   取得 `PASS` 前，该设计尚未获得批准（见 `plan.md` 的
+   "selected-range recovery fallback"与 Plan Gate record 修订记录）。
 2. `c3c1fa2` — **回读重试（`AccessibilityGateway.swift` +22 行、
    `AXAuthoritativeWriteRecoveryTests.swift` +29 行）。** Chromium 渲染进程
    异步应用辅助功能写入，单次立即回读会把成功的替换误判为失败；改为最多
@@ -192,17 +193,18 @@ Solar 对 `ebb697826cb5e67546ea01aabda1181cd9e15471` 的 Implementation Gate
 1. 有效预览未展示原文与确定性结果（FR-006／FR-007／FR-008、US-002）；
 2. `AXTargetMonitor` 未进入生产装配，同应用内窗口／元素／选区变化不会提前
    禁用确认（FR-009／AC-009）；
-3. P5 生产变更披露不完整，且含未经批准的恢复写入策略变化（已见第九节勘误，
-   并已重开 Plan Gate）；
+3. P5 生产变更披露不完整，且含未经批准的恢复写入策略变化（已见第九节勘误；
+   Plan Gate 已重开并进入第二版修订，尚未取得 `PASS`）；
 4. 过期异步捕获可能遗留 AX handle 与内容引用；安全输入重复触发不结束旧会话
    （FR-013／AC-014）；
 5. ChatGPT 代表性多行验证缺失（NFR-004、Plan 第 327 行）；
 6. 剪贴板读写失败静默、设置深链回退缺手动导航说明、快捷键冲突状态缺重新
    注册指引（NFR-007／FR-002／AC-002／AC-003）。
 
-修订顺序：先完成 Plan Gate 修订与审核（塌陷选区例外），取得 `PASS` 后再
-逐项修复上述 Implementation 缺口、补齐测试与证据，然后针对新 SHA 重新发布
-Implementation Gate `HANDOFF`。第七节的已知限制清单也将随之更新——其中
+修订顺序：先完成 Plan Gate 修订与审核（selected-range recovery fallback），
+取得 `PASS` 后再完成重开的 Tasks Gate（重写 T-021／T-022 使其与批准后的恢复
+算法一致），随后逐项修复上述 Implementation 缺口、补齐测试与证据，最后针对
+新 SHA 重新发布 Implementation Gate `HANDOFF`。第七节的已知限制清单也将随之更新——其中
 第 4 项（设置深链）已被 Reviewer 判定为 FR-002／AC-003 的实现缺口，不能
 仅作为限制接受；第 5 项（按钮 AX 名称）需建立可追踪需求而非仅留 Open
 question。
