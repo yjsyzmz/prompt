@@ -21,6 +21,7 @@ struct PreviewContentView: View {
                         onAction(button.action)
                     }
                     .disabled(!button.isEnabled)
+                    .accessibilityLabel(button.title)
                 }
             }
         }

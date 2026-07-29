@@ -28,3 +28,18 @@
   上述两个需求作为新 Feature 走独立 Spec Gate 处理。
 - 影响：T-033 中 Chromium 选区限制维持"特定应用限制"定性；
   微信观察按本文档记录，不新增 Feature 001 验收项。
+
+## 观察 3：预览面板按钮缺少辅助功能名称（2026-07-29）
+
+- 来源：Solar 对 `ebb6978` 的 Implementation Gate REVIEW，Finding 7（SHOULD）。
+- 现象：通过 AppleScript／System Events 读取本应用面板时，按钮的 AX 标题为
+  `missing value`，读屏用户听不到按钮名称，只能感知按钮数量与顺序。
+- 定性：Feature 001 的 spec 未定义读屏与无障碍验收条款，因此不阻塞 001 的
+  Implementation Gate；按 Reviewer 要求转为可追踪需求，不再以 Open question
+  形式悬置。
+- **追踪项：** https://github.com/yjsyzmz/prompt/issues/3
+  （其中定义了按钮 AX 标签、VoiceOver 操作、焦点顺序、内容区域可读性与
+  验证方式共五项验收标准。）
+- 本轮已做的低成本改善：`PreviewContentView` 为原文／结果两段内容加了
+  `accessibilityLabel`，并为每个按钮加了与可见标题一致的
+  `accessibilityLabel`；完整的 VoiceOver 操作与焦点顺序验收仍留待上述追踪项。
