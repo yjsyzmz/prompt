@@ -153,20 +153,56 @@ Spec Gate；Feature 001 按现有规格收尾。决策与技术评估见
 
 ## 九、本轮实现变更说明
 
-P5 验收阶段产生两处生产代码变更，均由失败优先测试驱动：
+**勘误（2026-07-28）：** 本节初版只列出 `8b75e6f` 与 `4b25cd1`，漏报了
+T-031 之后的 `d95228e` 与 `c3c1fa2`。Solar 在 Implementation Gate 审核中
+指出该披露不完整。以下为 T-031（合成闭环 GREEN）之后全部生产代码变更的
+完整清单，按提交顺序排列：
 
-1. `8b75e6f` — 新增延迟仪器（`PresentationLatencyRecording` +
+1. `d95228e` — **T-032 真实环境阻塞修复（11 个文件，+490 行）。** 内容：
+   工作区监控忽略本应用自身激活（预览点击不再误判 staleTarget）；
+   nonactivating 面板可成为 key window 并接受 first mouse（按钮可点击）；
+   系统级焦点查询失败时启用 Chromium/Electron 手动辅助功能后备
+   （`AXManualAccessibility`／`AXEnhancedUserInterface`）；补充具体的恢复
+   与权限重新检测文案；所有直接写入与恢复增加回读确认。
+   **其中包含一项未经 Plan Gate 批准的设计变更**：
+   `restoreCollapsedSelection` 在 selected 模式恢复时改用 whole-field
+   setter，以应对 TextEdit 写入后选区塌陷。该变更已按用户 2026-07-28 的
+   决策重开 Plan Gate 正式批准（见 `plan.md` 的"塌陷选区例外"与
+   Plan Gate record 修订记录）。
+2. `c3c1fa2` — **回读重试（`AccessibilityGateway.swift` +22 行、
+   `AXAuthoritativeWriteRecoveryTests.swift` +29 行）。** Chromium 渲染进程
+   异步应用辅助功能写入，单次立即回读会把成功的替换误判为失败；改为最多
+   5 次、约 500ms 重试后才 fail-closed。
+3. `8b75e6f` — 新增延迟仪器（`PresentationLatencyRecording` +
    `OSLogPresentationLatencyRecorder`）。T-036 要求从 hot-key callback
    起算的 300ms 证据，而原实现没有任何生产测量点。仪器只输出毫秒数，
    不含内容，未引入按键监听。
-2. `4b25cd1` — 新增 `PreviewStatus.hotKeyConflict` 并在 `start()` 注册
+4. `4b25cd1` — 新增 `PreviewStatus.hotKeyConflict` 并在 `start()` 注册
    失败时呈现。修复 FR-001／AC-002 的实现缺口：原先 `AppEntry` 丢弃
    `start()` 返回值且状态矩阵无冲突状态，快捷键被占用时应用静默无响应。
 
 ## 结论
 
-全部 13 条功能需求、7 条非功能需求、17 个验收场景均已逐项核对并有可复现
-证据支撑。121 个自动化测试全绿，build、project-structure、sdd-check、
-secret-scan、`git diff --check` 五道门禁无未解释失败。C5 达成，
-可以发布 Implementation Gate `HANDOFF`。第七节的 7 项已知限制与第八节的
-范围决策一并提交 Reviewer 裁决。
+**本包结论已于 2026-07-28 被 Reviewer 推翻，正在修订中。**
+
+Solar 对 `ebb697826cb5e67546ea01aabda1181cd9e15471` 的 Implementation Gate
+审核结论为 `CHANGES REQUESTED`，提出 6 项 MUST，本包原先"全部达成"的判定
+不可采信。已确认成立的需求覆盖缺口：
+
+1. 有效预览未展示原文与确定性结果（FR-006／FR-007／FR-008、US-002）；
+2. `AXTargetMonitor` 未进入生产装配，同应用内窗口／元素／选区变化不会提前
+   禁用确认（FR-009／AC-009）；
+3. P5 生产变更披露不完整，且含未经批准的恢复写入策略变化（已见第九节勘误，
+   并已重开 Plan Gate）；
+4. 过期异步捕获可能遗留 AX handle 与内容引用；安全输入重复触发不结束旧会话
+   （FR-013／AC-014）；
+5. ChatGPT 代表性多行验证缺失（NFR-004、Plan 第 327 行）；
+6. 剪贴板读写失败静默、设置深链回退缺手动导航说明、快捷键冲突状态缺重新
+   注册指引（NFR-007／FR-002／AC-002／AC-003）。
+
+修订顺序：先完成 Plan Gate 修订与审核（塌陷选区例外），取得 `PASS` 后再
+逐项修复上述 Implementation 缺口、补齐测试与证据，然后针对新 SHA 重新发布
+Implementation Gate `HANDOFF`。第七节的已知限制清单也将随之更新——其中
+第 4 项（设置深链）已被 Reviewer 判定为 FR-002／AC-003 的实现缺口，不能
+仅作为限制接受；第 5 项（按钮 AX 名称）需建立可追踪需求而非仅留 Open
+question。

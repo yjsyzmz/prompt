@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: plan
-status: approved
+status: revision-pending-review
 spec_version: "501e34584e3ca06a922038d153a96e3b93aa65ab"
 owner: "Fable (Comate), from T-028"
 reviewer: "Solar, from T-028"
@@ -202,12 +202,36 @@ idle
 
 ### 写入与恢复
 
+**替换（confirm 路径）——本次修订未改动：**
+
 - selected 模式只对 `kAXSelectedTextAttribute` 执行一次 setter；
 - whole-field 模式只对 `kAXValueAttribute` 执行一次 setter；
 - 禁止先清空、模拟全选、模拟粘贴或分段写入；
 - setter 返回错误时不执行第二种直接写入策略，保留结果并显示 `writeFailed`；
-- setter 成功后创建 `RecoverySnapshot` 并进入 `recoverable`；
+- setter 成功后创建 `RecoverySnapshot` 并进入 `recoverable`。
+
+**恢复（restore 路径）——本次修订新增塌陷选区例外：**
+
+- 默认规则不变：恢复沿用捕获时的同一 setter，selected 模式写
+  `kAXSelectedTextAttribute`，whole-field 模式写 `kAXValueAttribute`；
 - 恢复前要求目标内容仍等于 expected transformed text；不相等时只允许复制原文；
+- **塌陷选区例外**：T-032 真实环境验证发现，TextEdit 在选区替换成功后会把
+  选区塌陷为插入点，`kAXSelectedTextRange` 不再等于替换结果所占范围。此时
+  再写 `kAXSelectedTextAttribute` 会把原文插入到错误位置或写入空选区，
+  恢复必然失败。原计划未预见该平台行为。
+  因此在 selected 模式且**仅当**检测到当前选区范围不等于结果范围时，恢复
+  改为一次 `kAXValueAttribute` 写入，且必须满足全部前置条件：
+  1. `kAXValueAttribute` 可写（`replacementAttributeIsSettable`）；
+  2. 能读到目标全文；
+  3. 记录的原范围加结果长度落在全文长度内；
+  4. 该范围内的现有文本**逐字符等于** expected transformed text；
+  5. 写入内容仅由"全文 + 该范围替换回原文"构成，不改动范围外任何字符；
+  6. 写入后回读确认全文等于预期恢复结果，否则 `recoveryTargetChanged`。
+  任一条件不满足即 fail-closed，不写入、保留原文、只允许复制原文。
+- 该例外只适用于恢复路径，不适用于替换路径；替换路径仍严格单 setter。
+  例外不得用于绕过任何重新验证步骤，也不得在写入失败后重试第二种策略。
+- 实现见 `AccessibilityGateway.restoreCollapsedSelection`；测试要求见
+  Test strategy 的 `RecoveryTests` 条目。
 - 新会话、取消、成功状态关闭或退出会释放 target handle 并清除 source/result/recovery 字符串引用。
 
 ### 剪贴板流程
@@ -295,6 +319,9 @@ idle
 - `ConfirmationSafetyTests`：所有确认前路径 setter 调用数为 0；只有 `ready + valid` 触发一次 setter；
 - `TargetValidationTests`：PID、窗口、元素、range、内容、settable、secure input 任一变化都阻断；
 - `RecoveryTests`：只有 expected transformed text 仍存在时恢复，其他情况只允许复制原文；
+  塌陷选区例外必须额外覆盖：选区未塌陷时仍走 selected setter、塌陷时改走单次
+  whole-field 写入、范围内文本不等于结果时拒绝写入、范围越界时拒绝写入、
+  回读不一致时返回 `recoveryTargetChanged`、以及范围外字符逐字节不变；
 - `ClipboardPolicyTests`：启动/快捷键/preview 不访问 pasteboard；三个显式动作精确触发预期单次访问；写入使用 current-host-only；
 - `DeterministicTransformerTests`：中文、英文、混合、纯空白、多行、Emoji/特殊字符和 10,000 字符合成输入逐字符一致；
 - `ScreenGeometryConverterTests`：单屏、多屏、负坐标、边缘、全屏 frame 与缩放后的 clamp；
@@ -373,6 +400,10 @@ Tasks Gate 必须为 FR-001 至 FR-013、NFR-001 至 NFR-007、AC-001 至 AC-017
 5. **跨应用全屏 panel 行为：** 在 direct-write 代码前完成 non-activating、all-Spaces 和 full-screen auxiliary 探针。
 6. **当前缺少完整 Xcode：** Tasks Gate 可以编写，但 Implementation Gate 的任何工程/构建任务开始前必须安装并记录稳定版本。
 7. **公开分发成本与签名：** 001 只保证本地开发能力；Developer ID、notarization 与下载体验另行规划。
+8. **选区塌陷导致恢复不可用（本次修订新增）：** 目标应用在写入后可能塌陷选区，
+   使 selected setter 无法定位原范围。已批准塌陷选区例外应对该行为；该例外扩大了
+   恢复路径的写入面，风险由"六项前置条件 + 回读确认 + 范围外零改动"约束，
+   并要求 TextEdit 选区路径的真实环境恢复证据。
 
 ## Plan Gate record
 
@@ -381,3 +412,11 @@ Tasks Gate 必须为 FR-001 至 FR-013、NFR-001 至 NFR-007、AC-001 至 AC-017
 - 审核更新规则：任何 Plan Gate `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR review reference：PR #2
 - 后续授权：Tasks Gate 已获用户授权，仅允许编写 `tasks.md`；Implementation Gate 未获授权
+- **2026-07-28 修订（Plan Gate 重开）：** Solar 在 Implementation Gate 审核
+  `ebb697826cb5e67546ea01aabda1181cd9e15471` 时提出 MUST：提交 `d95228e` 引入的
+  `restoreCollapsedSelection` 在 selected 模式恢复时改用 whole-field setter，
+  违反本文件原"写入与恢复"章节的单 setter 约束，且该变更未在 P5 证据中披露。
+  用户于 2026-07-28 选择重开 Plan Gate 正式批准该设计（而非回退功能）。
+  本次修订内容：新增"塌陷选区例外"及其六项前置条件、补充 `RecoveryTests`
+  覆盖要求、新增技术风险第 8 条。修订使下游 Tasks 与 Implementation Gate
+  一并重开；Implementation 阶段的其余修复在本 Plan Gate 取得 `PASS` 后进行。
