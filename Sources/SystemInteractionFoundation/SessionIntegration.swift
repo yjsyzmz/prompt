@@ -15,45 +15,6 @@ protocol TargetChangeMonitoring: AnyObject {
     func stopMonitoring()
 }
 
-/// Production monitor built from the tested workspace-activation adapter.
-/// Element-level `AXObserver` wiring stays inside `AXTargetMonitor` and is
-/// attached during the real-environment verification tasks; application
-/// switches are the portable stale-target signal available here.
-@MainActor
-final class WorkspaceTargetChangeMonitor: TargetChangeMonitoring {
-    private let workspaceMonitor: any WorkspaceActivationMonitoring
-    private let eventReceiver: any AXMonitorEventReceiving
-
-    init(
-        eventReceiver: any AXMonitorEventReceiving,
-        workspaceMonitor: any WorkspaceActivationMonitoring =
-            NSWorkspaceActivationMonitor()
-    ) {
-        self.eventReceiver = eventReceiver
-        self.workspaceMonitor = workspaceMonitor
-    }
-
-    func startMonitoring(
-        sessionID: InteractionSessionID,
-        targetHandle: TargetHandle
-    ) {
-        stopMonitoring()
-        let envelope = AXMonitorCallbackEnvelope(
-            sessionID: sessionID,
-            targetHandle: targetHandle
-        )
-        workspaceMonitor.start { [eventReceiver] in
-            Task {
-                await eventReceiver.receive(envelope)
-            }
-        }
-    }
-
-    func stopMonitoring() {
-        workspaceMonitor.stop()
-    }
-}
-
 /// Bridges the coordinator's synchronous `SessionTextTargetAccessing`
 /// contract onto the async `AccessibilityGateway` actor. The gateway never
 /// hops to the main actor, so briefly parking the main thread on a

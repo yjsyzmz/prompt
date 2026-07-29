@@ -9,6 +9,12 @@ struct PreviewContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(state.message)
                 .fixedSize(horizontal: false, vertical: true)
+            if let sourceText = state.sourceText {
+                disclosure(title: "原文", text: sourceText)
+            }
+            if let resultText = state.resultText {
+                disclosure(title: "将写入的结果", text: resultText)
+            }
             HStack(spacing: 8) {
                 ForEach(state.buttons, id: \.action) { button in
                     Button(button.title) {
@@ -20,6 +26,23 @@ struct PreviewContentView: View {
         }
         .padding(16)
         .frame(width: 360, alignment: .leading)
+    }
+
+    private func disclosure(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ScrollView {
+                Text(text)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxHeight: 120)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
     }
 }
 

@@ -31,6 +31,23 @@ struct PreviewButton: Equatable, Sendable {
 struct PreviewViewState: Equatable, Sendable {
     let message: String
     let buttons: [PreviewButton]
+    /// FR-006／FR-007／FR-008: an actionable preview must disclose the text that
+    /// was read and the exact text that would be written, before confirmation.
+    /// Refusal and failure states leave both nil so that no content is shown.
+    let sourceText: String?
+    let resultText: String?
+
+    init(
+        message: String,
+        buttons: [PreviewButton],
+        sourceText: String? = nil,
+        resultText: String? = nil
+    ) {
+        self.message = message
+        self.buttons = buttons
+        self.sourceText = sourceText
+        self.resultText = resultText
+    }
 
     var canConfirmReplacement: Bool {
         buttons.contains { $0.action == .confirmReplacement && $0.isEnabled }

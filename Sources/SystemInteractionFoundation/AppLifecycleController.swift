@@ -57,6 +57,13 @@ private final class MonitorInvalidationBridge: AXMonitorInvalidationReceiving {
     }
 }
 
+/// Breaks the initialisation cycle between the controller and the monitor's
+/// scheduler provider without retaining the controller.
+@MainActor
+private final class ProductionMonitorBox {
+    weak var controller: AppLifecycleController?
+}
+
 @MainActor
 final class AppLifecycleController {
     // The spec keeps the permanent shortcut combination out of scope for 001;
@@ -90,6 +97,10 @@ final class AppLifecycleController {
     private var activeSessionID: InteractionSessionID?
     private var activeTargetHandle: TargetHandle?
     private var pendingAnchorRect: CGRect?
+    /// Holds the captured element for the current session so that the
+    /// production monitor can build an element-level observer scheduler.
+    private var activeMonitoringTarget: AXMonitoringTarget?
+    private var lastSource: SourceText?
     private var lastTransformed: TransformedText?
     private var isPresenting = false
     private var pendingLatencyStart: UInt64?
@@ -144,6 +155,13 @@ final class AppLifecycleController {
     convenience init() {
         let gateway = AccessibilityGateway(captureReader: SystemAXCaptureReader())
         let panelPresenter = PreviewPanelController()
+        // The scheduler provider is wired to the controller below, once it
+        // exists; until then it simply yields no element-level scheduler.
+        let monitorBox = ProductionMonitorBox()
+        let monitor = AppLifecycleController.makeTargetChangeMonitor(
+            eventReceiver: gateway,
+            schedulerProvider: { monitorBox.controller?.currentElementObserverScheduler() }
+        )
         self.init(
             hotKeySystemClient: HIToolboxHotKeySystemClient(
                 keyCode: TemporaryHotKey.keyCode,
@@ -156,12 +174,40 @@ final class AppLifecycleController {
             secureInputChecker: HIToolboxSecureEventInputChecker(),
             pasteboard: SystemPasteboardClient(),
             gateway: gateway,
-            targetMonitor: WorkspaceTargetChangeMonitor(eventReceiver: gateway),
+            targetMonitor: monitor,
             presenter: panelPresenter
         )
+        monitorBox.controller = self
         panelPresenter.onAction = { [weak self] action in
             self?.handle(action)
         }
+    }
+
+    /// FR-009: the production monitor combines the element-level `AXObserver`
+    /// with `NSWorkspace` activation. The scheduler is resolved per session
+    /// because the captured element only exists after a capture succeeds.
+    static func makeTargetChangeMonitor(
+        eventReceiver: any AXMonitorEventReceiving,
+        schedulerProvider: @escaping () -> (any AXObserverRunLoopScheduling)?,
+        workspaceActivationMonitor: any WorkspaceActivationMonitoring =
+            NSWorkspaceActivationMonitor()
+    ) -> AXTargetMonitor {
+        AXTargetMonitor(
+            schedulerProvider: schedulerProvider,
+            eventReceiver: eventReceiver,
+            workspaceActivationMonitor: workspaceActivationMonitor
+        )
+    }
+
+    /// Builds the element-level scheduler for the session's captured target.
+    func currentElementObserverScheduler() -> (any AXObserverRunLoopScheduling)? {
+        guard let target = activeMonitoringTarget else {
+            return nil
+        }
+        return SystemAXObserverRunLoopScheduler(
+            pid: target.pid,
+            targetElement: target.element
+        )
     }
 
     @discardableResult
@@ -262,6 +308,7 @@ final class AppLifecycleController {
 
         let source = SourceText(text)
         let transformed = transformer.transform(source)
+        lastSource = source
         lastTransformed = transformed
         coordinator.beginClipboardSession(source: source, transformed: transformed)
     }
@@ -303,18 +350,23 @@ final class AppLifecycleController {
         switch result {
         case .success(let captured):
             let pid = await gateway.authoritativePID(for: captured.targetHandle)
+            let monitoringTarget = await gateway.monitoringTarget(
+                for: captured.targetHandle
+            )
             guard coordinator.currentSessionID == sessionID else {
                 return
             }
 
             activeSessionID = sessionID
             activeTargetHandle = captured.targetHandle
+            activeMonitoringTarget = monitoringTarget
             pendingAnchorRect = captured.anchorRect
             textTarget.beginSession(
                 targetHandle: captured.targetHandle,
                 pid: pid
             )
             let transformed = transformer.transform(captured.sourceText)
+            lastSource = captured.sourceText
             lastTransformed = transformed
 
             await gateway.activateMonitoring(
@@ -353,16 +405,18 @@ final class AppLifecycleController {
     }
 
     private func presentReady() {
-        var viewState = mapper.viewState(for: .ready)
-        if !coordinator.availableActions.contains(.confirmReplacement) {
-            viewState = PreviewViewState(
-                message: viewState.message,
-                buttons: viewState.buttons.filter {
-                    $0.action != .confirmReplacement
-                }
+        let baseState = mapper.viewState(for: .ready)
+        let buttons = coordinator.availableActions.contains(.confirmReplacement)
+            ? baseState.buttons
+            : baseState.buttons.filter { $0.action != .confirmReplacement }
+        presentViewState(
+            PreviewViewState(
+                message: baseState.message,
+                buttons: buttons,
+                sourceText: lastSource?.value,
+                resultText: lastTransformed?.value
             )
-        }
-        presentViewState(viewState)
+        )
     }
 
     private func presentRecoverable() {
@@ -377,7 +431,9 @@ final class AppLifecycleController {
                     ),
                     PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
                     PreviewButton(action: .close, title: "关闭", isEnabled: true),
-                ]
+                ],
+                sourceText: lastSource?.value,
+                resultText: lastTransformed?.value
             )
         )
     }
@@ -433,6 +489,8 @@ final class AppLifecycleController {
     }
 
     private func finishSession() {
+        activeMonitoringTarget = nil
+        lastSource = nil
         lastTransformed = nil
         pendingAnchorRect = nil
         textTarget.endSession()

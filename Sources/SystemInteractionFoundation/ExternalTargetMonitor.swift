@@ -69,10 +69,11 @@ protocol WorkspaceActivationMonitoring: AnyObject {
 }
 
 @MainActor
-final class AXTargetMonitor {
-    private let runLoopScheduler: any AXObserverRunLoopScheduling
+final class AXTargetMonitor: TargetChangeMonitoring {
+    private let schedulerProvider: () -> (any AXObserverRunLoopScheduling)?
     private let workspaceActivationMonitor: any WorkspaceActivationMonitoring
     private let eventReceiver: any AXMonitorEventReceiving
+    private var runLoopScheduler: (any AXObserverRunLoopScheduling)?
     private var isMonitoring = false
 
     init(
@@ -80,7 +81,19 @@ final class AXTargetMonitor {
         eventReceiver: any AXMonitorEventReceiving,
         workspaceActivationMonitor: any WorkspaceActivationMonitoring = NSWorkspaceActivationMonitor()
     ) {
-        self.runLoopScheduler = runLoopScheduler
+        schedulerProvider = { runLoopScheduler }
+        self.eventReceiver = eventReceiver
+        self.workspaceActivationMonitor = workspaceActivationMonitor
+    }
+
+    /// Production assembly variant: the element-level scheduler can only be
+    /// built once a target has been captured, so it is resolved per session.
+    init(
+        schedulerProvider: @escaping () -> (any AXObserverRunLoopScheduling)?,
+        eventReceiver: any AXMonitorEventReceiving,
+        workspaceActivationMonitor: any WorkspaceActivationMonitoring = NSWorkspaceActivationMonitor()
+    ) {
+        self.schedulerProvider = schedulerProvider
         self.eventReceiver = eventReceiver
         self.workspaceActivationMonitor = workspaceActivationMonitor
     }
@@ -90,6 +103,7 @@ final class AXTargetMonitor {
         targetHandle: TargetHandle
     ) {
         stopMonitoring()
+        runLoopScheduler = schedulerProvider()
         let envelope = AXMonitorCallbackEnvelope(
             sessionID: sessionID,
             targetHandle: targetHandle
@@ -100,7 +114,7 @@ final class AXTargetMonitor {
             }
         }
 
-        runLoopScheduler.installObserverSource(
+        runLoopScheduler?.installObserverSource(
             mode: .common,
             callback: delivery
         )
@@ -113,7 +127,8 @@ final class AXTargetMonitor {
             return
         }
         workspaceActivationMonitor.stop()
-        runLoopScheduler.removeObserverSource()
+        runLoopScheduler?.removeObserverSource()
+        runLoopScheduler = nil
         isMonitoring = false
     }
 }

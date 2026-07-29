@@ -25,7 +25,18 @@ final class EndToEndIntegrationTests: XCTestCase {
         await env.controller.captureWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 0)
-        XCTAssertEqual(env.presenter.lastState, mapper.viewState(for: .ready))
+        // Finding 1: an actionable preview also discloses the source text and
+        // the deterministic result, so compare the copy and buttons only.
+        XCTAssertEqual(
+            env.presenter.lastState?.message,
+            mapper.viewState(for: .ready).message
+        )
+        XCTAssertEqual(
+            env.presenter.lastState?.buttons,
+            mapper.viewState(for: .ready).buttons
+        )
+        XCTAssertNotNil(env.presenter.lastState?.sourceText)
+        XCTAssertNotNil(env.presenter.lastState?.resultText)
         XCTAssertEqual(env.monitor.startCount, 1)
 
         env.controller.handle(.confirmReplacement)
@@ -282,7 +293,18 @@ final class EndToEndIntegrationTests: XCTestCase {
         XCTAssertEqual(env.monitor.startCount, 2)
         XCTAssertGreaterThanOrEqual(env.monitor.stopCount, 1)
         XCTAssertGreaterThanOrEqual(env.presenter.dismissCount, 1)
-        XCTAssertEqual(env.presenter.lastState, mapper.viewState(for: .ready))
+        // Finding 1: an actionable preview also discloses the source text and
+        // the deterministic result, so compare the copy and buttons only.
+        XCTAssertEqual(
+            env.presenter.lastState?.message,
+            mapper.viewState(for: .ready).message
+        )
+        XCTAssertEqual(
+            env.presenter.lastState?.buttons,
+            mapper.viewState(for: .ready).buttons
+        )
+        XCTAssertNotNil(env.presenter.lastState?.sourceText)
+        XCTAssertNotNil(env.presenter.lastState?.resultText)
         XCTAssertEqual(env.host.setterAttemptCount, 0)
 
         let presentedBefore = env.presenter.presentedStateCount

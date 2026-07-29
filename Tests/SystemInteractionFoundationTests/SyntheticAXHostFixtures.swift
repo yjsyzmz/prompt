@@ -65,6 +65,15 @@ final class SyntheticAXTextHost: @unchecked Sendable {
         frontmostPID = pid
     }
 
+    /// Test hook for oversized fixtures: replaces the whole field content while
+    /// keeping the host in whole-field (no selection) mode.
+    func replaceFullTextForTesting(_ text: String) {
+        prefix = ""
+        segment = text
+        suffix = ""
+        reportedSelectionLength = 0
+    }
+
     // MARK: - Fixtures
 
     static func selectionFixture(pid: Int32 = 4_001) -> SyntheticAXTextHost {

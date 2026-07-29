@@ -1,0 +1,267 @@
+import AppKit
+import XCTest
+
+/// Implementation Gate REVIEW Finding 2：元素级 `AXObserver` 必须进入生产装配，
+/// 使同一应用内的窗口、输入元素、选区或内容变化也能提前禁用"确认替换"
+/// （FR-009、AC-009）。监控仍不得授权写入或恢复。
+@MainActor
+final class ProductionTargetMonitorAssemblyTests: XCTestCase {
+    private let sessionID = InteractionSessionID()
+    private let handle = TargetHandle()
+
+    /// 生产工厂必须产出组合监控，而不是只监听应用激活的 workspace 监控。
+    func testProductionMonitorInstallsElementLevelObserverSource() {
+        let scheduler = AssemblySchedulerSpy()
+        let workspace = AssemblyWorkspaceSpy()
+        let receiver = AssemblyEventReceiverSpy()
+        let monitor = AppLifecycleController.makeTargetChangeMonitor(
+            eventReceiver: receiver,
+            schedulerProvider: { scheduler },
+            workspaceActivationMonitor: workspace
+        )
+
+        monitor.startMonitoring(sessionID: sessionID, targetHandle: handle)
+
+        XCTAssertEqual(
+            scheduler.installCount,
+            1,
+            "the production monitor must install an element-level observer source"
+        )
+        XCTAssertEqual(scheduler.installedMode, .common)
+        XCTAssertEqual(workspace.startCount, 1)
+    }
+
+    func testElementLevelChangeDeliversEnvelopeToGateway() async {
+        let scheduler = AssemblySchedulerSpy()
+        let receiver = AssemblyEventReceiverSpy()
+        let monitor = AppLifecycleController.makeTargetChangeMonitor(
+            eventReceiver: receiver,
+            schedulerProvider: { scheduler },
+            workspaceActivationMonitor: AssemblyWorkspaceSpy()
+        )
+        monitor.startMonitoring(sessionID: sessionID, targetHandle: handle)
+
+        scheduler.fireObserverCallback()
+        await Task.yield()
+        await receiver.settle()
+
+        let envelopes = await receiver.received
+        XCTAssertEqual(envelopes.count, 1)
+        XCTAssertEqual(envelopes.first?.sessionID, sessionID)
+        XCTAssertEqual(envelopes.first?.targetHandle, handle)
+    }
+
+    func testApplicationActivationStillDeliversEnvelope() async {
+        let workspace = AssemblyWorkspaceSpy()
+        let receiver = AssemblyEventReceiverSpy()
+        let monitor = AppLifecycleController.makeTargetChangeMonitor(
+            eventReceiver: receiver,
+            schedulerProvider: { AssemblySchedulerSpy() },
+            workspaceActivationMonitor: workspace
+        )
+        monitor.startMonitoring(sessionID: sessionID, targetHandle: handle)
+
+        workspace.fire()
+        await Task.yield()
+        await receiver.settle()
+
+        let envelopes = await receiver.received
+        XCTAssertEqual(envelopes.count, 1)
+    }
+
+    func testStopMonitoringRemovesObserverSourceAndWorkspaceObserver() {
+        let scheduler = AssemblySchedulerSpy()
+        let workspace = AssemblyWorkspaceSpy()
+        let monitor = AppLifecycleController.makeTargetChangeMonitor(
+            eventReceiver: AssemblyEventReceiverSpy(),
+            schedulerProvider: { scheduler },
+            workspaceActivationMonitor: workspace
+        )
+
+        monitor.startMonitoring(sessionID: sessionID, targetHandle: handle)
+        monitor.stopMonitoring()
+
+        XCTAssertEqual(scheduler.removeCount, 1)
+        XCTAssertEqual(workspace.stopCount, 1)
+    }
+
+    /// 元素级变化必须让预览收回"确认替换"，但不得触发任何写入。
+    func testElementLevelChangeDisablesConfirmationWithoutWriting() async {
+        let host = SyntheticAXTextHost.selectionFixture()
+        let gateway = AccessibilityGateway(
+            captureReader: host,
+            authoritativeTarget: host
+        )
+        let scheduler = AssemblySchedulerSpy()
+        let monitor = AppLifecycleController.makeTargetChangeMonitor(
+            eventReceiver: gateway,
+            schedulerProvider: { scheduler },
+            workspaceActivationMonitor: AssemblyWorkspaceSpy()
+        )
+        let hotKey = AssemblyHotKeyFake()
+        let presenter = AssemblyPresenterSpy()
+        let controller = AppLifecycleController(
+            hotKeySystemClient: hotKey,
+            permissionChecker: AssemblyPermissionFake(),
+            settingsOpener: AssemblySettingsFake(),
+            secureInputChecker: AssemblySecureInputFake(),
+            pasteboard: AssemblyPasteboardSpy(),
+            gateway: gateway,
+            targetMonitor: monitor,
+            presenter: presenter
+        )
+        _ = controller.start()
+
+        hotKey.press()
+        await controller.captureWork?.value
+        XCTAssertTrue(presenter.lastState?.canConfirmReplacement ?? false)
+
+        scheduler.fireObserverCallback()
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertFalse(
+            presenter.lastState?.canConfirmReplacement ?? true,
+            "an element-level change must withdraw the confirmation action"
+        )
+        XCTAssertEqual(
+            host.setterAttemptCount,
+            0,
+            "monitoring must never authorise a write"
+        )
+    }
+}
+
+// MARK: - Spies
+
+private final class AssemblySchedulerSpy: AXObserverRunLoopScheduling {
+    private(set) var installCount = 0
+    private(set) var removeCount = 0
+    private(set) var installedMode: AXObserverRunLoopMode?
+    private var callback: (@Sendable () -> Void)?
+
+    func installObserverSource(
+        mode: AXObserverRunLoopMode,
+        callback: @escaping @Sendable () -> Void
+    ) {
+        installCount += 1
+        installedMode = mode
+        self.callback = callback
+    }
+
+    func removeObserverSource() {
+        removeCount += 1
+        callback = nil
+    }
+
+    func fireObserverCallback() {
+        callback?()
+    }
+}
+
+private final class AssemblyWorkspaceSpy: WorkspaceActivationMonitoring {
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+    private var callback: (@Sendable () -> Void)?
+
+    func start(callback: @escaping @Sendable () -> Void) {
+        startCount += 1
+        self.callback = callback
+    }
+
+    func stop() {
+        stopCount += 1
+        callback = nil
+    }
+
+    func fire() {
+        callback?()
+    }
+}
+
+private actor AssemblyEventReceiverSpy: AXMonitorEventReceiving {
+    var received: [AXMonitorCallbackEnvelope] = []
+
+    func receive(_ envelope: AXMonitorCallbackEnvelope) {
+        received.append(envelope)
+    }
+
+    /// Lets pending delivery tasks land before assertions run.
+    func settle() {}
+}
+
+@MainActor
+private final class AssemblyHotKeyFake: HotKeySystemClient {
+    private var callback: (() -> Void)?
+
+    func registerExclusive(
+        callback: @escaping () -> Void
+    ) -> HotKeySystemRegistrationOutcome {
+        self.callback = callback
+        return .registered(HotKeyRegistrationToken(id: 1))
+    }
+
+    func unregister(_ token: HotKeyRegistrationToken) {
+        callback = nil
+    }
+
+    func press() {
+        callback?()
+    }
+}
+
+@MainActor
+private final class AssemblyPresenterSpy: PreviewPresenting {
+    var lastState: PreviewViewState?
+
+    func show(_ state: PreviewViewState, anchorRect: CGRect?) {
+        lastState = state
+    }
+
+    func update(_ state: PreviewViewState) {
+        lastState = state
+    }
+
+    func dismiss() {
+        lastState = nil
+    }
+}
+
+@MainActor
+private final class AssemblyPermissionFake: AccessibilityPermissionChecking {
+    func currentStatus() -> AccessibilityPermissionStatus {
+        .authorized
+    }
+}
+
+@MainActor
+private final class AssemblySettingsFake: AccessibilitySettingsOpening {
+    func openAccessibilitySettings() -> Bool {
+        true
+    }
+
+    func openPrivacyAndSecuritySettings() -> Bool {
+        true
+    }
+}
+
+@MainActor
+private final class AssemblySecureInputFake: SecureEventInputChecking {
+    func isSecureEventInputEnabled() -> Bool {
+        false
+    }
+}
+
+@MainActor
+private final class AssemblyPasteboardSpy: PasteboardAccessing {
+    func readStringAfterExplicitAction() -> String? {
+        nil
+    }
+
+    func writeLocalStringAfterExplicitAction(
+        _ value: String,
+        privacy: PasteboardWritePrivacy
+    ) -> Bool {
+        true
+    }
+}

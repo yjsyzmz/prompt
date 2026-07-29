@@ -82,6 +82,18 @@ extension AXCaptureReading {
     }
 }
 
+/// Carries the raw AX element out of the actor solely so that the main-actor
+/// observer scheduler can subscribe to it. It exposes no text.
+final class AXMonitoringTarget: @unchecked Sendable {
+    let element: AXUIElement
+    let pid: Int32
+
+    init(element: AXUIElement, pid: Int32) {
+        self.element = element
+        self.pid = pid
+    }
+}
+
 final class AXTargetReference: @unchecked Sendable {
     fileprivate let element: AXUIElement
     fileprivate let window: AXUIElement?
@@ -210,6 +222,15 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return
         }
         deactivateMonitoring()
+    }
+
+    /// FR-009: the production monitor needs the captured element to subscribe
+    /// element-level notifications. Only the reference and pid leave the actor.
+    func monitoringTarget(for targetHandle: TargetHandle) -> AXMonitoringTarget? {
+        guard let reference = targetReferences[targetHandle] else {
+            return nil
+        }
+        return AXMonitoringTarget(element: reference.element, pid: reference.pid)
     }
 
     func authoritativePID(for targetHandle: TargetHandle) -> Int32? {
