@@ -237,6 +237,12 @@ final class AppLifecycleController {
         pendingLatencyStart = clock.now()
 
         guard secureInput.performIfContentReadAllowed({}) == .allowed else {
+            // FR-013: a refusal must still end any existing session so that no
+            // earlier content, target handle or recovery action survives.
+            if coordinator.currentSessionID != nil {
+                coordinator.close()
+            }
+            finishSession()
             present(.secureInput)
             return
         }
@@ -343,17 +349,27 @@ final class AppLifecycleController {
 
     private func captureTarget(for sessionID: InteractionSessionID) async {
         let result = await gateway.capture(sessionID: sessionID)
-        guard coordinator.currentSessionID == sessionID else {
-            return
-        }
 
         switch result {
         case .success(let captured):
+            // Every early return below must release the handle this capture
+            // created, otherwise a cancelled or replaced session leaks it.
+            guard coordinator.currentSessionID == sessionID else {
+                await releaseStaleCapture(
+                    sessionID: sessionID,
+                    targetHandle: captured.targetHandle
+                )
+                return
+            }
             let pid = await gateway.authoritativePID(for: captured.targetHandle)
             let monitoringTarget = await gateway.monitoringTarget(
                 for: captured.targetHandle
             )
             guard coordinator.currentSessionID == sessionID else {
+                await releaseStaleCapture(
+                    sessionID: sessionID,
+                    targetHandle: captured.targetHandle
+                )
                 return
             }
 
@@ -375,6 +391,13 @@ final class AppLifecycleController {
                 invalidationSink: monitorBridge
             )
             guard coordinator.currentSessionID == sessionID else {
+                // Monitoring was already enabled for this session; undo it as
+                // well as releasing the handle.
+                clearActiveTargetState(for: sessionID)
+                await releaseStaleCapture(
+                    sessionID: sessionID,
+                    targetHandle: captured.targetHandle
+                )
                 return
             }
             targetMonitor.startMonitoring(
@@ -388,9 +411,37 @@ final class AppLifecycleController {
                 for: sessionID
             )
         case .failure(let failure):
+            guard coordinator.currentSessionID == sessionID else {
+                return
+            }
             coordinator.cancel()
             present(previewStatus(for: failure))
         }
+    }
+
+    /// Releases the AX handle and monitoring created by a capture whose session
+    /// is no longer current.
+    private func releaseStaleCapture(
+        sessionID: InteractionSessionID,
+        targetHandle: TargetHandle
+    ) async {
+        await gateway.deactivateMonitoring(for: sessionID)
+        await gateway.releaseTarget(targetHandle)
+    }
+
+    /// Clears controller-held references for a session that turned stale after
+    /// they were assigned.
+    private func clearActiveTargetState(for sessionID: InteractionSessionID) {
+        guard activeSessionID == sessionID else {
+            return
+        }
+        activeSessionID = nil
+        activeTargetHandle = nil
+        activeMonitoringTarget = nil
+        pendingAnchorRect = nil
+        lastSource = nil
+        lastTransformed = nil
+        textTarget.endSession()
     }
 
     private func previewStatus(for failure: DomainFailure) -> PreviewStatus {

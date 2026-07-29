@@ -104,6 +104,16 @@ final class AXTargetReference: @unchecked Sendable {
         self.window = window
         self.pid = pid
     }
+
+    /// Placeholder reference for synthetic hosts, so that handle retention and
+    /// release are observable without a real focused element.
+    static func placeholder(pid: Int32) -> AXTargetReference {
+        AXTargetReference(
+            element: AXUIElementCreateApplication(pid),
+            window: nil,
+            pid: pid
+        )
+    }
 }
 
 actor AccessibilityGateway: AXMonitorEventReceiving {
@@ -222,6 +232,16 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return
         }
         deactivateMonitoring()
+    }
+
+    /// FR-013 resource accounting: how many raw AX references the actor still
+    /// retains. Used to prove stale captures do not leak handles.
+    func retainedTargetCount() -> Int {
+        targetReferences.count
+    }
+
+    func hasActiveMonitoring() -> Bool {
+        activeMonitorEnvelope != nil
     }
 
     /// FR-009: the production monitor needs the captured element to subscribe

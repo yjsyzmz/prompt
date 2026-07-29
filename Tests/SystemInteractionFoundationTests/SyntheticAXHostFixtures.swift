@@ -217,6 +217,13 @@ final class SyntheticAXTextHost: @unchecked Sendable {
 // MARK: - Capture-side protocol
 
 extension SyntheticAXTextHost: AXCaptureReading {
+    /// Hands the gateway a placeholder AX reference so that handle retention and
+    /// release are observable in tests. The element is never written to; all
+    /// authoritative access goes through this host.
+    func retainedTargetReference() -> AXTargetReference? {
+        .placeholder(pid: pid)
+    }
+
     func focusedElementCapability() -> Result<AXFocusedElementCapability, DomainFailure> {
         withLock {
             capturedWindowGeneration = windowGeneration
