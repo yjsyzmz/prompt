@@ -1,8 +1,8 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: tasks
-status: reopened-pending-revision
-plan_version: "c5666be0aefb4523e21a2544722511f087201360"  # 已失效：待同步至重开后取得 PASS 的 Plan Gate 修订版本
+status: revised-pending-review
+plan_version: "0c9883f8385c731b0cc084d22519224eada926ea"  # 重开后的 Plan Gate 第三版修订，Solar 已 PASS（2026-07-28）
 owner: "Fable (Comate), from T-028"
 reviewer: "Solar, from T-028"
 ---
@@ -29,6 +29,8 @@ reviewer: "Solar, from T-028"
 
 任何停止条件触发时，后续依赖任务全部暂停，Owner 返回对应 SDD Gate 更新 research/plan/spec 或请求用户裁决，不得通过静默降级绕过。
 
+**2026-07-28 Tasks Gate 重开影响：** T-021 与 T-022 已按 Plan Gate 第三版修订（`0c9883f`，Solar 已 PASS）重写并清空勾选。依赖它们的下游任务——T-027（预览状态矩阵引用 T-022）、T-030／T-031（端到端闭环）、以及 P5 的 T-032／T-033／T-034／T-035／T-037／T-039 中涉及替换与恢复行为的证据项——必须在 T-021／T-022 重新转绿后复核；相关既有证据在复核前不代表覆盖已达成。本轮只修改 `tasks.md`，不修改源码或测试，也不处理旧 Implementation findings。
+
 ## 需求追踪
 
 | 需求 | 验收场景 | 测试／探针任务 | 实现任务 | 验收证据任务 |
@@ -53,6 +55,8 @@ reviewer: "Solar, from T-028"
 | NFR-005 | AC-015 | T-008, T-025, T-030 | T-009, T-026, T-031 | T-036 |
 | NFR-006 | AC-003, AC-004, AC-008, AC-014 | T-011, T-017, T-030 | T-012, T-018, T-031 | T-038 |
 | NFR-007 | AC-002, AC-003, AC-004, AC-007, AC-009, AC-010, AC-013 | T-011, T-013, T-015, T-027, T-030 | T-012, T-014, T-016, T-028, T-031 | T-035 |
+
+表中 FR-009／FR-010／FR-012／NFR-002 对应的 T-021／T-022 已于 2026-07-28 按 Plan `0c9883f` 重写，覆盖关系在重新转绿前不成立。
 
 ## 任务
 
@@ -87,8 +91,29 @@ reviewer: "Solar, from T-028"
 - [x] **T-018 [Implementation] 实现剪贴板适配器。** 封装显式读写和 `NSPasteboard.WritingOptions.currentHostOnly`；不得后台轮询、自动读取或通过模拟粘贴替代 AX 写入。— Depends on: T-017; Covers: FR-008, FR-010, FR-013, NFR-006; Evidence: `evidence/T-018-clipboard-policy-green.md`
 - [x] **T-019 [Test] 编写 AX 捕获测试。** 先覆盖安全元素拒绝、非空选区优先、零长度选区回退全文、空文本、不支持/只读目标、空白有效、边界可用与不可用、内容读取错误；安全输入路径不得创建任何内容值。— Depends on: T-014; Covers: FR-003, FR-004, FR-005, NFR-004, AC-004, AC-005, AC-006, AC-007, AC-016; Evidence: `evidence/T-019-ax-target-capture-red.md`
 - [x] **T-020 [Implementation] 实现 AX 目标捕获。** 在 `AccessibilityGateway` actor 内持有原始 AX 引用，只向领域层返回不可持久化的句柄和值；按 T-019 规则读取，不做写入。— Depends on: T-019; Covers: FR-003, FR-004, FR-005, NFR-004; Evidence: `evidence/T-020-ax-target-capture-green.md`
-- [x] **T-021 [Test] 编写重新验证、写入与恢复测试。** ⚠️ **待重写（Tasks Gate 已重开，2026-07-28）：** 本任务原表述要求恢复不增加第二种写入策略，与重开后的 Plan 恢复算法（共享前置检查 A1–A5、replacement B1–B2、recovery C1–C4 与 selected-range recovery fallback）不一致，须在 Tasks Gate 重新审核时按批准后的算法重写，勾选状态在重写前不代表覆盖已达成。 先覆盖 Plan 的七项确认前权威检查、原文变化、应用/窗口/元素/范围变化、单一 setter、setter 失败时原文不变、成功后恢复、恢复前结果变化，以及失败后复制路径；证明任何失败都 fail-closed。— Depends on: T-020; Covers: FR-009, FR-010, FR-012, NFR-002, AC-005, AC-006, AC-009, AC-010, AC-012, AC-013, AC-017; Evidence: `evidence/T-021-authoritative-write-recovery-red.md`
-- [x] **T-022 [Implementation] 实现权威验证、替换与恢复。** ⚠️ **待重写（Tasks Gate 已重开，2026-07-28）：** 同 T-021，原表述的单一 setter 约束需按批准后的恢复算法重写；现有实现（含 `restoreCollapsedSelection`）在 Plan Gate 与 Tasks Gate 取得 PASS 前不得视为符合已批准计划。 在 actor 内按固定顺序重新获取并比较目标，只写最初选区或全文；恢复时仅当目标内容仍等于预期验证结果才写回原文，不增加清空、粘贴或第二写入策略。— Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002; Evidence: `evidence/T-022-authoritative-write-recovery-green.md`
+- [ ] **T-021 [Test] 编写重新验证、写入与恢复测试（按重开后的 Plan 算法重写）。** 本任务已于 2026-07-28 随 Plan Gate 第三版修订（`0c9883f`）重写，原"七项确认前权威检查 + 恢复不增加第二种写入策略"的表述作废，勾选状态清空，必须按下列批准算法重新建立失败优先测试：
+  1. **共享前置检查 A1–A4**：应用与 PID 一致、除本应用 non-activating panel 外无其他外部目标、AX 窗口与元素有效且身份一致、元素可编辑且非 secure subrole 且 Secure Event Input 未开启。逐项覆盖各自失败时返回 `staleTarget` 或对应安全错误且 setter 计数为 0；AX 通知缺失或延迟不得放宽门禁。
+  2. **路径化 settable 检查**：断言 settable 检查不在共享前置检查内，且每条路径只检查其实际写入的属性——replacement 检查捕获模式对应属性、whole-field recovery 检查 `kAXValueAttribute`、selected recovery R1 检查 `kAXSelectedTextAttribute`、selected recovery R2 由 fallback 门禁 1 检查 `kAXValueAttribute`。必须有测试证明 `kAXSelectedTextAttribute` 不可设置时**不得**阻断 R2 fallback。各路径 settable 失败时零 setter，并返回该路径对应失败状态。
+  3. **replacement B1–B2**：selected 模式下 range 与 text 仍等于捕获值、whole-field 模式下完整 value 仍等于捕获值方可写入；通过后只对捕获模式对应属性执行恰好一次 setter；B1 失败返回 `staleTarget`、零 setter、不得改用其他 setter 或范围；setter 失败时原文不变并进入 `writeFailed`，不执行第二种写入策略。
+  4. **recovery 入口分支**：按 `RecoverySnapshot` 的 capture mode 分派；`clipboardInput` 立即返回 `recoveryTargetChanged` 且零 setter。
+  5. **whole-field recovery W1–W4**：完整 value 逐 UTF-16 code unit 等于 expected transformed text 时恢复成功，`kAXValueAttribute` setter 恰好 1 次且 selected setter 为 0；value 已变化时零 setter 返回 `recoveryTargetChanged`；`kAXValueAttribute` 不可设置时零 setter；写后回读不一致返回 `recoveryTargetChanged`；并断言该路径的 selected-range 读取调用计数为 0、从不使用 `kAXSelectedTextAttribute`、失败后不重试第二次写入。
+  6. **selected recovery C1–C4 与 R1／R2／R3 分类**：C1 按"捕获 location + expected transformed text 的 UTF-16 长度"计算 expected result range；R1（当前 range 等于结果范围）检查并写 `kAXSelectedTextAttribute` 恰好一次，且选区内容须等于 expected transformed text；R2 情形 1（零长度插入点落在结果范围内含两端）与情形 2（range 属性不受支持／无值／能力探针确认不可可靠读取）进入 fallback；R3（`invalid element`、权限错误、Secure Input、timeout、`cannotComplete` 及任何非能力缺失读取失败）立即 fail-closed、零 setter、不得进入 fallback；C2 排除项——读到非零长度且不等于结果范围、或零长度插入点落在结果范围之外——一律返回 `recoveryTargetChanged` 且零 setter。
+  7. **R2 语义不推断来源**：必须有测试证明结果范围内的零长度插入点无论产生原因都进入 fallback；并证明该状态下若范围内文本已被改动，由 fallback 门禁 4 拦截且零 setter。
+  8. **fallback 六项门禁逐项失败测试**：① `kAXValueAttribute` 不可写零 setter；② 全文读取失败零 setter，且断言写入使用的基值是通过全部门禁后紧邻 setter 获取并校验的同一份值、不复用旧值；③ expected result range 越界（location 为负、location + UTF-16 长度超出基值长度）零 setter；④ 基值该范围内文本不等于 expected transformed text 零 setter；⑤ fallback 成功时范围外 UTF-16 code unit 与基值完全一致；⑥ 写后回读不一致返回 `recoveryTargetChanged`。另需覆盖 setter 计数（fallback 成功时 selected setter 为 0、whole-field setter 恰好 1）、whole-field setter 本身失败时返回 `recoveryTargetChanged` 且不重试其他 setter 或第二次写入、以及 A1–A4 任一失败时 fallback 也不得执行。
+  9. **UTF-16 单位夹具**：使用 Emoji、组合字符与代理对构造合成夹具，验证范围计算、越界判断与子串替换均按 UTF-16 code unit 进行，且结果范围外内容保持完全一致。
+  10. **失败后复制路径**：所有 recovery 失败分支都保留原文并提供复制原文动作，不得再次写入。
+  — Depends on: T-020; Covers: FR-009, FR-010, FR-012, NFR-002, AC-005, AC-006, AC-009, AC-010, AC-012, AC-013, AC-017; Plan: `0c9883f` 的"目标重新验证"、"写入与恢复"与 `RecoveryTests` 条目; Evidence: 需在重写后重新产出（原 `evidence/T-021-authoritative-write-recovery-red.md` 只覆盖作废前的算法，不得作为本任务证据）
+
+- [ ] **T-022 [Implementation] 实现权威验证、替换与恢复（按重开后的 Plan 算法重写）。** 本任务已于 2026-07-28 随 Plan Gate 第三版修订（`0c9883f`）重写，原"只写最初选区或全文、不增加第二写入策略"的表述作废，勾选状态清空。仅实现使 T-021 失败测试转绿所需的最小代码：
+  1. 在 `AccessibilityGateway` actor 内实现共享前置检查 A1–A4，并把 settable 检查下沉到 replacement／whole-field recovery／selected R1／selected R2 四条路径，每条只检查其实际写入的属性。
+  2. replacement 保持严格单 setter（B1–B2），失败时不执行第二种写入策略。
+  3. recovery 在入口按 capture mode 分支：新增 whole-field recovery 的独立实现（W1–W4），该路径不得计算或读取 selected range，也不得使用 `kAXSelectedTextAttribute`。
+  4. selected recovery 实现 C1–C4 与 R1／R2／R3 分类，含 C2 的两类排除项；R3 立即 fail-closed。
+  5. 重写现有 `restoreCollapsedSelection` 为批准后的 selected-range recovery fallback：只在 R2 判定成立时进入，逐项实现六项门禁，基值必须在全部门禁通过后紧邻 setter 获取并校验，范围计算与替换全部使用 UTF-16 code unit，写后回读确认；任一失败返回 `recoveryTargetChanged`，不得改回 selected setter 或第二次写入。
+  6. 不得依赖 AXObserver 通知授权 fallback；监控只用于提前禁用按钮。
+  7. 不得为消除 TOCTOU 而引入清空、模拟全选、模拟粘贴、分段写入或任何额外写入策略；残余风险按 Plan 记录接受。
+  — Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002; Plan: `0c9883f`; Evidence: 需在转绿后重新产出（原 `evidence/T-022-authoritative-write-recovery-green.md` 对应作废前的算法）
+
 - [x] **T-023 [Test] 编写 AXObserver 投递与隔离测试。** 先证明 observer run-loop source 挂载在 main run loop；callback 只捕获 session ID 与 target ID，再异步跳入 `AccessibilityGateway` actor；过期 callback 被忽略，监控通知只能提前禁用按钮，不能授权写入或恢复。— Depends on: T-020; Covers: FR-009, FR-011, NFR-002, AC-009, AC-011; Resolves: Plan Gate NIT-1; Evidence: `evidence/T-023-ax-observer-delivery-red.md`
 - [x] **T-024 [Implementation] 实现外部目标监控。** 组合主 run loop 上的 `AXObserver` 与 `NSWorkspace` 通知，按 T-023 的 actor 隔离规则投递；注销 observer 时释放 run-loop source 和 AX 句柄。— Depends on: T-023; Covers: FR-009, FR-011, NFR-002; Evidence: `evidence/T-024-external-target-monitor-green.md`
 - [x] **T-025 [Test] 编写屏幕几何转换测试。** 先覆盖光标/选区/元素/窗口/活跃显示器锚点优先级、AX 与 AppKit 坐标转换、可见区域收敛、面板大于可用区域和屏幕变化。— Depends on: T-010; Covers: FR-007, NFR-005, AC-015; Evidence: `evidence/T-025-screen-geometry-red.md`
@@ -118,9 +143,9 @@ reviewer: "Solar, from T-028"
 - **C0 — 工具链可执行：** T-004 通过；完整 Xcode、目标配置、CI 与基础测试发现均可复现。
 - **C1 — 高风险假设成立：** T-007 与 T-010 已通过；快捷键/安全输入和非激活面板没有触发 Plan 的硬停止条件。
 - **C2 — 领域安全不变量成立：** T-014 通过；确认前零 setter、单会话、会话清理及 `recoverable → previewing(recoveryUnavailable)` 已由失败优先测试证明。
-- **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。
+- **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。**2026-07-28 起本检查点回退为未达成**，需在重写后的 T-021／T-022 转绿后重新判定。
 - **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。
-- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 **已达成（2026-07-28）**：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。
+- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ **已回退为未达成**：Implementation Gate 审核结论为 CHANGES REQUESTED，且 T-021／T-022 已重写。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。
 
 ## Plan Gate NIT 处置约束
 
@@ -138,4 +163,18 @@ reviewer: "Solar, from T-028"
 - Review commit SHA 与 Reviewer 结论：以 PR #2 中后续结构化 `HANDOFF` 和 `REVIEW` 评论为权威记录
 - 审核更新规则：任何 `HANDOFF` 后的新提交都会使旧审核请求失效，Owner 必须针对新的准确 SHA 重新发布 `HANDOFF`
 - PR 审核位置：PR #2
-- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-027，C1、C2 已达成；T-027 已建立七种预览状态的中文说明、按钮矩阵、仅 ready 可确认、安全下一步与无原始错误/敏感内容的稳定 RED 边界，连续两次因缺少 T-028 预览展示契约而按预期失败，生产构建与仓库门禁保持绿色；T-028 已获用户授权并完成——最薄预览展示契约、最小 SwiftUI 内容与 `AppLifecycleController` 装配使 T-027 五个测试连续两次转绿（89 tests, 0 failures），证据见 `evidence/T-028-preview-lifecycle-green.md`；用户于 2026-07-25 授权：跳过逐任务 Reviewer 审核，剩余任务全部完成后统一审核；T-029 已完成——合成 AX 宿主夹具与 9 个自检测试连续两次通过（98 tests, 0 failures），证据见 `evidence/T-029-synthetic-ax-host.md`；T-030 已完成——11 个合成端到端集成测试建立稳定 RED（连续两次 exit 65，错误仅指向缺失的 T-031 集成契约），证据见 `evidence/T-030-end-to-end-red.md`；T-031 已完成——最小闭环装配（GatewaySessionTextTarget 桥接、捕获/监控/清理路由、恢复呈现）使 11 个端到端测试连续两次转绿（109 tests, 0 failures），C4 达成，build/structure/sdd/secret 门禁全绿，证据见 `evidence/T-031-end-to-end-green.md`；T-032、T-033 已于 2026-07-28 完成真实环境人工验证（证据见 `evidence/T-032-textedit-closed-loop.md`、`evidence/T-033-chrome-chatgpt-closed-loop.md`），NFR-003 最低兼容标准达标、硬停止未触发；用户于 2026-07-28 决策（方案 A）：Chrome 选区替换与「所有输入框无差别可用」两项硬需求超出本 Feature 范围，作为新 Feature 走独立 Spec Gate，Feature 001 按现有规格收尾（决策与微信范围外观察见 `evidence/out-of-scope-observations.md`）；T-034 已于 2026-07-28 完成——VS Code 直接读写不受支持并 fail-closed，用户主动剪贴板后备路径（复制→使用剪贴板→复制结果→手动粘贴）输出正确，AC-010 达成，证据见 `evidence/T-034-vscode-fallback-closed-loop.md`；T-035 已于 2026-07-28 完成——十项矩阵（空/不支持目标、过期拦截、重复触发、恢复、权限缺失、深链降级、重新授权、安全输入、快捷键冲突）全部通过，拒绝路径零写入，记录两项已知限制（辅助功能设置深链停在通用页、面板按钮未暴露 AX 标题），证据见 `evidence/T-035-permission-safety-recovery-matrix.md`；T-036 已于 2026-07-28 完成——为满足 300ms 可观测起点新增最小延迟仪器（PresentationLatencyRecording + os_log，仅记录毫秒不含内容，由 PresentationLatencyInstrumentationTests 驱动，118 tests 全绿），TextEdit 与 ChatGPT 各连续 10 次触发全部 20 个样本均在 300ms 内（最大 118.4ms），Plan Gate NIT-2 关闭，证据见 `evidence/T-036-performance-display.md`；T-037 已于 2026-07-28 完成——TextEdit 六类（中文/英文/混合/多行/特殊字符含 emoji 与组合字符/10,000 字符长文本）与 ChatGPT 两类（混合+特殊字符、10,000 字符长文本）逐字保真、无截断无无关修改，空文本引用 T-035，证据见 `evidence/T-037-representative-text-matrix.md`；T-038 已于 2026-07-28 完成——六个审计维度（仓库文件与配置、日志/崩溃/遥测、敏感值不可序列化、安全输入零处理、剪贴板三个显式入口、会话结束引用释放）全部通过，无真实内容或凭据，证据见 `evidence/T-038-privacy-security-audit.md`；T-039 已于 2026-07-28 完成——逐项核对 13 条 FR、7 条 NFR、17 个 AC 全部达成，121 tests 全绿，五道门禁无未解释失败，C5 达成；P5 期间由测试驱动产生两处生产变更（`8b75e6f` 延迟仪器、`4b25cd1` 修复 FR-001/AC-002 快捷键冲突静默失效缺口）；证据见 `evidence/T-039-acceptance-package.md`；Solar 于 2026-07-28 对 `ebb6978` 的 Implementation Gate 审核结论为 CHANGES REQUESTED（6 项 MUST），T-039 原判定已推翻，Tasks 与 Implementation Gate 随 Plan Gate 重开一并重开；当前阶段为 Plan Gate 第二版修订（selected-range recovery fallback，回应 Solar 对 `1333438` 的三项 MUST），Plan Gate 取得 PASS 后先完成重开的 Tasks Gate（重写 T-021／T-022），再逐项修复实现缺口并重新发布 Implementation Gate HANDOFF；本文件 status 已改为 reopened-pending-revision
+- Implementation Gate：已获用户逐项授权，当前完成 T-001 至 T-027，C1、C2 已达成；T-027 已建立七种预览状态的中文说明、按钮矩阵、仅 ready 可确认、安全下一步与无原始错误/敏感内容的稳定 RED 边界，连续两次因缺少 T-028 预览展示契约而按预期失败，生产构建与仓库门禁保持绿色；T-028 已获用户授权并完成——最薄预览展示契约、最小 SwiftUI 内容与 `AppLifecycleController` 装配使 T-027 五个测试连续两次转绿（89 tests, 0 failures），证据见 `evidence/T-028-preview-lifecycle-green.md`；用户于 2026-07-25 授权：跳过逐任务 Reviewer 审核，剩余任务全部完成后统一审核；T-029 已完成——合成 AX 宿主夹具与 9 个自检测试连续两次通过（98 tests, 0 failures），证据见 `evidence/T-029-synthetic-ax-host.md`；T-030 已完成——11 个合成端到端集成测试建立稳定 RED（连续两次 exit 65，错误仅指向缺失的 T-031 集成契约），证据见 `evidence/T-030-end-to-end-red.md`；T-031 已完成——最小闭环装配（GatewaySessionTextTarget 桥接、捕获/监控/清理路由、恢复呈现）使 11 个端到端测试连续两次转绿（109 tests, 0 failures），C4 达成，build/structure/sdd/secret 门禁全绿，证据见 `evidence/T-031-end-to-end-green.md`；T-032、T-033 已于 2026-07-28 完成真实环境人工验证（证据见 `evidence/T-032-textedit-closed-loop.md`、`evidence/T-033-chrome-chatgpt-closed-loop.md`），NFR-003 最低兼容标准达标、硬停止未触发；用户于 2026-07-28 决策（方案 A）：Chrome 选区替换与「所有输入框无差别可用」两项硬需求超出本 Feature 范围，作为新 Feature 走独立 Spec Gate，Feature 001 按现有规格收尾（决策与微信范围外观察见 `evidence/out-of-scope-observations.md`）；T-034 已于 2026-07-28 完成——VS Code 直接读写不受支持并 fail-closed，用户主动剪贴板后备路径（复制→使用剪贴板→复制结果→手动粘贴）输出正确，AC-010 达成，证据见 `evidence/T-034-vscode-fallback-closed-loop.md`；T-035 已于 2026-07-28 完成——十项矩阵（空/不支持目标、过期拦截、重复触发、恢复、权限缺失、深链降级、重新授权、安全输入、快捷键冲突）全部通过，拒绝路径零写入，记录两项已知限制（辅助功能设置深链停在通用页、面板按钮未暴露 AX 标题），证据见 `evidence/T-035-permission-safety-recovery-matrix.md`；T-036 已于 2026-07-28 完成——为满足 300ms 可观测起点新增最小延迟仪器（PresentationLatencyRecording + os_log，仅记录毫秒不含内容，由 PresentationLatencyInstrumentationTests 驱动，118 tests 全绿），TextEdit 与 ChatGPT 各连续 10 次触发全部 20 个样本均在 300ms 内（最大 118.4ms），Plan Gate NIT-2 关闭，证据见 `evidence/T-036-performance-display.md`；T-037 已于 2026-07-28 完成——TextEdit 六类（中文/英文/混合/多行/特殊字符含 emoji 与组合字符/10,000 字符长文本）与 ChatGPT 两类（混合+特殊字符、10,000 字符长文本）逐字保真、无截断无无关修改，空文本引用 T-035，证据见 `evidence/T-037-representative-text-matrix.md`；T-038 已于 2026-07-28 完成——六个审计维度（仓库文件与配置、日志/崩溃/遥测、敏感值不可序列化、安全输入零处理、剪贴板三个显式入口、会话结束引用释放）全部通过，无真实内容或凭据，证据见 `evidence/T-038-privacy-security-audit.md`；T-039 已于 2026-07-28 完成——逐项核对 13 条 FR、7 条 NFR、17 个 AC 全部达成，121 tests 全绿，五道门禁无未解释失败，C5 达成；P5 期间由测试驱动产生两处生产变更（`8b75e6f` 延迟仪器、`4b25cd1` 修复 FR-001/AC-002 快捷键冲突静默失效缺口）；证据见 `evidence/T-039-acceptance-package.md`；Solar 于 2026-07-28 对 `ebb6978` 的 Implementation Gate 审核结论为 CHANGES REQUESTED（6 项 MUST），T-039 原判定已推翻，Tasks 与 Implementation Gate 随 Plan Gate 重开一并重开；当前阶段为 Plan Gate 第二版修订（selected-range recovery fallback，回应 Solar 对 `1333438` 的三项 MUST），Plan Gate 取得 PASS 后先完成重开的 Tasks Gate（重写 T-021／T-022），再逐项修复实现缺口并重新发布 Implementation Gate HANDOFF
+- **2026-07-28 Tasks Gate 重开与修订：** Plan Gate 第三版修订
+  `0c9883f8385c731b0cc084d22519224eada926ea` 已获 Solar `PASS`
+  （REVIEW 见 PR #2 issuecomment-5112794473）。据此重写 T-021 与 T-022：
+  T-021 按共享前置检查 A1–A4、路径化 settable 检查、replacement B1–B2、
+  recovery 入口分支、whole-field recovery W1–W4、selected recovery
+  C1–C4 与 R1／R2／R3 分类、R2 不推断来源语义、fallback 六项门禁逐项失败
+  测试、UTF-16 夹具与失败后复制路径共十组要求重建失败优先测试；
+  T-022 只实现使上述测试转绿所需的最小代码，并重写现有
+  `restoreCollapsedSelection` 为批准后的 selected-range recovery fallback。
+  两个任务的勾选状态已清空，原证据文件不再作为其覆盖依据。
+  `plan_version` 已同步为 `0c9883f`，本文件 status 改为
+  `revised-pending-review`。本轮只修改 `tasks.md`，未修改源码或测试，
+  也未处理旧 Implementation findings；Tasks Gate 取得 `PASS` 后才会进入
+  实现修复。
