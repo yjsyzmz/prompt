@@ -26,8 +26,14 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
         TransformedText(value: transformedValue)
     }
 
-    /// 捕获时记录的选区起点；结果范围 = location + transformed 的 UTF-16 长度。
-    private let capturedLocation = 6
+    private let prefix = "SYNTHETIC-001 前缀："
+    private let suffix = "：SYNTHETIC-001 后缀"
+
+    /// 捕获时记录的选区起点等于前缀的 UTF-16 长度；
+    /// 结果范围 = location + transformed 的 UTF-16 长度。
+    private var capturedLocation: Int {
+        (prefix as NSString).length
+    }
 
     private var capturedRange: AXTextRange {
         AXTextRange(location: capturedLocation, length: original.value.utf16.count)
@@ -36,9 +42,6 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
     private var expectedResultRange: AXTextRange {
         AXTextRange(location: capturedLocation, length: transformedValue.utf16.count)
     }
-
-    private let prefix = "SYNTHETIC-001 前缀："
-    private let suffix = "：SYNTHETIC-001 后缀"
 
     // MARK: - 第 4 组：recovery 入口分支
 

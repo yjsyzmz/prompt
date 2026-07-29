@@ -77,7 +77,47 @@
   `testEveryRecoveryFailureLeavesTargetContentUntouched`，对不可写、全文不可读、
   Secure Input 与 R3 四条失败路径断言目标内容完全未变。
 
-## RED 结果
+## 夹具修正与 RED 基线勘误（2026-07-28，T-022 期间发现）
+
+本文件初版记录的 RED 为「149 tests、27 failures、12 个测试」。在 T-022 实现
+期间发现其中部分失败源于**测试夹具自身的错误**，而非缺失的实现：
+`capturedLocation` 被硬编码为 6，与夹具前缀 `SYNTHETIC-001 前缀：` 的 UTF-16
+长度不一致，导致 expected result range 落在错误位置，门禁 4 的内容比较必然
+失败。该错误已修正为 `capturedLocation = (prefix as NSString).length`。
+
+修正夹具后，对**未修改的旧实现**重新验证 RED（`git stash` 暂存源码改动后
+运行）：
+
+```text
+Executed 149 tests, with 15 failures (0 unexpected)
+```
+
+真实的 RED 覆盖 7 个测试，逐项对应缺失的批准算法：
+
+1. `testWholeFieldRecoveryRejectsUnsettableValueAttribute` — recovery 路径的
+   settable 失败必须返回 `recoveryTargetChanged`，旧实现返回
+   `attributeNotSettable`。
+2. `testSelectedRecoveryR2MissingRangeCapabilityEntersFallback` — range 能力
+   缺失时必须进入受约束 fallback，旧实现不会。
+3. `testSelectedRecoveryR3ErrorsFailClosedWithoutFallback` — 五类安全性错误
+   必须原样呈现，旧实现一律归并为 `recoveryTargetChanged`。
+4. `testSelectedRecoveryRejectsNonZeroLengthRangeMismatch` — 非零长度不匹配
+   必须零 setter 拒绝。
+5. `testSelectedRecoveryRejectsCaretOutsideResultRange` — 结果范围之外的
+   插入点必须零 setter 拒绝（旧实现无此排除项）。
+6. `testUnsettableSelectedAttributeDoesNotBlockR2Fallback` — settable 检查
+   未路径化，旧实现会因 `kAXSelectedTextAttribute` 不可写阻断 fallback。
+7. `testFallbackPrecondition1RejectsUnsettableValueAttribute` — fallback 门禁 1
+   的失败状态映射。
+
+其余新增测试在旧实现下即已通过（塌陷插入点在部分条件下恰好走到旧的
+whole-field 恢复分支、门禁 2／3／4 的越界与内容检查、UTF-16 夹具、失败后
+保留原文等），它们作为 T-022 的回归保护保留。
+
+**本次勘误不改变结论**：修正后的测试在旧实现下仍稳定 RED（15 failures，
+全部位于新测试文件），失败原因全部指向缺失的批准算法。
+
+## RED 结果（初版记录，含上述夹具错误）
 
 命令：`./scripts/unit-tests.sh`
 

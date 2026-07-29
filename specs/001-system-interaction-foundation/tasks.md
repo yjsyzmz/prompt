@@ -105,7 +105,7 @@ reviewer: "Solar, from T-028"
   10. **失败后复制路径**：所有 recovery 失败分支都保留原文并提供复制原文动作，不得再次写入。
   — Depends on: T-020; Covers: FR-009, FR-010, FR-012, NFR-002, AC-005, AC-006, AC-009, AC-010, AC-012, AC-013, AC-017; Plan: `0c9883f` 的"目标重新验证"、"写入与恢复"与 `RecoveryTests` 条目; Evidence: `evidence/T-021-recovery-algorithm-red.md`（2026-07-28 稳定 RED：149 tests、27 failures，失败全部集中在新增 `AXRecoveryAlgorithmTests.swift` 且逐项指向缺失的 T-022 算法；原 `evidence/T-021-authoritative-write-recovery-red.md` 只覆盖作废前的算法，不作为本任务证据）
 
-- [ ] **T-022 [Implementation] 实现权威验证、替换与恢复（按重开后的 Plan 算法重写）。** 本任务已于 2026-07-28 随 Plan Gate 第三版修订（`0c9883f`）重写，原"只写最初选区或全文、不增加第二写入策略"的表述作废，勾选状态清空。仅实现使 T-021 失败测试转绿所需的最小代码：
+- [x] **T-022 [Implementation] 实现权威验证、替换与恢复（按重开后的 Plan 算法重写）。** 本任务已于 2026-07-28 随 Plan Gate 第三版修订（`0c9883f`）重写，原"只写最初选区或全文、不增加第二写入策略"的表述作废，勾选状态清空。仅实现使 T-021 失败测试转绿所需的最小代码：
   1. 在 `AccessibilityGateway` actor 内实现共享前置检查 A1–A4，并把 settable 检查下沉到 replacement／whole-field recovery／selected R1／selected R2 四条路径，每条只检查其实际写入的属性。
   2. replacement 保持严格单 setter（B1–B2），失败时不执行第二种写入策略。
   3. recovery 在入口按 capture mode 分支：新增 whole-field recovery 的独立实现（W1–W4），该路径不得计算或读取 selected range，也不得使用 `kAXSelectedTextAttribute`。
@@ -113,7 +113,7 @@ reviewer: "Solar, from T-028"
   5. 重写现有 `restoreCollapsedSelection` 为批准后的 selected-range recovery fallback：只在 R2 判定成立时进入，逐项实现六项门禁，基值必须在全部门禁通过后紧邻 setter 获取并校验，范围计算与替换全部使用 UTF-16 code unit，写后回读确认；任一失败返回 `recoveryTargetChanged`，不得改回 selected setter 或第二次写入。
   6. 不得依赖 AXObserver 通知授权 fallback；监控只用于提前禁用按钮。
   7. 不得为消除 TOCTOU 而引入清空、模拟全选、模拟粘贴、分段写入或任何额外写入策略；残余风险按 Plan 记录接受。
-  — Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002; Plan: `0c9883f`; Evidence: 需在转绿后重新产出（原 `evidence/T-022-authoritative-write-recovery-green.md` 对应作废前的算法）
+  — Depends on: T-021; Covers: FR-009, FR-010, FR-012, NFR-002; Plan: `0c9883f`; Evidence: `evidence/T-022-recovery-algorithm-green.md`（2026-07-28：149 tests、0 failures，连续两次一致；原 `evidence/T-022-authoritative-write-recovery-green.md` 对应作废前的算法，不作为本任务证据）
 
 - [x] **T-023 [Test] 编写 AXObserver 投递与隔离测试。** 先证明 observer run-loop source 挂载在 main run loop；callback 只捕获 session ID 与 target ID，再异步跳入 `AccessibilityGateway` actor；过期 callback 被忽略，监控通知只能提前禁用按钮，不能授权写入或恢复。— Depends on: T-020; Covers: FR-009, FR-011, NFR-002, AC-009, AC-011; Resolves: Plan Gate NIT-1; Evidence: `evidence/T-023-ax-observer-delivery-red.md`
 - [x] **T-024 [Implementation] 实现外部目标监控。** 组合主 run loop 上的 `AXObserver` 与 `NSWorkspace` 通知，按 T-023 的 actor 隔离规则投递；注销 observer 时释放 run-loop source 和 AX 句柄。— Depends on: T-023; Covers: FR-009, FR-011, NFR-002; Evidence: `evidence/T-024-external-target-monitor-green.md`

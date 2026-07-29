@@ -244,8 +244,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             targetHandle: snapshot.targetHandle,
             pid: snapshot.pid,
             mode: snapshot.captureMode,
-            expectedText: snapshot.originalText.value,
-            isRecovery: false
+            expectedText: snapshot.originalText.value
         ) {
         case .success:
             break
@@ -280,64 +279,261 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         )
     }
 
+    /// Recovery branches on the capture mode first: whole-field captures use the
+    /// W1–W4 algorithm and never touch a selected range, while selected
+    /// captures continue into C1–C4 with the R1/R2/R3 classification.
     func restoreAfterAuthoritativeValidation(
         _ recovery: AXRecoveryContext
     ) -> Result<Void, DomainFailure> {
-        guard recovery.captureMode != .clipboardInput else {
-            return .failure(.recoveryTargetChanged)
-        }
-
-        let requiresWholeFieldRestoration: Bool
         switch recovery.captureMode {
-        case .selectedText(let expectedRange):
-            switch currentSelectedRange(targetHandle: recovery.targetHandle) {
-            case .success(let currentRange):
-                let transformedRange = AXTextRange(
-                    location: expectedRange.location,
-                    length: recovery.expectedTransformedText.value.utf16.count
-                )
-                requiresWholeFieldRestoration = currentRange != transformedRange
-            case .failure:
-                requiresWholeFieldRestoration = true
-            }
-        case .wholeField, .clipboardInput:
-            requiresWholeFieldRestoration = false
+        case .clipboardInput:
+            return .failure(.recoveryTargetChanged)
+        case .wholeField:
+            return restoreWholeField(recovery)
+        case .selectedText(let capturedRange):
+            return restoreSelected(recovery, capturedRange: capturedRange)
+        }
+    }
+
+    /// A1–A4. The settable check is deliberately absent: it belongs to each
+    /// path so that it always targets the attribute that path actually writes.
+    private func sharedPrechecks(
+        targetHandle: TargetHandle,
+        pid: Int32
+    ) -> Result<Void, DomainFailure> {
+        guard targetApplicationIsRunning(pid: pid) else {
+            return .failure(.invalidTarget)
+        }
+        guard currentExternalPID() == pid else {
+            return .failure(.invalidTarget)
+        }
+        guard windowMatches(targetHandle: targetHandle) else {
+            return .failure(.invalidTarget)
+        }
+        guard elementMatches(targetHandle: targetHandle) else {
+            return .failure(.invalidTarget)
         }
 
-        switch validate(
-            targetHandle: recovery.targetHandle,
-            pid: recovery.pid,
-            mode: recovery.captureMode,
-            expectedText: recovery.expectedTransformedText.value,
-            isRecovery: true
-        ) {
-        case .success:
+        switch elementCapability(targetHandle: targetHandle) {
+        case .editable:
             break
-        case .failure(let failure):
+        case .secure:
+            return .failure(.secureInputActive)
+        case .readOnly:
+            return .failure(.attributeNotSettable)
+        case .unsupported:
+            return .failure(.unsupportedTarget)
+        }
+
+        guard !globalSecureInputIsActive() else {
+            return .failure(.secureInputActive)
+        }
+        return .success(())
+    }
+
+    /// W1–W4.
+    private func restoreWholeField(
+        _ recovery: AXRecoveryContext
+    ) -> Result<Void, DomainFailure> {
+        if case .failure(let failure) = sharedPrechecks(
+            targetHandle: recovery.targetHandle,
+            pid: recovery.pid
+        ) {
             return .failure(failure)
         }
 
-        let restoration: Bool
-        if requiresWholeFieldRestoration,
-           case .selectedText(let expectedRange) = recovery.captureMode {
-            restoration = restoreCollapsedSelection(
-                expectedRange: expectedRange,
-                transformedText: recovery.expectedTransformedText.value,
-                originalText: recovery.originalText.value,
-                targetHandle: recovery.targetHandle
+        // W1: the whole value must still equal the expected transformed text.
+        guard case .success(let currentValue) = wholeValue(
+            targetHandle: recovery.targetHandle
+        ),
+            currentValue == recovery.expectedTransformedText.value
+        else {
+            return .failure(.recoveryTargetChanged)
+        }
+
+        // W2: only kAXValueAttribute matters on this path.
+        guard replacementAttributeIsSettable(
+            mode: .wholeField,
+            targetHandle: recovery.targetHandle
+        ) else {
+            return .failure(.recoveryTargetChanged)
+        }
+
+        // W3 and W4: exactly one setter, then readback confirmation.
+        guard setText(
+            recovery.originalText.value,
+            mode: .wholeField,
+            targetHandle: recovery.targetHandle
+        ), writtenTextConfirmed(
+            recovery.originalText.value,
+            mode: .wholeField,
+            targetHandle: recovery.targetHandle
+        ) else {
+            return .failure(.recoveryTargetChanged)
+        }
+        return .success(())
+    }
+
+    private enum SelectedRecoveryRoute {
+        /// R1: the selection still covers the written result.
+        case selectedSetter
+        /// R2: a zero-length caret inside the result range, or a missing
+        /// selected-range capability.
+        case constrainedFallback
+    }
+
+    /// C1–C4 with the R1/R2/R3 classification.
+    private func restoreSelected(
+        _ recovery: AXRecoveryContext,
+        capturedRange: AXTextRange
+    ) -> Result<Void, DomainFailure> {
+        if case .failure(let failure) = sharedPrechecks(
+            targetHandle: recovery.targetHandle,
+            pid: recovery.pid
+        ) {
+            return .failure(failure)
+        }
+
+        // C1: expected result range uses UTF-16 code units.
+        let expectedResultRange = AXTextRange(
+            location: capturedRange.location,
+            length: (recovery.expectedTransformedText.value as NSString).length
+        )
+
+        // C2: classify the selected-range read.
+        let route: SelectedRecoveryRoute
+        switch currentSelectedRange(targetHandle: recovery.targetHandle) {
+        case .success(let currentRange):
+            if currentRange == expectedResultRange {
+                route = .selectedSetter
+            } else if currentRange.length == 0,
+                      currentRange.location >= expectedResultRange.location,
+                      currentRange.location
+                        <= expectedResultRange.location + expectedResultRange.length {
+                // R2 case 1. The caret's provenance is deliberately not
+                // inferred; safety comes from the fallback preconditions.
+                route = .constrainedFallback
+            } else {
+                // Non-zero-length mismatch, or a caret outside the result
+                // range: both are excluded.
+                return .failure(.recoveryTargetChanged)
+            }
+        case .failure(.unsupportedTarget):
+            // R2 case 2: the range attribute is unsupported or absent.
+            route = .constrainedFallback
+        case .failure(let failure):
+            // R3: invalid element, permission, secure input, timeout and
+            // cannotComplete must surface as themselves with zero setters.
+            return .failure(failure)
+        }
+
+        switch route {
+        case .selectedSetter:
+            return restoreViaSelectedSetter(
+                recovery,
+                expectedResultRange: expectedResultRange
             )
-        } else {
-            restoration = setText(
-                recovery.originalText.value,
-                mode: recovery.captureMode,
-                targetHandle: recovery.targetHandle
-            ) && writtenTextConfirmed(
-                recovery.originalText.value,
-                mode: recovery.captureMode,
-                targetHandle: recovery.targetHandle
+        case .constrainedFallback:
+            return restoreViaSelectedRangeFallback(
+                recovery,
+                expectedResultRange: expectedResultRange
             )
         }
-        guard restoration else {
+    }
+
+    /// R1: content check, path-scoped settable check, one selected setter.
+    private func restoreViaSelectedSetter(
+        _ recovery: AXRecoveryContext,
+        expectedResultRange: AXTextRange
+    ) -> Result<Void, DomainFailure> {
+        guard case .success(let currentText) = selectedText(
+            in: expectedResultRange,
+            targetHandle: recovery.targetHandle
+        ), currentText == recovery.expectedTransformedText.value else {
+            return .failure(.recoveryTargetChanged)
+        }
+
+        guard replacementAttributeIsSettable(
+            mode: recovery.captureMode,
+            targetHandle: recovery.targetHandle
+        ) else {
+            return .failure(.recoveryTargetChanged)
+        }
+
+        guard setText(
+            recovery.originalText.value,
+            mode: recovery.captureMode,
+            targetHandle: recovery.targetHandle
+        ), writtenTextConfirmed(
+            recovery.originalText.value,
+            mode: recovery.captureMode,
+            targetHandle: recovery.targetHandle
+        ) else {
+            return .failure(.recoveryTargetChanged)
+        }
+        return .success(())
+    }
+
+    /// The selected-range recovery fallback and its six preconditions. Any
+    /// failure is fail-closed; the selected setter is never used here and a
+    /// failed write is never retried.
+    private func restoreViaSelectedRangeFallback(
+        _ recovery: AXRecoveryContext,
+        expectedResultRange: AXTextRange
+    ) -> Result<Void, DomainFailure> {
+        // 1: kAXValueAttribute must be settable.
+        guard replacementAttributeIsSettable(
+            mode: .wholeField,
+            targetHandle: recovery.targetHandle
+        ) else {
+            return .failure(.recoveryTargetChanged)
+        }
+
+        // 2: read the base value immediately before the setter; never reuse an
+        // earlier read.
+        guard case .success(let baseValue) = wholeValue(
+            targetHandle: recovery.targetHandle
+        ) else {
+            return .failure(.recoveryTargetChanged)
+        }
+        let base = baseValue as NSString
+
+        // 3: the expected result range must fall inside the base value.
+        guard expectedResultRange.location >= 0,
+              expectedResultRange.length >= 0,
+              expectedResultRange.location + expectedResultRange.length <= base.length
+        else {
+            return .failure(.recoveryTargetChanged)
+        }
+        let resultRange = NSRange(
+            location: expectedResultRange.location,
+            length: expectedResultRange.length
+        )
+
+        // 4: that range must still hold the expected transformed text.
+        guard base.substring(with: resultRange)
+            == recovery.expectedTransformedText.value
+        else {
+            return .failure(.recoveryTargetChanged)
+        }
+
+        // 5: the written value only replaces that range; every code unit
+        // outside it comes from the base value unchanged.
+        let restoredValue = base.replacingCharacters(
+            in: resultRange,
+            with: recovery.originalText.value
+        )
+
+        // 6: one setter, then readback confirmation.
+        guard setText(
+            restoredValue,
+            mode: .wholeField,
+            targetHandle: recovery.targetHandle
+        ), writtenTextConfirmed(
+            restoredValue,
+            mode: .wholeField,
+            targetHandle: recovery.targetHandle
+        ) else {
             return .failure(.recoveryTargetChanged)
         }
         return .success(())
@@ -348,7 +544,6 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         pid: Int32,
         mode: CaptureMode,
         expectedText: String,
-        isRecovery: Bool
     ) -> Result<Void, DomainFailure> {
         guard targetApplicationIsRunning(pid: pid) else {
             return .failure(.invalidTarget)
@@ -378,21 +573,17 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return .failure(.secureInputActive)
         }
 
-        let contentFailure: DomainFailure = isRecovery
-            ? .recoveryTargetChanged
-            : .sourceChanged
         switch currentText(
             mode: mode,
             targetHandle: targetHandle,
-            expectedText: expectedText,
-            isRecovery: isRecovery
+            expectedText: expectedText
         ) {
         case .success(let currentText):
             guard currentText == expectedText else {
-                return .failure(contentFailure)
+                return .failure(.sourceChanged)
             }
         case .failure(let failure):
-            return .failure(isRecovery ? .recoveryTargetChanged : failure)
+            return .failure(failure)
         }
 
         guard replacementAttributeIsSettable(
@@ -404,125 +595,29 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         return .success(())
     }
 
+    /// Replacement-path content check (B1). Recovery has its own algorithm and
+    /// does not use this helper.
     private func currentText(
         mode: CaptureMode,
         targetHandle: TargetHandle,
-        expectedText: String,
-        isRecovery: Bool
+        expectedText: String
     ) -> Result<String, DomainFailure> {
         switch mode {
         case .selectedText(let expectedRange):
-            let rangeMatches: Bool
             switch currentSelectedRange(targetHandle: targetHandle) {
             case .success(let currentRange):
-                rangeMatches = isRecovery
-                    ? currentRange.location == expectedRange.location
-                    : currentRange == expectedRange
+                guard currentRange == expectedRange else {
+                    return .failure(.sourceChanged)
+                }
             case .failure(let failure):
                 return .failure(failure)
             }
-
-            if rangeMatches {
-                switch selectedText(in: expectedRange, targetHandle: targetHandle) {
-                case .success(let value) where !isRecovery || value == expectedText:
-                    return .success(value)
-                case .success:
-                    break
-                case .failure(let failure) where !isRecovery:
-                    return .failure(failure)
-                case .failure:
-                    break
-                }
-            } else if !isRecovery {
-                return .failure(.sourceChanged)
-            }
-
-            guard isRecovery else {
-                return .failure(.recoveryTargetChanged)
-            }
-            return recoveryTextFromFullValue(
-                expectedRange: expectedRange,
-                expectedText: expectedText,
-                targetHandle: targetHandle
-            )
+            return selectedText(in: expectedRange, targetHandle: targetHandle)
         case .wholeField:
             return wholeValue(targetHandle: targetHandle)
         case .clipboardInput:
             return .failure(.unsupportedTarget)
         }
-    }
-
-    private func restoreCollapsedSelection(
-        expectedRange: AXTextRange,
-        transformedText: String,
-        originalText: String,
-        targetHandle: TargetHandle
-    ) -> Bool {
-        guard replacementAttributeIsSettable(
-            mode: .wholeField,
-            targetHandle: targetHandle
-        ) else {
-            return false
-        }
-        guard case .success(let fullValue) = wholeValue(targetHandle: targetHandle) else {
-            return false
-        }
-        let transformedLength = (transformedText as NSString).length
-        let originalRange = NSRange(
-            location: expectedRange.location,
-            length: transformedLength
-        )
-        guard originalRange.location >= 0,
-              NSMaxRange(originalRange) <= (fullValue as NSString).length,
-              (fullValue as NSString).substring(with: originalRange) == transformedText
-        else {
-            return false
-        }
-        let restoredValue = (fullValue as NSString).replacingCharacters(
-            in: originalRange,
-            with: originalText
-        )
-        guard setText(
-            restoredValue,
-            mode: .wholeField,
-            targetHandle: targetHandle
-        ) else {
-            return false
-        }
-        return writtenTextConfirmed(
-            restoredValue,
-            mode: .wholeField,
-            targetHandle: targetHandle
-        )
-    }
-
-    private func recoveryTextFromFullValue(
-        expectedRange: AXTextRange,
-        expectedText: String,
-        targetHandle: TargetHandle
-    ) -> Result<String, DomainFailure> {
-        guard case .success(let fullValue) = wholeValue(targetHandle: targetHandle) else {
-            return .failure(.recoveryTargetChanged)
-        }
-        let fullUTF16Length = (fullValue as NSString).length
-        let expectedUTF16Length = (expectedText as NSString).length
-        guard
-            expectedRange.location >= 0,
-            expectedUTF16Length >= 0,
-            expectedRange.location + expectedUTF16Length <= fullUTF16Length
-        else {
-            return .failure(.recoveryTargetChanged)
-        }
-        let candidate = (fullValue as NSString).substring(
-            with: NSRange(
-                location: expectedRange.location,
-                length: expectedUTF16Length
-            )
-        )
-        guard candidate == expectedText else {
-            return .failure(.recoveryTargetChanged)
-        }
-        return .success(candidate)
     }
 
     private func targetApplicationIsRunning(pid: Int32) -> Bool {
