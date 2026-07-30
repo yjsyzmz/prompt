@@ -1,13 +1,14 @@
-# T-039 可复现验收包汇总
+# T-039 / T-046 可复现验收包汇总
 
 ## 任务边界
 
-- 任务：T-039 [Evidence] 汇总可复现验收包。
-- 依赖：T-032 至 T-038 全部完成。
+- 原任务：T-039 [Evidence] 汇总可复现验收包。
+- 本文件于 2026-07-30 由 **T-046** 重写。T-039 的初版结论已被 Solar 的
+  Implementation Gate REVIEW 推翻；Tasks Gate 重开后 T-046 是唯一的
+  Implementation Gate `HANDOFF` 出口。
 - 覆盖：FR-001 至 FR-013、NFR-001 至 NFR-007、AC-001 至 AC-017。
 - 出口条件：逐项核对全部需求与验收场景，运行 build、unit-tests、
-  `sdd-check`、`secret-scan`、`git diff --check`，无未解释失败后才可发布
-  Implementation Gate `HANDOFF`。
+  `sdd-check`、`secret-scan`、`git diff --check`，无未解释失败。
 
 ## 一、环境与版本
 
@@ -23,188 +24,229 @@
 
 ## 二、自动化结果
 
-- 单元与集成测试：**121 tests, 0 failures**（`./scripts/unit-tests.sh`）
+- 单元与集成测试：**172 tests, 0 failures**，连续两次一致
 - 构建：`./scripts/build.sh` → `BUILD SUCCEEDED`
 - 工程结构检查：`./scripts/project-structure-check.sh` → passed
 - SDD 制品校验：`./scripts/sdd-check.sh` → passed
 - 凭据扫描：`./scripts/secret-scan.sh` → 无命中
 - 空白与冲突标记：`git diff --check` → 无输出
-- 测试分层：领域与隐私契约、会话状态机、权限、剪贴板、AX 捕获、权威写入
-  与恢复、AXObserver 隔离、屏幕几何、预览状态矩阵、合成 AX 宿主自检、
-  端到端集成、延迟仪器、快捷键注册失败呈现
+- 测试总数演进：109（T-031）→ 121（首次 HANDOFF）→ 149（T-021 RED）→
+  172（五项 Finding 修复后），净增 63，全部由失败优先测试驱动
+- 详见 `evidence/T-040-downstream-automation-revalidation.md`
 
-## 三、真实环境人工验证索引
+## 三、证据索引
 
-- TextEdit 完整闭环：`evidence/T-032-textedit-closed-loop.md`
-- Chrome/ChatGPT 完整闭环：`evidence/T-033-chrome-chatgpt-closed-loop.md`
+**基础与探针**
+
+- 工具链：`evidence/T-001-toolchain.md`
+- 快捷键与安全输入探针：`evidence/T-007-hot-key-stop-conditions.md`
+- 面板几何探针：`evidence/T-010-panel-stop-conditions.md`
+- 合成 AX 宿主：`evidence/T-029-synthetic-ax-host.md`
+- 合成端到端：`evidence/T-030-end-to-end-red.md`、
+  `evidence/T-031-end-to-end-green.md`
+
+**批准后的恢复算法（Plan `0c9883f`）**
+
+- 失败优先测试：`evidence/T-021-recovery-algorithm-red.md`
+- 最小实现：`evidence/T-022-recovery-algorithm-green.md`
+
+**P5 真实环境验收**
+
+- TextEdit 闭环：`evidence/T-032-textedit-closed-loop.md`
+- Chrome/ChatGPT 闭环：`evidence/T-033-chrome-chatgpt-closed-loop.md`
 - VS Code 后备闭环：`evidence/T-034-vscode-fallback-closed-loop.md`
 - 权限／安全／失败恢复矩阵（11 项）：
   `evidence/T-035-permission-safety-recovery-matrix.md`
 - 性能与显示（20 个延迟样本）：`evidence/T-036-performance-display.md`
 - 代表性文字矩阵：`evidence/T-037-representative-text-matrix.md`
-- 隐私与安全审计（6 个维度）：`evidence/T-038-privacy-security-audit.md`
-- 高风险探针：`evidence/T-007-hot-key-stop-conditions.md`、
-  `evidence/T-010-panel-stop-conditions.md`
-- 范围外观察与用户决策：`evidence/out-of-scope-observations.md`
+- ChatGPT 多行专项（Finding 5）：
+  `evidence/T-037-chatgpt-multiline-followup.md`
+- 隐私与安全审计（6 维）：`evidence/T-038-privacy-security-audit.md`
+
+**P6 恢复算法重写后的下游复核**
+
+- 自动化复核：`evidence/T-040-downstream-automation-revalidation.md`
+- TextEdit selected recovery：
+  `evidence/T-041-textedit-selected-recovery-revalidation.md`
+- ChatGPT whole-field recovery：
+  `evidence/T-042-chatgpt-wholefield-recovery-revalidation.md`
+- 恢复状态与访问计数：
+  `evidence/T-043-recovery-state-and-counts-revalidation.md`
+- UTF-16 特殊字符夹具：
+  `evidence/T-044-utf16-recovery-fixtures-revalidation.md`
+- 定向隐私审计：`evidence/T-045-recovery-privacy-audit.md`
+
+**范围外观察与决策**：`evidence/out-of-scope-observations.md`
 
 ## 四、功能需求逐项核对
 
-- **FR-001 全局触发**：热键注册与触发由 T-005/T-006 测试、T-007 真实探针
-  覆盖；注册冲突或失败现在呈现 `hotKeyConflict` 状态（提交 `4b25cd1`），
-  不再静默失效。达成。
-- **FR-002 权限门禁**：T-015/T-016 测试；T-035 第 6、7、8 项真实验证
-  权限缺失、深链降级、重新授权。达成（深链限制见第七节）。
-- **FR-003 拒绝安全输入**：门禁位于任何捕获之前（审计见 T-038 第四节），
-  T-007 探针 + T-035 第 9 项真实验证。达成。
-- **FR-004 选区优先读取**：T-019/T-020 测试；T-032 选区路径、T-033 无选区
-  全文路径真实验证。达成。
-- **FR-005 空内容与不支持目标**：T-035 第 1、2 项真实验证，均提供可理解
-  下一步。达成。
-- **FR-006 确定性验证结果**：`DeterministicTransformer` 逐字符保真，
-  T-011/T-012 测试 + T-037 六类文字真实验证。达成。
-- **FR-007 安全悬浮预览**：T-008/T-009/T-025/T-026 测试 + T-010 探针 +
-  T-036 第三节多显示器验证。达成。
-- **FR-008 显式预览操作**：T-027 按钮矩阵测试 + T-032/T-033 真实确认、
-  复制、取消。达成。
-- **FR-009 目标重新验证**：写入前七步权威验证（T-021/T-022）；
-  T-033 与 T-035 第 3 项真实验证过期目标拦截且零写入。达成。
-- **FR-010 替换与后备**：T-032/T-033 成功替换；Chromium 选区写入不生效时
-  fail-closed 并保留复制结果（T-033）；VS Code 剪贴板后备（T-034）。达成。
-- **FR-011 单一活动会话**：T-013/T-014 测试 + T-035 第 4 项重复触发真实
-  验证（面板刷新、无叠加）。达成。
-- **FR-012 原文可恢复**：T-032/T-033 恢复成功；T-035 第 11 项真实验证
-  恢复失败时保留原文并只提供复制原文；Undo 观察见 T-032/T-033。达成。
-- **FR-013 临时内容生命周期**：T-038 第三、六节审计（不可 `Codable`、
-  会话结束释放引用与 AX 句柄）。达成。
+- **FR-001 全局触发**：T-005／T-006 测试 + T-007 真实探针；注册冲突或失败
+  呈现 `hotKeyConflict` 并提供 `retryRegistration`（`4b25cd1`、`e724ba3`，
+  由 `HotKeyRegistrationFailurePresentationTests` 与
+  `FailureRecoveryGuidanceTests` 断言）。达成。
+- **FR-002 权限门禁**：T-015／T-016 测试 + T-035 第 6–8 项；深链回退现在
+  始终给出手动导航路径（`e724ba3`）。达成。
+- **FR-003 拒绝安全输入**：门禁位于任何捕获之前，且拒绝时结束旧会话
+  （`e22c7b8`）；T-007 探针 + T-035 第 9 项 + T-038 第四节。达成。
+- **FR-004 选区优先读取**：T-019／T-020 测试；T-032／T-041 选区路径、
+  T-033／T-042 无选区全文路径。达成。
+- **FR-005 空内容与不支持目标**：T-035 第 1、2 项。达成。
+- **FR-006 确定性验证结果**：T-011／T-012 测试 + T-037 六类文字 +
+  T-044 代理对与组合字符逐 code unit 精确。达成。
+- **FR-007 安全悬浮预览**：T-008／T-009／T-025／T-026 测试 + T-010 探针 +
+  T-036 多显示器；预览现在披露原文与结果（`abe4389`，
+  `PreviewContentDisclosureTests`）。达成。
+- **FR-008 显式预览操作**：T-027 按钮矩阵（十种状态）+ T-043 两条恢复路径的
+  按钮矩阵实测。达成。
+- **FR-009 目标重新验证**：共享前置检查 A1–A4 与路径化 settable 检查
+  （T-021／T-022）；元素级 `AXObserver` 已进入生产装配（`abe4389`，
+  `ProductionTargetMonitorAssemblyTests`）；T-033／T-035 第 3 项过期拦截。
+  达成。
+- **FR-010 替换与后备**：T-032／T-041 选区替换、T-033／T-042 全文替换；
+  Chromium 选区写入不生效时 fail-closed；VS Code 剪贴板后备（T-034）。达成。
+- **FR-011 单一活动会话**：T-013／T-014 测试 + T-035 第 4 项重复触发。达成。
+- **FR-012 原文可恢复**：批准算法的 W1–W4 与 C1–C4／R1–R3；T-041 命中 R2
+  fallback、T-042 whole-field 恢复指纹一致、T-043 恢复失败零额外写入、
+  T-044 特殊字符逐 code unit 还原。达成。
+- **FR-013 临时内容生命周期**：T-038 第三、六节 + T-045 审计项二、四；
+  竞态路径新增 `releaseStaleCapture`／`clearActiveTargetState`（`e22c7b8`，
+  `SessionLifecycleRaceTests`）。达成。
 
 ## 五、非功能需求逐项核对
 
-- **NFR-001 响应速度**：TextEdit 与 ChatGPT 各 10 次，20/20 样本在 300ms
-  内（最大 118.4ms），要求为每组至少 9/10。达成。
+- **NFR-001 响应速度**：TextEdit 与 ChatGPT 各 10 次，20/20 样本在 300ms 内
+  （最大 118.4ms），要求为每组至少 9/10。达成。
 - **NFR-002 确认前零修改**：全部自动化路径断言确认前 setter 为 0；
-  T-032/T-033 真实验证预览前零写入；所有拒绝路径零写入。达成。
-- **NFR-003 最低兼容标准**：TextEdit 与 ChatGPT 完成完整闭环；VS Code
-  完成显式剪贴板后备闭环并单独记录直接读写不受支持。达成。
-- **NFR-004 输入健壮性**：T-037 记录中文、英文、混合、多行、特殊字符
-  （含 emoji 与组合字符）、精确 10,000 字符长文本，无崩溃、无静默截断、
-  无无关修改；长度已随结果记录，不作无限长度保证。达成。
-- **NFR-005 显示安全**：T-010 探针覆盖单屏／多屏／全屏／边缘／非默认缩放；
-  T-036 第三节记录双显示器布局与缩放。达成。
-- **NFR-006 隐私**：T-038 第一、二、五节审计——无持久化真实内容、无内容
-  日志／截图／测试产物／遥测，剪贴板仅三个用户显式入口且 `currentHostOnly`。
-  达成。
-- **NFR-007 恢复信息可理解**：八种预览状态全部为中文可理解说明且至少一个
-  安全下一步，界面不显示原始错误码（T-027 测试 + T-035 真实文案记录）。
-  达成。
+  T-032／T-033 预览前零写入；T-043 恢复失败零额外写入。达成。
+- **NFR-003 最低兼容标准**：TextEdit 与 ChatGPT 完整闭环（含多行，见
+  T-037 后续文件），VS Code 显式剪贴板后备闭环。达成。
+- **NFR-004 输入健壮性**：T-037 六类文字含精确 10,000 字符长文本；
+  T-044 代理对与组合字符。达成。
+- **NFR-005 显示安全**：T-010 探针 + T-036 第三节。达成。
+- **NFR-006 隐私**：T-038 第一、二、五节 + T-045；剪贴板三个用户显式入口且
+  `currentHostOnly`，T-043 实测指纹前后一致。达成。
+- **NFR-007 恢复信息可理解**：十种预览状态均为中文可理解说明且至少一个安全
+  下一步；恢复失败按原因细化文案（T-043）；剪贴板读取失败与空内容区分、
+  复制失败显式呈现（`e724ba3`）。达成。
 
 ## 六、验收场景逐项核对
 
-- **AC-001**：T-032/T-033 触发成功 + T-036 延迟样本。达成。
-- **AC-002**：T-007 注册层 `.conflict` + `hotKeyConflict` 状态呈现
-  （`4b25cd1`，由测试断言 `start()` 在冲突与失败时呈现该状态）。达成。
-- **AC-003**：T-035 第 6、7、8 项。达成。
+- **AC-001**：T-032／T-033 + T-036 延迟样本。达成。
+- **AC-002**：T-007 注册层 `.conflict` + `hotKeyConflict` 状态与
+  `retryRegistration` 动作。达成。
+- **AC-003**：T-035 第 6–8 项 + 深链回退手动导航指引。达成。
 - **AC-004**：T-007 探针 + T-035 第 9 项 + T-038 第四节。达成。
-- **AC-005**：T-032 选区替换与前后字节不变。达成。
-- **AC-006**：T-033 ChatGPT 全文替换。达成。
+- **AC-005**：T-032 + T-041（范围外逐 code unit 不变）。达成。
+- **AC-006**：T-033 + T-042（whole-field W1–W4）。达成。
 - **AC-007**：T-035 第 1、2 项。达成。
-- **AC-008**：T-017 spy 计数 + T-032/T-033 取消零副作用。达成。
-- **AC-009**：T-033 与 T-035 第 3 项过期目标拦截。达成。
+- **AC-008**：T-017 spy 计数 + T-043 剪贴板指纹实测。达成。
+- **AC-009**：T-033、T-035 第 3 项 + 生产元素级监控。达成。
 - **AC-010**：T-034 VS Code 后备闭环。达成。
-- **AC-011**：T-035 第 4 项重复触发 + T-030 旧会话回调被忽略。达成。
-- **AC-012**：T-032/T-033 恢复原文。达成。
-- **AC-013**：T-035 第 11 项恢复失败保留原文。达成。
-- **AC-014**：T-038 第三、六节。达成。
+- **AC-011**：T-035 第 4 项 + T-030 旧会话回调被忽略。达成。
+- **AC-012**：T-032／T-041／T-042 恢复成功。达成。
+- **AC-013**：T-035 第 11 项 + T-043 失败路径（2 按钮、零额外写入）。达成。
+- **AC-014**：T-038 第三、六节 + T-045。达成。
 - **AC-015**：T-010 + T-036 第三节。达成。
-- **AC-016**：T-037 全部文字形态。达成。
-- **AC-017**：T-032（TextEdit ⌘Z 还原）与 T-033（ChatGPT ⌘Z 还原）记录
-  目标应用 Undo 行为。达成。
+- **AC-016**：T-037 + T-044。达成。
+- **AC-017**：T-032（TextEdit 人工 ⌘Z）、T-033（ChatGPT ⌘Z）、
+  T-041（脚本场景下 AX 写入不进 TextEdit undo 栈）、
+  T-042（Chrome 会把 AX 写入放进 undo 栈）。已记录，含跨应用差异。
 
-## 七、已知限制（提交审核时如实披露）
+## 七、已知限制与残余风险（提交审核时如实披露）
 
 1. **Chromium 网页内容不支持选区直接写入**：ChatGPT 输入框存在非空选区时
-   写入返回成功但不生效，回读确认失败后 fail-closed；同一场景还可能因
-   Chromium 的选区变化通知先被判为过期目标。两条路径都不写入、原文不变、
-   结果可复制。不属于任何必须验收场景（AC-005 的必须环境为 TextEdit）。
-   详见 T-033。
-2. **Chromium 异步应用辅助功能写入**：需最多 5 次、约 500ms 回读重试才能
-   避免把成功替换误判为失败。10,000 字符规模下仍足够（T-037）。
-3. **VS Code 不支持直接读写**：Electron 自绘编辑器不暴露可用的 AX 文本
-   属性，只能走用户主动剪贴板后备路径。spec 已预期。
-4. **辅助功能设置深链不生效**：点击"打开设置"后系统设置停在"通用"页，
-   需用户自行导航到隐私与安全性 → 辅助功能。属 spec 已预期的降级分支，
-   但体验不佳。详见 T-035 第 7 项。
-5. **面板按钮未向辅助功能暴露标题**：AX 树中按钮标题为 `missing value`，
-   读屏用户听不到按钮名称。spec 未定义无障碍要求，超出 001 范围，
-   建议在后续 Feature 处置。
-6. **脚本化验证的环境干扰**：AppleScript/System Events 驱动会启用系统
-   增强辅助功能模式，与实现中的 `AXEnhancedUserInterface` 叠加后使目标
-   立即被判过期，因此所有需要 `ready` 状态的场景一律采用真人操作。
-   详见 T-035 采集方式说明。
-7. **微信输入框不支持直接读取**（范围外）：自绘 UI 不暴露 AX 文本属性，
-   读取阶段 fail-closed。微信不属于必须支持应用。详见
-   `evidence/out-of-scope-observations.md`。
+   写入返回成功但不生效，回读确认失败后 fail-closed；同一场景还可能因选区
+   变化通知先被判为过期目标。两条路径都不写入、原文不变、结果可复制。
+   AC-005 的必须环境为 TextEdit，不影响验收。详见 T-033。
+2. **Chromium 异步应用辅助功能写入**：`setText` 返回后立即回读仍是旧值，
+   必须依赖最多 5 次、约 500ms 的回读重试；多行尤其贴近该预算边缘。
+   详见 T-042 与 T-037 后续文件。
+3. **ChatGPT 多行曾出现未定位的间歇失败**：2026-07-29 多次人工失败、
+   2026-07-30 五次自动全部成功，代码状态相同。六个假设已被实测排除
+   （换行形式、元素来源、引用陈旧、增强模式时序、面板在屏、确认前停留时长）；
+   失败侧唯一硬数据表明失败发生在 `validate` 的 A1–A4 之一，而非写入本身。
+   作为特定应用限制记录，建议在后续 Feature 继续观察。详见 T-037 后续文件。
+4. **R2 判定无法区分插入点来源**：`kAXSelectedTextRange` 只反映当前状态，
+   "应用写入后自动塌陷"与"用户随后把光标移入结果范围"在 AX 层完全相同，
+   两者都会进入受约束 fallback。安全性由六项前置条件的内容与范围外一致性
+   校验保证，而非插入点来源。已在 Plan `0c9883f` 中明确批准并披露。
+5. **whole-field setter 的 TOCTOU 残余风险**：AX 无 compare-and-swap 语义。
+   紧邻基值校验、范围内外一致性检查、外部监控与写后回读只能降低基值读取与
+   setter 之间被并发改写的概率，不能原子消除；回读用于检测不符并报告
+   `recoveryTargetChanged`，不能撤销已发生的覆盖。已在 Plan 中如实记录。
+6. **VS Code 不支持直接读写**：Electron 自绘编辑器不暴露可用 AX 文本属性，
+   只能走用户主动剪贴板后备路径。spec 已预期。详见 T-034。
+7. **面板按钮的无障碍验收未完成**：已为按钮与内容区域加
+   `accessibilityLabel`，但 VoiceOver 操作与焦点顺序的完整验收超出 001 范围，
+   已建立追踪项 https://github.com/yjsyzmz/prompt/issues/3。
+8. **脚本化验证的环境干扰**：AppleScript／System Events 驱动会启用系统增强
+   辅助功能模式；T-035 中需要 `ready` 状态的场景因此采用真人操作。P6 的驱动
+   改用真实粘贴事件后未再出现该干扰。
+9. **微信输入框不支持直接读取**（范围外）：自绘 UI 不暴露 AX 文本属性，
+   读取阶段 fail-closed。详见 `evidence/out-of-scope-observations.md`。
+10. **验证环境注意事项**：每次重建二进制后 macOS 会使辅助功能授权失效——
+    开关仍显示开启但 TCC 记录不匹配。需将开关关闭再打开（可通过辅助功能 API
+    自动完成）。不知此点会把授权失效误判为读写缺陷。
 
 ## 八、范围决策记录
 
 用户于 2026-07-28 选择方案 A：Chrome 页面内选区替换与"所有输入框无差别
 可用"两项硬需求超出 Feature 001 已批准范围，作为新 Feature 走独立
-Spec Gate；Feature 001 按现有规格收尾。决策与技术评估见
+Spec Gate；Feature 001 按现有规格收尾。详见
 `evidence/out-of-scope-observations.md`。
 
-## 九、本轮实现变更说明
+## 九、Gate 历史与生产变更清单
 
-**勘误（2026-07-28）：** 本节初版只列出 `8b75e6f` 与 `4b25cd1`，漏报了
-T-031 之后的 `d95228e` 与 `c3c1fa2`。Solar 在 Implementation Gate 审核中
-指出该披露不完整。以下为 T-031（合成闭环 GREEN）之后全部生产代码变更的
-完整清单，按提交顺序排列：
+**Gate 历史**
 
-1. `d95228e` — **T-032 真实环境阻塞修复（11 个文件，+490 行）。** 内容：
-   工作区监控忽略本应用自身激活（预览点击不再误判 staleTarget）；
-   nonactivating 面板可成为 key window 并接受 first mouse（按钮可点击）；
-   系统级焦点查询失败时启用 Chromium/Electron 手动辅助功能后备
-   （`AXManualAccessibility`／`AXEnhancedUserInterface`）；补充具体的恢复
-   与权限重新检测文案；所有直接写入与恢复增加回读确认。
-   **其中包含一项未经 Plan Gate 批准的设计变更**：
-   `restoreCollapsedSelection` 在 selected 模式恢复时改用 whole-field
-   setter，以应对 TextEdit 写入后选区塌陷。用户于 2026-07-28 批准**重开
-   Plan Gate 并保留该设计方向**，相应修订已提交 Reviewer 审核；在 Plan Gate
-   取得 `PASS` 前，该设计尚未获得批准（见 `plan.md` 的
-   "selected-range recovery fallback"与 Plan Gate record 修订记录）。
-2. `c3c1fa2` — **回读重试（`AccessibilityGateway.swift` +22 行、
-   `AXAuthoritativeWriteRecoveryTests.swift` +29 行）。** Chromium 渲染进程
-   异步应用辅助功能写入，单次立即回读会把成功的替换误判为失败；改为最多
-   5 次、约 500ms 重试后才 fail-closed。
-3. `8b75e6f` — 新增延迟仪器（`PresentationLatencyRecording` +
-   `OSLogPresentationLatencyRecorder`）。T-036 要求从 hot-key callback
-   起算的 300ms 证据，而原实现没有任何生产测量点。仪器只输出毫秒数，
-   不含内容，未引入按键监听。
-4. `4b25cd1` — 新增 `PreviewStatus.hotKeyConflict` 并在 `start()` 注册
-   失败时呈现。修复 FR-001／AC-002 的实现缺口：原先 `AppEntry` 丢弃
-   `start()` 返回值且状态矩阵无冲突状态，快捷键被占用时应用静默无响应。
+- Implementation Gate 首次审核 `ebb6978` → `CHANGES REQUESTED`（6 项 MUST）
+- Plan Gate 重开三版修订：`1333438` → `dd939a4` → `0c9883f`（Solar `PASS`）
+- Tasks Gate 重开两版修订：`ae99e29` → `a8d0327`（Solar `PASS`）
+- 本次为重开后的首个 Implementation Gate `HANDOFF`
+
+**T-031 之后的全部生产代码变更**
+
+1. `d95228e` — T-032 真实环境阻塞修复（工作区监控忽略自身激活、面板可接受
+   点击、Chromium 手动辅助功能后备、恢复与权限文案、写入回读确认）。其中
+   `restoreCollapsedSelection` 属未经批准的设计变更，已由重开的 Plan Gate
+   正式处置（见下条与第七节第 4、5 项）。
+2. `c3c1fa2` — 回读重试（最多 5 次、约 500ms）。
+3. `8b75e6f` — 延迟仪器（只输出毫秒，不含内容，未引入按键监听）。
+4. `4b25cd1` — `PreviewStatus.hotKeyConflict` 与注册失败呈现。
+5. `b20446d` — **批准后的恢复算法**：A1–A4 共享前置检查、路径化 settable
+   检查、replacement B1–B2、recovery 按 capture mode 分支、whole-field
+   W1–W4、selected C1–C4 与 R1／R2／R3、含六项门禁的
+   `restoreViaSelectedRangeFallback`；删除 `restoreCollapsedSelection` 与
+   `recoveryTextFromFullValue`。
+6. `abe4389` — Finding 1 预览披露原文与结果；Finding 2 元素级 `AXObserver`
+   进入生产装配，删除仅监听应用激活的 `WorkspaceTargetChangeMonitor`。
+7. `e22c7b8` — Finding 4 过期捕获释放 handle 与监控、安全输入拒绝时结束旧
+   会话；新增资源计数查询。
+8. `e724ba3` — Finding 6 复制失败呈现、剪贴板读取失败与空内容区分、设置深链
+   手动导航指引、快捷键冲突重新注册。
+9. `1ce9d01` — Finding 7 按钮与内容区域的 `accessibilityLabel`。
+
+Finding 5 未产生代码变更，其结论为证据补齐 + 特定应用限制记录。
+
+## 十、检查点
+
+- **C0–C2**：维持达成（T-004、T-007／T-010、T-014）。
+- **C3 — 系统边界可控**：达成。T-021／T-022 按批准算法重写并转绿；T-040
+  自动化复核确认 T-027 与各适配器套件全部通过；权威写入验证未被监控事件取代。
+- **C4 — 合成闭环通过**：达成。T-030／T-031 套件在 T-040 的两次运行中通过，
+  全部生产装配仍由失败测试驱动。
+- **C5 — 真实验收完整**：达成。TextEdit 与 ChatGPT 完整闭环（含多行）、
+  VS Code 后备闭环、性能／显示／输入／隐私证据，以及 P6 的 T-040 至 T-045
+  全部完成且可复现。
 
 ## 结论
 
-**本包结论已于 2026-07-28 被 Reviewer 推翻，正在修订中。**
+全部 13 条功能需求、7 条非功能需求、17 个验收场景均已逐项核对并有可复现证据
+支撑。172 个自动化测试连续两次全绿，build、project-structure、sdd-check、
+secret-scan、`git diff --check` 五道门禁无未解释失败。C3、C4、C5 达成。
 
-Solar 对 `ebb697826cb5e67546ea01aabda1181cd9e15471` 的 Implementation Gate
-审核结论为 `CHANGES REQUESTED`，提出 6 项 MUST，本包原先"全部达成"的判定
-不可采信。已确认成立的需求覆盖缺口：
+第七节的 10 项已知限制与残余风险、第八节的范围决策一并提交 Reviewer 裁决。
+其中第 3 项（ChatGPT 多行的间歇失败）与第 4、5 项（R2 来源不可区分、
+whole-field setter 的 TOCTOU）是需要 Reviewer 重点确认的披露事项。
 
-1. 有效预览未展示原文与确定性结果（FR-006／FR-007／FR-008、US-002）；
-2. `AXTargetMonitor` 未进入生产装配，同应用内窗口／元素／选区变化不会提前
-   禁用确认（FR-009／AC-009）；
-3. P5 生产变更披露不完整，且含未经批准的恢复写入策略变化（已见第九节勘误；
-   Plan Gate 已重开并进入第二版修订，尚未取得 `PASS`）；
-4. 过期异步捕获可能遗留 AX handle 与内容引用；安全输入重复触发不结束旧会话
-   （FR-013／AC-014）；
-5. ChatGPT 代表性多行验证缺失（NFR-004、Plan 第 327 行）；
-6. 剪贴板读写失败静默、设置深链回退缺手动导航说明、快捷键冲突状态缺重新
-   注册指引（NFR-007／FR-002／AC-002／AC-003）。
-
-修订顺序：先完成 Plan Gate 修订与审核（selected-range recovery fallback），
-取得 `PASS` 后再完成重开的 Tasks Gate（重写 T-021／T-022 使其与批准后的恢复
-算法一致），随后逐项修复上述 Implementation 缺口、补齐测试与证据，最后针对
-新 SHA 重新发布 Implementation Gate `HANDOFF`。第七节的已知限制清单也将随之更新——其中
-第 4 项（设置深链）已被 Reviewer 判定为 FR-002／AC-003 的实现缺口，不能
-仅作为限制接受；第 5 项（按钮 AX 名称）需建立可追踪需求而非仅留 Open
-question。
+可以发布重开后的 Implementation Gate `HANDOFF`。

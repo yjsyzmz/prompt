@@ -153,16 +153,16 @@ P5 的人工复核范围由 Solar 在 Tasks Gate REVIEW 中裁决为"按影响�
 - [x] **T-043 [Verification] 复核恢复相关状态与访问计数。** 复核恢复成功后的面板状态、恢复失败后保留原文并提供复制原文的路径，以及两条路径的 setter 与剪贴板访问计数。完成条件：成功与失败两条路径的面板文案、按钮矩阵、AX setter 次数与剪贴板读写次数均逐项记录，失败路径确认零额外写入。— Depends on: T-040; Covers: FR-008, FR-012, NFR-002, NFR-006, NFR-007, AC-008, AC-012, AC-013; Evidence: `evidence/T-043-recovery-state-and-counts-revalidation.md`（2026-07-30：成功路径各阶段恰好一次写入；失败路径 2 按钮、零额外写入、按原因细化文案；剪贴板指纹前后一致）
 - [x] **T-044 [Verification] 复核 UTF-16 范围相关的特殊字符夹具。** 只重跑与新 UTF-16 范围算法直接相关的 TextEdit selected recovery 夹具，至少包含 Emoji、Unicode 组合字符与代理对；不重跑完整文字矩阵。完成条件：每类夹具记录具体码点构成、替换与恢复后逐 UTF-16 code unit 一致、范围外内容完全不变。— Depends on: T-040; Covers: FR-006, FR-012, NFR-004, AC-016; Evidence: `evidence/T-044-utf16-recovery-fixtures-revalidation.md`（2026-07-30：代理对与组合字符夹具，replacedSpanExact=true，恢复后指纹与原文完全相同，第二次命中 R2「含两端」边界）
 - [x] **T-045 [Audit] 定向隐私与安全审计。** 只针对本轮恢复实现变更执行定向审计，确认未新增内容日志、持久化、敏感附件或遥测，且恢复路径的基值与原文引用在会话结束时释放；不重跑与恢复无关的审计步骤。完成条件：逐项列出被审计的新增／修改代码位置与结论。— Depends on: T-040; Covers: FR-013, NFR-006, AC-014; Evidence: `evidence/T-045-recovery-privacy-audit.md`（2026-07-30：五项审计通过，本轮变更零新增日志/持久化/遥测，AXMonitoringTarget 不携带文本，引用在正常与竞态两路径均释放）
-- [ ] **T-046 [Evidence] 更新验收包并重新发布 Implementation Gate HANDOFF。** 更新 `evidence/T-039-acceptance-package.md` 的汇总、需求映射与已知风险（含 R2 不可区分与 whole-field setter 的 TOCTOU 残余风险披露），纳入 T-040 至 T-045 结果与原 Implementation REVIEW Finding 1、2、4、5、6 的修复证据；运行完整 build、unit-tests、`sdd-check`、`secret-scan`、`git diff --check`，确认无未解释失败后才可针对新 SHA 发布 Implementation Gate `HANDOFF`。— Depends on: T-040, T-041, T-042, T-043, T-044, T-045; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
+- [x] **T-046 [Evidence] 更新验收包并重新发布 Implementation Gate HANDOFF。** ✅ **2026-07-30 完成**：验收包已重写（172 tests 与五道门禁全绿，13 FR／7 NFR／17 AC 逐项核对达成，10 项已知限制与残余风险如实披露），C3／C4／C5 达成。 更新 `evidence/T-039-acceptance-package.md` 的汇总、需求映射与已知风险（含 R2 不可区分与 whole-field setter 的 TOCTOU 残余风险披露），纳入 T-040 至 T-045 结果与原 Implementation REVIEW Finding 1、2、4、5、6 的修复证据；运行完整 build、unit-tests、`sdd-check`、`secret-scan`、`git diff --check`，确认无未解释失败后才可针对新 SHA 发布 Implementation Gate `HANDOFF`。— Depends on: T-040, T-041, T-042, T-043, T-044, T-045; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
 
 ## 检查点
 
 - **C0 — 工具链可执行：** T-004 通过；完整 Xcode、目标配置、CI 与基础测试发现均可复现。
 - **C1 — 高风险假设成立：** T-007 与 T-010 已通过；快捷键/安全输入和非激活面板没有触发 Plan 的硬停止条件。
 - **C2 — 领域安全不变量成立：** T-014 通过；确认前零 setter、单会话、会话清理及 `recoverable → previewing(recoveryUnavailable)` 已由失败优先测试证明。
-- **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。**2026-07-28 起本检查点回退为未达成**，需在重写后的 T-021／T-022 转绿并由 T-040 自动化下游复核确认后重新判定。
-- **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。**2026-07-28 起本检查点回退为未达成**：T-021／T-022 已按 Plan `0c9883f` 重写，T-027 与 T-030／T-031 的既有结果不代表覆盖已达成，须待 T-040 自动化下游复核重新转绿后判定。
-- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ **已回退为未达成**：Implementation Gate 审核结论为 CHANGES REQUESTED，且 T-021／T-022 已重写；须待 T-040 至 T-046 全部完成后重新判定。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。
+- **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-021／T-022 按批准算法转绿，T-040 自动化复核确认权限、剪贴板、AX、observer、几何与预览各套件全部通过。
+- **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 的两次运行中 T-027 与 T-030／T-031 套件全部通过。
+- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ ~~已回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 至 T-046 全部完成，含 P6 的真实环境复核与定向审计，详见 `evidence/T-039-acceptance-package.md` 第十节。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。
 
 ## Plan Gate NIT 处置约束
 
