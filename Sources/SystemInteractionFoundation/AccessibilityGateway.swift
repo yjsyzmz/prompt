@@ -779,7 +779,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         guard
             let target = targetReferences[targetHandle],
             let expectedWindow = target.window,
-            let currentElement = currentFocusedElement(),
+            let currentElement = focusedElement(inApplicationWithPID: target.pid),
             case .success(let value) = copyAttribute(
                 kAXWindowAttribute,
                 from: currentElement
@@ -796,12 +796,12 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return authoritativeTarget.elementIdentityMatches(targetHandle: targetHandle)
         }
         guard
-            let expectedElement = targetReferences[targetHandle]?.element,
-            let currentElement = currentFocusedElement()
+            let target = targetReferences[targetHandle],
+            let currentElement = focusedElement(inApplicationWithPID: target.pid)
         else {
             return false
         }
-        return CFEqual(expectedElement, currentElement)
+        return CFEqual(target.element, currentElement)
     }
 
     private func elementCapability(
@@ -990,11 +990,18 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         ) == .success
     }
 
-    private func currentFocusedElement() -> AXUIElement? {
+    /// Resolves the focused element **inside the target application**.
+    ///
+    /// The system-wide focused element follows keyboard focus across all
+    /// applications, so once the preview panel becomes key it reports this
+    /// tool's own control. Asking the target application directly keeps the A3
+    /// and A4 identity invariants evaluable while the panel legitimately holds
+    /// focus — the same reason Plan `0c9883f` exempts the panel in A2.
+    private func focusedElement(inApplicationWithPID pid: Int32) -> AXUIElement? {
         guard
             case .success(let value) = copyAttribute(
                 kAXFocusedUIElementAttribute,
-                from: AXUIElementCreateSystemWide()
+                from: AXUIElementCreateApplication(pid)
             ),
             CFGetTypeID(value) == AXUIElementGetTypeID()
         else {
