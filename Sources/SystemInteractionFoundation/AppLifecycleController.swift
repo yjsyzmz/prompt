@@ -154,7 +154,10 @@ final class AppLifecycleController {
     }
 
     convenience init() {
-        let gateway = AccessibilityGateway(captureReader: SystemAXCaptureReader())
+        let gateway = AccessibilityGateway(
+            captureReader: SystemAXCaptureReader(),
+            diagnostics: AppLifecycleController.makeReplacementDiagnostics()
+        )
         let panelPresenter = PreviewPanelController()
         // The scheduler provider is wired to the controller below, once it
         // exists; until then it simply yields no element-level scheduler.
@@ -187,6 +190,12 @@ final class AppLifecycleController {
     /// FR-009: the production monitor combines the element-level `AXObserver`
     /// with `NSWorkspace` activation. The scheduler is resolved per session
     /// because the captured element only exists after a capture succeeds.
+    /// MUST 1: the production stage recorder. Kept as a factory so the assembly
+    /// test can assert that the real wiring attaches one.
+    static func makeReplacementDiagnostics() -> any ReplacementDiagnosticsRecording {
+        OSLogReplacementDiagnosticsRecorder()
+    }
+
     static func makeTargetChangeMonitor(
         eventReceiver: any AXMonitorEventReceiving,
         schedulerProvider: @escaping () -> (any AXObserverRunLoopScheduling)?,

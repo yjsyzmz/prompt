@@ -130,9 +130,23 @@ final class ProductionTargetMonitorAssemblyTests: XCTestCase {
             "monitoring must never authorise a write"
         )
     }
-}
+    /// MUST 1：分级诊断必须进入生产装配，否则真实环境跑多少次都拿不到阶段数据。
+    func testProductionAssemblyAttachesReplacementDiagnostics() async {
+        let host = SyntheticAXTextHost.selectionFixture()
+        let gateway = AccessibilityGateway(
+            captureReader: host,
+            authoritativeTarget: host,
+            diagnostics: AppLifecycleController.makeReplacementDiagnostics()
+        )
 
-// MARK: - Spies
+        let isAttached = await gateway.diagnosticsIsAttached()
+
+        XCTAssertTrue(
+            isAttached,
+            "the production factory must supply a stage recorder"
+        )
+    }
+}
 
 private final class AssemblySchedulerSpy: AXObserverRunLoopScheduling {
     private(set) var installCount = 0

@@ -138,6 +138,12 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         self.diagnostics = diagnostics
     }
 
+    /// MUST 1: lets the assembly tests confirm that the production wiring really
+    /// supplies a stage recorder.
+    func diagnosticsIsAttached() -> Bool {
+        diagnostics != nil
+    }
+
     func capture(
         sessionID: InteractionSessionID
     ) -> Result<AXCapturedTarget, DomainFailure> {
