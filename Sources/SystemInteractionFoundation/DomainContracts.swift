@@ -49,6 +49,60 @@ enum DomainFailure: Error, Equatable {
     case unknown
 }
 
+/// MUST 1: the authoritative replacement sequence has many rejection points that
+/// collapse onto the same `DomainFailure` — A1–A4 all return `.invalidTarget`,
+/// and both the setter and its readback return `.writeFailed`. Without a stage
+/// identifier an intermittent real-world failure cannot be localised.
+enum ReplacementStage: String, Equatable, Sendable {
+    /// Clipboard mode has no authoritative target to write to.
+    case unsupportedMode
+    case applicationRunning     // A1
+    case frontmostApplication   // A2
+    case windowIdentity         // A3
+    case elementIdentity        // A4
+    case elementCapability
+    case globalSecureInput
+    /// Reading the current content failed, which is not the same as the content
+    /// having changed.
+    case contentRead
+    case contentComparison      // B1
+    case attributeSettable
+    case setter
+    case readback
+    case completed
+}
+
+/// FR-013／NFR-006: a stage report carries only the stage, the failure category
+/// and UTF-16 code-unit counts. It has no `String` member by construction, so no
+/// captured or written text can reach a log through it.
+struct ReplacementStageReport: Equatable, Sendable {
+    let stage: ReplacementStage
+    let failure: DomainFailure?
+    /// UTF-16 length of the text the session expected to still be in place.
+    let expectedLength: Int
+    /// UTF-16 length actually observed, when the stage read anything at all.
+    let observedLength: Int?
+
+    init(
+        stage: ReplacementStage,
+        failure: DomainFailure? = nil,
+        expectedLength: Int,
+        observedLength: Int? = nil
+    ) {
+        self.stage = stage
+        self.failure = failure
+        self.expectedLength = expectedLength
+        self.observedLength = observedLength
+    }
+}
+
+/// Recording is synchronous on purpose: the replacement sequence must not gain a
+/// suspension point between the A1–A4 checks and the setter, because that would
+/// widen the TOCTOU window `plan.md` already discloses.
+protocol ReplacementDiagnosticsRecording: Sendable {
+    func record(_ report: ReplacementStageReport)
+}
+
 enum RecoveryAction: Equatable {
     case retryRegistration
     case openSettings

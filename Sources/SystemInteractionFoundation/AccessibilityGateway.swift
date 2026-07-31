@@ -120,6 +120,8 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     private let captureReader: any AXCaptureReading
     private let sourceTextFactory: any AXSourceTextCreating
     private let authoritativeTarget: (any AXAuthoritativeTargetAccessing)?
+    /// MUST 1: content-free stage classification for the replacement path.
+    private let diagnostics: (any ReplacementDiagnosticsRecording)?
     private var targetReferences: [TargetHandle: AXTargetReference] = [:]
     private var activeMonitorEnvelope: AXMonitorCallbackEnvelope?
     private var monitorInvalidationSink: (any AXMonitorInvalidationReceiving)?
@@ -127,11 +129,13 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     init(
         captureReader: any AXCaptureReading,
         sourceTextFactory: any AXSourceTextCreating = DefaultAXSourceTextFactory(),
-        authoritativeTarget: (any AXAuthoritativeTargetAccessing)? = nil
+        authoritativeTarget: (any AXAuthoritativeTargetAccessing)? = nil,
+        diagnostics: (any ReplacementDiagnosticsRecording)? = nil
     ) {
         self.captureReader = captureReader
         self.sourceTextFactory = sourceTextFactory
         self.authoritativeTarget = authoritativeTarget
+        self.diagnostics = diagnostics
     }
 
     func capture(
@@ -277,7 +281,15 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     func replaceAfterAuthoritativeValidation(
         _ snapshot: AXWriteSnapshot
     ) -> Result<AXRecoveryContext, DomainFailure> {
+        let expectedLength = snapshot.originalText.value.utf16.count
         guard snapshot.captureMode != .clipboardInput else {
+            diagnostics?.record(
+                ReplacementStageReport(
+                    stage: .unsupportedMode,
+                    failure: .unsupportedTarget,
+                    expectedLength: expectedLength
+                )
+            )
             return .failure(.unsupportedTarget)
         }
 
@@ -290,14 +302,25 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         case .success:
             break
         case .failure(let failure):
+            // `validate` already recorded the stage that rejected the write.
             return .failure(failure)
         }
+
+        let writtenLength = snapshot.transformedText.value.utf16.count
 
         guard setText(
             snapshot.transformedText.value,
             mode: snapshot.captureMode,
             targetHandle: snapshot.targetHandle
         ) else {
+            diagnostics?.record(
+                ReplacementStageReport(
+                    stage: .setter,
+                    failure: .writeFailed,
+                    expectedLength: expectedLength,
+                    observedLength: writtenLength
+                )
+            )
             return .failure(.writeFailed)
         }
 
@@ -306,9 +329,26 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             mode: snapshot.captureMode,
             targetHandle: snapshot.targetHandle
         ) else {
+            // The setter reported success but the value never landed. This is a
+            // different failure than a refused setter and must stay separable.
+            diagnostics?.record(
+                ReplacementStageReport(
+                    stage: .readback,
+                    failure: .writeFailed,
+                    expectedLength: expectedLength,
+                    observedLength: writtenLength
+                )
+            )
             return .failure(.writeFailed)
         }
 
+        diagnostics?.record(
+            ReplacementStageReport(
+                stage: .completed,
+                expectedLength: expectedLength,
+                observedLength: writtenLength
+            )
+        )
         return .success(
             AXRecoveryContext(
                 targetHandle: snapshot.targetHandle,
@@ -586,32 +626,49 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         mode: CaptureMode,
         expectedText: String,
     ) -> Result<Void, DomainFailure> {
+        let expectedLength = expectedText.utf16.count
+        func reject(
+            _ stage: ReplacementStage,
+            _ failure: DomainFailure,
+            observedLength: Int? = nil
+        ) -> Result<Void, DomainFailure> {
+            diagnostics?.record(
+                ReplacementStageReport(
+                    stage: stage,
+                    failure: failure,
+                    expectedLength: expectedLength,
+                    observedLength: observedLength
+                )
+            )
+            return .failure(failure)
+        }
+
         guard targetApplicationIsRunning(pid: pid) else {
-            return .failure(.invalidTarget)
+            return reject(.applicationRunning, .invalidTarget)
         }
         guard currentExternalPID() == pid else {
-            return .failure(.invalidTarget)
+            return reject(.frontmostApplication, .invalidTarget)
         }
         guard windowMatches(targetHandle: targetHandle) else {
-            return .failure(.invalidTarget)
+            return reject(.windowIdentity, .invalidTarget)
         }
         guard elementMatches(targetHandle: targetHandle) else {
-            return .failure(.invalidTarget)
+            return reject(.elementIdentity, .invalidTarget)
         }
 
         switch elementCapability(targetHandle: targetHandle) {
         case .editable:
             break
         case .secure:
-            return .failure(.secureInputActive)
+            return reject(.elementCapability, .secureInputActive)
         case .readOnly:
-            return .failure(.attributeNotSettable)
+            return reject(.elementCapability, .attributeNotSettable)
         case .unsupported:
-            return .failure(.unsupportedTarget)
+            return reject(.elementCapability, .unsupportedTarget)
         }
 
         guard !globalSecureInputIsActive() else {
-            return .failure(.secureInputActive)
+            return reject(.globalSecureInput, .secureInputActive)
         }
 
         switch currentText(
@@ -621,17 +678,21 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         ) {
         case .success(let currentText):
             guard currentText == expectedText else {
-                return .failure(.sourceChanged)
+                return reject(
+                    .contentComparison,
+                    .sourceChanged,
+                    observedLength: currentText.utf16.count
+                )
             }
         case .failure(let failure):
-            return .failure(failure)
+            return reject(.contentRead, failure)
         }
 
         guard replacementAttributeIsSettable(
             mode: mode,
             targetHandle: targetHandle
         ) else {
-            return .failure(.attributeNotSettable)
+            return reject(.attributeSettable, .attributeNotSettable)
         }
         return .success(())
     }

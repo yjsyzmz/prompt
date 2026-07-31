@@ -36,6 +36,9 @@ final class SyntheticAXTextHost: @unchecked Sendable {
     private var capturedWindowGeneration = -1
     private var capturedElementGeneration = -1
     private var remainingForcedSetterFailures = 0
+    private var remainingForcedContentReadFailures = 0
+    private var setterSilentlyDropsWrites = false
+    private var replacementAttributeBlocked = false
 
     private var contentReads = 0
     private var setterAttempts = 0
@@ -188,6 +191,33 @@ final class SyntheticAXTextHost: @unchecked Sendable {
         withLock { remainingForcedSetterFailures = count }
     }
 
+    /// MUST 1: the setter reports success but the value never lands, which is how
+    /// a silently dropped write reaches the readback stage.
+    func acceptSetterWithoutApplying() {
+        withLock { setterSilentlyDropsWrites = true }
+    }
+
+    /// MUST 1: makes the element read-only after capture so that the capability
+    /// stage can be reached on the replacement path.
+    func makeReadOnly() {
+        withLock { capability = .readOnly }
+    }
+
+    /// MUST 1: keeps the element editable but refuses the replacement attribute,
+    /// which is a different rejection than a read-only element.
+    func blockReplacementAttribute() {
+        withLock { replacementAttributeBlocked = true }
+    }
+
+    func activateGlobalSecureInput() {
+        withLock { secureInputActive = true }
+    }
+
+    /// MUST 1: an unreadable target must be distinguishable from a changed one.
+    func failNextContentReads(_ count: Int) {
+        withLock { remainingForcedContentReadFailures = count }
+    }
+
     func editSegmentExternally(_ newSegment: String) {
         withLock { segment = newSegment }
     }
@@ -248,6 +278,9 @@ extension SyntheticAXTextHost: AXCaptureReading {
             guard range.location == selectionLocation else {
                 return .failure(.sourceChanged)
             }
+            guard consumeForcedContentReadFailureIfNeeded() else {
+                return .failure(.axCannotComplete)
+            }
             contentReads += 1
             return .success(reportedSelectionLength == 0 ? "" : segment)
         }
@@ -255,6 +288,9 @@ extension SyntheticAXTextHost: AXCaptureReading {
 
     func fullValue() -> Result<String, DomainFailure> {
         withLock {
+            guard consumeForcedContentReadFailureIfNeeded() else {
+                return .failure(.axCannotComplete)
+            }
             contentReads += 1
             return .success(prefix + segment + suffix)
         }
@@ -293,7 +329,7 @@ extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
     }
 
     func isReplacementAttributeSettable(for mode: CaptureMode) -> Bool {
-        withLock { capability == .editable }
+        withLock { capability == .editable && !replacementAttributeBlocked }
     }
 
     func setSelectedText(_ value: String) -> Bool {
@@ -305,6 +341,9 @@ extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
             }
             guard capability == .editable else {
                 return false
+            }
+            guard !setterSilentlyDropsWrites else {
+                return true
             }
             segment = value
             reportedSelectionLength = value.utf16.count
@@ -322,11 +361,22 @@ extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
             guard capability == .editable else {
                 return false
             }
+            guard !setterSilentlyDropsWrites else {
+                return true
+            }
             prefix = ""
             suffix = ""
             segment = value
             return true
         }
+    }
+
+    private func consumeForcedContentReadFailureIfNeeded() -> Bool {
+        guard remainingForcedContentReadFailures > 0 else {
+            return true
+        }
+        remainingForcedContentReadFailures -= 1
+        return false
     }
 
     private func consumeForcedFailureIfNeeded() -> Bool {
