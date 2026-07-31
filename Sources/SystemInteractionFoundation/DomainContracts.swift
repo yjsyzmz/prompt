@@ -82,17 +82,23 @@ struct ReplacementStageReport: Equatable, Sendable {
     let expectedLength: Int
     /// UTF-16 length actually observed, when the stage read anything at all.
     let observedLength: Int?
+    /// Only set by the A2 stage. `true` means the focused application was this
+    /// process — which is what happens when the preview panel takes keyboard
+    /// focus from a real mouse click. Carries no identity beyond "is it us".
+    let focusedApplicationIsSelf: Bool?
 
     init(
         stage: ReplacementStage,
         failure: DomainFailure? = nil,
         expectedLength: Int,
-        observedLength: Int? = nil
+        observedLength: Int? = nil,
+        focusedApplicationIsSelf: Bool? = nil
     ) {
         self.stage = stage
         self.failure = failure
         self.expectedLength = expectedLength
         self.observedLength = observedLength
+        self.focusedApplicationIsSelf = focusedApplicationIsSelf
     }
 }
 

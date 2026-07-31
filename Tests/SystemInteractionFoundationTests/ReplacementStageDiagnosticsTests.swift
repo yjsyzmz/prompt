@@ -166,6 +166,55 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
         XCTAssertEqual(stage?.failure, .writeFailed)
     }
 
+    // MARK: - A2 的聚焦应用归属
+
+    /// 真人用鼠标点「确认替换」时面板会成为 key window，而 A2 读的是
+    /// `kAXFocusedApplicationAttribute`，跟的是键盘焦点。若聚焦应用因此变成本
+    /// 进程，A2 会把目标判为已变化。报告必须能区分"聚焦应用是本进程"与
+    /// "聚焦应用是另一个外部应用"，否则无法判定这一点。
+    func testFrontmostStageReportsWhenTheFocusedApplicationIsThisProcess() async {
+        let probe = await StageProbe.make()
+        probe.host.setFrontmostApplication(
+            pid: ProcessInfo.processInfo.processIdentifier
+        )
+
+        let stage = await probe.attemptReplacement()
+
+        XCTAssertEqual(stage?.stage, .frontmostApplication)
+        XCTAssertEqual(
+            stage?.focusedApplicationIsSelf,
+            true,
+            "the panel taking keyboard focus must be distinguishable"
+        )
+    }
+
+    func testFrontmostStageReportsWhenTheFocusedApplicationIsAnotherApp() async {
+        let probe = await StageProbe.make()
+        probe.host.moveFocusToDifferentApplication()
+
+        let stage = await probe.attemptReplacement()
+
+        XCTAssertEqual(stage?.stage, .frontmostApplication)
+        XCTAssertEqual(
+            stage?.focusedApplicationIsSelf,
+            false,
+            "a genuinely different application is not this process"
+        )
+    }
+
+    func testStagesOtherThanFrontmostDoNotClaimFocusOwnership() async {
+        let probe = await StageProbe.make()
+        probe.host.switchWindow()
+
+        let stage = await probe.attemptReplacement()
+
+        XCTAssertEqual(stage?.stage, .windowIdentity)
+        XCTAssertNil(
+            stage?.focusedApplicationIsSelf,
+            "only the A2 stage evaluates focus ownership"
+        )
+    }
+
     // MARK: - 成功路径与隐私边界
 
     func testSuccessfulReplacementReportsCompletionWithoutAFailure() async {

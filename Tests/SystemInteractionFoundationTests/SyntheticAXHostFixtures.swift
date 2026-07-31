@@ -237,6 +237,13 @@ final class SyntheticAXTextHost: @unchecked Sendable {
         withLock { frontmostPID = pid &+ 1 }
     }
 
+    /// Lets a test point the focused application at an arbitrary process, so the
+    /// A2 stage can be exercised with the focus landing on the test process
+    /// itself.
+    func setFrontmostApplication(pid newPID: Int32) {
+        withLock { frontmostPID = newPID }
+    }
+
     private func withLock<T>(_ body: () -> T) -> T {
         lock.lock()
         defer { lock.unlock() }

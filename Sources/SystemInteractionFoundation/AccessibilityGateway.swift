@@ -636,14 +636,16 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         func reject(
             _ stage: ReplacementStage,
             _ failure: DomainFailure,
-            observedLength: Int? = nil
+            observedLength: Int? = nil,
+            focusedApplicationIsSelf: Bool? = nil
         ) -> Result<Void, DomainFailure> {
             diagnostics?.record(
                 ReplacementStageReport(
                     stage: stage,
                     failure: failure,
                     expectedLength: expectedLength,
-                    observedLength: observedLength
+                    observedLength: observedLength,
+                    focusedApplicationIsSelf: focusedApplicationIsSelf
                 )
             )
             return .failure(failure)
@@ -652,8 +654,18 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         guard targetApplicationIsRunning(pid: pid) else {
             return reject(.applicationRunning, .invalidTarget)
         }
-        guard currentExternalPID() == pid else {
-            return reject(.frontmostApplication, .invalidTarget)
+        let focusedPID = currentExternalPID()
+        guard focusedPID == pid else {
+            // A2 reads kAXFocusedApplicationAttribute, which follows keyboard
+            // focus. Recording whether that focus landed on this process makes
+            // the panel-takes-focus case identifiable without exposing any
+            // other application's identity.
+            return reject(
+                .frontmostApplication,
+                .invalidTarget,
+                focusedApplicationIsSelf:
+                    focusedPID == ProcessInfo.processInfo.processIdentifier
+            )
         }
         guard windowMatches(targetHandle: targetHandle) else {
             return reject(.windowIdentity, .invalidTarget)

@@ -266,12 +266,14 @@ struct OSLogReplacementDiagnosticsRecorder: ReplacementDiagnosticsRecording {
     func record(_ report: ReplacementStageReport) {
         let failure = report.failure.map { "\($0)" } ?? "none"
         let observed = report.observedLength.map(String.init) ?? "na"
+        let focusIsSelf = report.focusedApplicationIsSelf.map(String.init) ?? "na"
         log.info(
             """
             replacement-stage=\(report.stage.rawValue, privacy: .public) \
             failure=\(failure, privacy: .public) \
             expected-utf16=\(report.expectedLength, privacy: .public) \
-            observed-utf16=\(observed, privacy: .public)
+            observed-utf16=\(observed, privacy: .public) \
+            focus-is-self=\(focusIsSelf, privacy: .public)
             """
         )
     }
