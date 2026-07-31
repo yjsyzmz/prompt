@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: tasks
-status: revised-pending-review  # Tasks Gate 第二次重开的第二版修订（2026-07-31）：P7 为 T-047 至 T-057，须取得 Tasks PASS 才能开工 T-052 至 T-057 或重回 Implementation Gate
+status: revised-pending-review  # Tasks Gate 第二次重开的第三版修订（2026-07-31）：P7 为 T-047 至 T-057，须取得 Tasks PASS 才能开工 T-052 至 T-057 或重回 Implementation Gate
 plan_version: "0c9883f8385c731b0cc084d22519224eada926ea"  # 重开后的 Plan Gate 第三版修订，Solar 已 PASS（2026-07-28）
 owner: "Fable (Comate), from T-028"
 reviewer: "Solar, from T-028"
@@ -42,22 +42,24 @@ reviewer: "Solar, from T-028"
 | FR-004 | AC-005, AC-006 | T-019, T-029, T-030 | T-020, T-031 | T-032, T-033 |
 | FR-005 | AC-007 | T-019, T-027, T-030 | T-020, T-028, T-031 | T-035 |
 | FR-006 | AC-005, AC-006, AC-016 | T-011, T-030 | T-012, T-031 | T-032, T-033, T-037 |
-| FR-007 | AC-005, AC-006, AC-015 | T-008, T-025, T-027 | T-009, T-026, T-028 | T-032, T-033, T-036 |
-| FR-008 | AC-005, AC-006, AC-008, AC-009 | T-013, T-017, T-027, T-030 | T-014, T-018, T-028, T-031 | T-032, T-033, T-035 |
+| FR-007 | AC-005, AC-006, AC-015 | T-008, T-025, T-027, T-053 | T-009, T-026, T-028, T-053 | T-032, T-033, T-036, T-055, T-057 |
+| FR-008 | AC-005, AC-006, AC-008, AC-009 | T-013, T-017, T-027, T-030, T-054 | T-014, T-018, T-028, T-031, T-053, T-054 | T-032, T-033, T-035, T-055, T-057 |
 | FR-009 | AC-009, AC-012, AC-013 | T-013, T-021, T-023, T-030 | T-014, T-022, T-024, T-031 | T-032, T-033, T-035 |
 | FR-010 | AC-005, AC-006, AC-010 | T-017, T-021, T-030 | T-018, T-022, T-031 | T-032, T-033, T-034 |
 | FR-011 | AC-011 | T-013, T-023, T-030 | T-014, T-024, T-031 | T-035 |
-| FR-012 | AC-012, AC-013, AC-017 | T-013, T-021, T-030 | T-014, T-022, T-031 | T-032, T-033, T-039 |
-| FR-013 | AC-014 | T-011, T-013, T-017, T-030 | T-012, T-014, T-018, T-031 | T-038 |
+| FR-012 | AC-012, AC-013, AC-017 | T-013, T-021, T-030 | T-014, T-022, T-031 | T-032, T-033, T-039, T-055, T-057 |
+| FR-013 | AC-014 | T-011, T-013, T-017, T-030, T-052 | T-012, T-014, T-018, T-031, T-052 | T-038, T-057 |
 | NFR-001 | AC-001 | T-005, T-030 | T-006, T-031 | T-036 |
-| NFR-002 | AC-003 至 AC-016 | T-013, T-021, T-030 | T-014, T-022, T-031 | T-032 至 T-038 |
+| NFR-002 | AC-003 至 AC-016 | T-013, T-021, T-030, T-053 | T-014, T-022, T-031, T-053 | T-032 至 T-038, T-055, T-057 |
 | NFR-003 | AC-005, AC-006, AC-010 | T-029, T-030 | T-031 | T-032, T-033, T-034 |
 | NFR-004 | AC-007, AC-016 | T-011, T-019, T-029, T-030 | T-012, T-020, T-031 | T-037 |
 | NFR-005 | AC-015 | T-008, T-025, T-030 | T-009, T-026, T-031 | T-036 |
-| NFR-006 | AC-003, AC-004, AC-008, AC-014 | T-011, T-017, T-030 | T-012, T-018, T-031 | T-038 |
-| NFR-007 | AC-002, AC-003, AC-004, AC-007, AC-009, AC-010, AC-013 | T-011, T-013, T-015, T-027, T-030 | T-012, T-014, T-016, T-028, T-031 | T-035 |
+| NFR-006 | AC-003, AC-004, AC-008, AC-014 | T-011, T-017, T-030, T-052 | T-012, T-018, T-031, T-052 | T-038, T-057 |
+| NFR-007 | AC-002, AC-003, AC-004, AC-007, AC-009, AC-010, AC-013 | T-011, T-013, T-015, T-027, T-030, T-054 | T-012, T-014, T-016, T-028, T-031, T-054 | T-035, T-055, T-057 |
 
 表中 FR-009／FR-010／FR-012／NFR-002 对应的 T-021／T-022 已于 2026-07-28 按 Plan `0c9883f` 重写，覆盖关系在重新转绿前不成立。受影响需求的最终覆盖还需 P6 段的 T-040 至 T-046 完成：自动化复核见 T-040，恢复相关的人工与审计复核见 T-041 至 T-045，汇总见 T-046。
+
+**P7 对追踪表的影响（2026-07-31，Tasks Gate 第二次重开第三版）**：T-050 与 T-046 的验收证据结论已被 `5070607` 的 Implementation REVIEW 推翻，表中凡以 T-039／T-046 为验收证据的行，其覆盖在 T-057 重建验收包之前均不成立。新增覆盖关系：FR-013／NFR-006 的隐私边界由 T-052 重新落实；FR-007／FR-008／NFR-002 的目标有效性判定由 T-053 重新落实；FR-008／NFR-007 的失败呈现由 T-054 重新落实；FR-007／FR-008／FR-012／NFR-002／NFR-007 与 AC-005／AC-006／AC-012／AC-013／AC-017 的真实环境证据由 T-055 以真人驱动重建；全部需求的最终出口唯一收敛到 T-057。凡由 AXPress 驱动的既有证据均不覆盖预览面板成为 key window 的真人路径，须在 T-057 中逐项标注。
 
 ## 任务
 
@@ -178,6 +180,15 @@ T-054；③ T-055 按裁定范围重写（TextEdit、Chrome/ChatGPT 加关键失
 全部 P5，不要求 VS Code）；④ 回退 C3、C4、C5 并新增 T-057。四项待决问题的裁决
 已逐条写入对应任务正文，不再留待实施期解释。
 
+**第三版修订（2026-07-31）。** Solar 对 `37b0ae4` 的 Tasks Gate REVIEW 再判
+`CHANGES REQUESTED`，三项 MUST，本版已全部落实：① T-053 补入「在 MainActor 上、
+按 session／target／当前动作即时授权，不得缓存为可复用布尔」的边界，T-054 补入
+逐项固化的失败映射分组（含 `.writeFailed` 的独占约束）；② T-055 恢复已裁定的
+完整范围——TextEdit 与 Chrome/ChatGPT 各连续五次、Undo 行为、范围保真、恢复后
+的外部变化，仍不含 VS Code、不重跑全部 P5；③ 更新需求追踪表（新增 P7 影响段落
+并把 T-052 至 T-057 落入对应行）、把 C5 改为五项可逐条核验的达成条件、为 T-057
+写出十一项完整的最终检查出口。
+
 本段任务因 Solar 对 `9bb221e` 的第二轮 Implementation Gate REVIEW（`CHANGES
 REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报告的 MUST 2／MUST 3
 完成情况不成立（所称 commit 不存在，工作区处于无法编译的半成品状态，干净基线
@@ -222,11 +233,11 @@ REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报
     质疑，予以保留。当次真机闭环仅一轮、且在长度字段与面板豁免收窄之前完成，
     不足以作为验收证据，由 T-055 重做。已在 `5070607` 推送。
 - [ ] **T-052 [Fix] 从分级诊断中完全删除用户文字长度字段（REVIEW Finding 2，MUST）。** `SystemInteractionAdapters.swift:266-277` 目前把 `expectedLength` 与 `observedLength` 以 `.public` 写入 `os_log`，`DomainContracts.swift:75-101` 的 `ReplacementStageReport` 亦以长度为字段。长度是用户文字的可观测元数据，违反 FR-013／NFR-006 的明文隐私边界；已批准 Plan 未授权以「风险披露」豁免该边界。**Tasks Gate 裁决（Solar，2026-07-31）：完全删除长度字段，不允许等级化表示。** 任务要求：先写失败测试断言 `ReplacementStageReport` 不含任何长度字段、且 `os_log` 输出不含任何数字化的内容度量，再删除 `expectedLength`、`observedLength` 与 `SyntheticAXTextHost` 侧相关断言；同步删除 T-047／T-049／T-051 证据文件与验收包中依赖长度的记述。**接受的代价**：B1 阶段将不再输出 expected 与 observed 的可比信息，内容不一致只能报「已变化」而无法给出量级，定位能力相应下降。— Depends on: Tasks PASS; Covers: FR-013, NFR-006; Evidence: 新增 `evidence/T-052-diagnostics-privacy-fix.md`
-- [ ] **T-053 [Fix] A2 豁免收窄为当前会话预览面板的对象身份（REVIEW Finding 3，MUST）。** 现行 `frontmostApplicationIsAcceptable(pid:)` 豁免整个本进程，而 `plan.md:197` 批准的是「除工具自身 non-activating panel 外」。**Tasks Gate 裁决（Solar，2026-07-31）：以当前会话 `NSPanel` 的 AppKit 对象身份判定面板，不得使用整个进程豁免。** 任务要求：先写失败测试覆盖两类场景——(a) 本进程但非当前会话面板的窗口持有焦点时必须拒绝；(b) 当前会话面板持有焦点时必须放行——再把判定改为对当前会话的 `NSPanel` 实例做对象同一性比较（`===`），不得退化为按进程、按窗口标题或按窗口层级判断。会话结束或面板重建后旧引用必须失效。— Depends on: Tasks PASS; Covers: FR-007, FR-008, NFR-002, AC-005; Evidence: 新增 `evidence/T-053-a2-panel-scoped-exemption.md`
-- [ ] **T-054 [Fix] 替换失败按实际原因分流，并为不可达取值提供测试证明（REVIEW Finding 4，MUST）。** 现行 `replacementRejectionStatus(for:)` 仅显式映射四类失败，其余落入 `default → .staleTarget`，把非目标失效的原因也说成「原输入位置已经变化」。**Tasks Gate 裁决（Solar，2026-07-31）：替换失败必须按实际原因分流；被判定不可达的 `DomainFailure` 取值需要测试证明其不可达；同时必须保留安全兜底分支。** 任务要求：先写失败测试逐一覆盖 `DomainFailure` 在替换路径上可达的每个取值并断言呈现可区分；对判定不可达的取值（如 `emptySource`、`pasteboardReadFailed`、`pasteboardWriteFailed`、`panelPlacementFallback`）编写测试证明其在替换路径上不会产生；`default` 兜底保留但必须映射到不声称发生过写入、且不误导目标状态的安全文案。— Depends on: Tasks PASS; Covers: FR-008, NFR-007, AC-008; Evidence: 新增 `evidence/T-054-failure-mapping-completeness.md`
-- [ ] **T-055 [Verify] 真人鼠标／触控板复核受影响闭环（REVIEW Finding 5，MUST）。** AXPress 驱动不会使预览面板成为 key window，因此既有脚本驱动的闭环证据不覆盖真人必经路径。**Tasks Gate 裁决（Solar，2026-07-31）的范围边界：限定为 TextEdit、Chrome/ChatGPT 两处闭环加关键失败场景；不重跑全部 P5；不要求 VS Code。** 任务要求：在 T-052／T-053／T-054 全部落地并重建二进制后，由真人以鼠标或触控板执行并逐次记录面板文案与分级诊断阶段——(a) TextEdit 的「确认替换 → 恢复原文」；(b) Chrome/ChatGPT 的「确认替换 → 恢复原文」，含多行文本；(c) 关键失败场景：确认前切换到另一应用（A2 必须拒绝）、确认前外部改动原文（B1 必须拒绝）、恢复被拒后复制原文失败并重试（T-048 的 `retryCopy` 路径）。每项须记录真实面板文案原文与对应 `replacement-stage` 记录；禁止以 AXPress 或 AppleScript 点击替代真人点击。— Depends on: T-052, T-053, T-054; Covers: FR-007, FR-008, FR-012, NFR-007, AC-005, AC-006, AC-012, AC-013; Evidence: 新增 `evidence/T-055-human-driven-revalidation.md`
+- [ ] **T-053 [Fix] A2 豁免收窄为当前会话预览面板的对象身份（REVIEW Finding 3，MUST）。** 现行 `frontmostApplicationIsAcceptable(pid:)` 豁免整个本进程，而 `plan.md:197` 批准的是「除工具自身 non-activating panel 外」。**Tasks Gate 裁决（Solar，2026-07-31）：以当前会话 `NSPanel` 的 AppKit 对象身份判定面板，不得使用整个进程豁免。** 任务要求：先写失败测试覆盖两类场景——(a) 本进程但非当前会话面板的窗口持有焦点时必须拒绝；(b) 当前会话面板持有焦点时必须放行——再把判定改为对当前会话的 `NSPanel` 实例做对象同一性比较（`===`），不得退化为按进程、按窗口标题或按窗口层级判断。会话结束或面板重建后旧引用必须失效。**即时授权边界（Tasks Gate REVIEW 追加约束）**：对象同一性只能在 `MainActor` 上、于「确认替换」或「恢复原文」动作实际发生的那一刻即时求值；**不得**把结果缓存为可跨动作、跨 target 或跨 session 复用的布尔授权。会话替换、目标替换、面板关闭与面板重建均使授权立即失效。测试须覆盖：同一 session 内先求值一次再执行第二个动作时必须重新求值；面板关闭或重建后旧引用不得再放行。— Depends on: Tasks PASS; Covers: FR-007, FR-008, NFR-002, AC-005; Evidence: 新增 `evidence/T-053-a2-panel-scoped-exemption.md`
+- [ ] **T-054 [Fix] 替换失败按实际原因分流，并为不可达取值提供测试证明（REVIEW Finding 4，MUST）。** 现行 `replacementRejectionStatus(for:)` 仅显式映射四类失败，其余落入 `default → .staleTarget`，把非目标失效的原因也说成「原输入位置已经变化」。**Tasks Gate 裁决（Solar，2026-07-31）：替换失败必须按实际原因分流；被判定不可达的 `DomainFailure` 取值需要测试证明其不可达；同时必须保留安全兜底分支。** 任务要求：先写失败测试逐一覆盖 `DomainFailure` 在替换路径上可达的每个取值并断言呈现可区分；对判定不可达的取值（如 `emptySource`、`pasteboardReadFailed`、`pasteboardWriteFailed`、`panelPlacementFallback`）编写测试证明其在替换路径上不会产生；`default` 兜底保留但必须映射到不声称发生过写入、且不误导目标状态的安全文案。**已裁定的分组边界（Tasks Gate REVIEW 追加，逐项固化，不得在实施期扩大解释）**：`invalidTarget → staleTarget`；`sourceChanged → 原文／选区已变化`（与 `staleTarget` 区分，须为独立文案）；`secureInputActive → secureInput`；`accessibilityPermissionRequired → permissionRequired`；`attributeNotSettable` 与 `unsupportedTarget → targetNotWritable`；`axTimedOut` 与 `axCannotComplete → 目标暂不可用`，动作须提供重试／复制结果／关闭；`unknown → fail-closed 通用状态`，不得声称目标已变化或已发生写入。**只有 setter 与 readback 失败（`.writeFailed`）才可呈现为写入失败**，其余任何取值均不得进入写入失败文案。不得为上述分组之外的情形新增状态。— Depends on: Tasks PASS; Covers: FR-008, NFR-007, AC-008; Evidence: 新增 `evidence/T-054-failure-mapping-completeness.md`
+- [ ] **T-055 [Verify] 真人鼠标／触控板复核受影响闭环（REVIEW Finding 5，MUST）。** AXPress 驱动不会使预览面板成为 key window，因此既有脚本驱动的闭环证据不覆盖真人必经路径。**Tasks Gate 裁决（Solar，2026-07-31）的范围边界：限定为 TextEdit、Chrome/ChatGPT 两处闭环加关键失败场景；不重跑全部 P5；不要求 VS Code。** 任务要求：在 T-052／T-053／T-054 全部落地并重建二进制后，由真人以鼠标或触控板执行并逐次记录面板文案与分级诊断阶段。**本轮 Tasks Gate REVIEW 判定上一版缩窄了已裁定范围，现恢复为：** (a) **TextEdit 连续五次**「确认替换 → 恢复原文」，五次全部成功方算通过，任一次失败须记录阶段并停止；(b) **Chrome/ChatGPT 连续五次**同上，且至少三次使用多行文本；(c) **Undo 行为**：替换后与恢复后分别执行应用自身的撤销，记录撤销栈的实际表现（AX 写入是否进入该应用的 undo 栈），两处应用的结论分别记录，不得互相推断（AC-017）；(d) **范围保真**：选中替换后校验未选中部分（前缀与后缀）逐字未被改动，且选区边界未漂移；含 emoji 与组合字符的样本至少一次（AC-012）；(e) **恢复后的外部变化**：恢复完成后由真人在目标应用中继续编辑，确认会话已结束、不再有任何后续写入，且面板不再提供恢复动作；(f) **关键失败场景**：确认前切换到另一应用（A2 必须拒绝）、确认前外部改动原文（B1 必须拒绝并显示「原文／选区已变化」而非 `staleTarget`）、恢复被拒后复制原文失败并重试（T-048 的 `retryCopy` 路径）。每项须记录真实面板文案原文与对应 `replacement-stage` 记录；禁止以 AXPress 或 AppleScript 点击替代真人点击。**不重跑全部 P5，不要求 VS Code。**— Depends on: T-052, T-053, T-054; Covers: FR-007, FR-008, FR-012, NFR-007, AC-005, AC-006, AC-012, AC-013; Evidence: 新增 `evidence/T-055-human-driven-revalidation.md`
 - [ ] **T-056 [Evidence] 更正「工程结构脚本不存在」的记录错误（REVIEW Finding 6，MUST）。** 该判断有误：`scripts/project-structure-check.sh` 在本功能分支中存在，本轮已独立运行通过（`Project structure check passed.`，exit 0）。此前的错误源于在主 worktree（`/Users/daidong/Documents/prompt/scripts/`）下查找，该目录不含此脚本。任务要求：撤回 `evidence/T-039-acceptance-package.md` 第二节的相关「更正」段落，恢复该脚本为独立门禁，并复核本轮五道门禁的执行入口记录是否一致。— Depends on: Tasks PASS; Covers: 无新增需求（记录准确性）; Evidence: `evidence/T-039-acceptance-package.md`
-- [ ] **T-057 [Evidence] 重建最终验收包并发布 Implementation Gate HANDOFF（REVIEW 要求新增）。** T-050 的产出已整体失效，最终验收改由本任务承担。任务要求：(a) 依 T-052 至 T-056 的实际结果重写 `evidence/T-039-acceptance-package.md`，删除长度元数据的「风险披露」、撤回「结构脚本不存在」的错误更正、更新真实测试计数；(b) 重新逐项核对 13 条 FR、7 条 NFR、17 个 AC，并明确区分哪些证据由真人驱动、哪些由脚本驱动；(c) 重新评估既有 P5／P6 证据的证明力并如实标注受 AXPress 局限影响的项；(d) 五道门禁全部从**分支内** `scripts/` 执行并记录（含 `project-structure-check.sh`）；(e) C3、C4、C5 依实际结果重新判定；(f) 提交推送后发布 Implementation Gate HANDOFF。— Depends on: T-052, T-053, T-054, T-055, T-056; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
+- [ ] **T-057 [Evidence] 重建最终验收包并发布 Implementation Gate HANDOFF（REVIEW 要求新增）。** T-050 的产出已整体失效，最终验收改由本任务承担。任务要求：(a) 依 T-052 至 T-056 的实际结果重写 `evidence/T-039-acceptance-package.md`，删除长度元数据的「风险披露」、撤回「结构脚本不存在」的错误更正、更新真实测试计数；(b) 重新逐项核对 13 条 FR、7 条 NFR、17 个 AC，并明确区分哪些证据由真人驱动、哪些由脚本驱动；(c) 重新评估既有 P5／P6 证据的证明力并如实标注受 AXPress 局限影响的项；(d) 五道门禁全部从**分支内** `scripts/` 执行并记录（含 `project-structure-check.sh`）；(e) C3、C4、C5 依实际结果重新判定；(f) 提交推送后发布 Implementation Gate HANDOFF。**完整的最终检查出口（唯一，逐项均须在验收包中留痕）**：① `build.sh` → `BUILD SUCCEEDED`；② `unit-tests.sh` → 全绿，记录真实测试计数；③ `project-structure-check.sh` → passed；④ `sdd-check.sh` → exit 0；⑤ `secret-scan.sh` → 无命中；⑥ `git diff --check` → 无输出；⑦ 以上六项全部从**分支内** `scripts/` 执行，不得使用主 worktree 的脚本；⑧ 诊断输出经 `log stream` 实测确认不含任何长度或内容度量；⑨ 13 条 FR、7 条 NFR、17 个 AC 逐项核对且每项标明证据来源为真人驱动或脚本驱动；⑩ C3、C4、C5 依实际结果重新判定并写明依据；⑪ 已知限制清单重建，删除长度元数据「风险披露」与「结构脚本不存在」两处错误记述。任一项未留痕即不得发布 HANDOFF。— Depends on: T-052, T-053, T-054, T-055, T-056; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
 
 
 ## 检查点
@@ -236,7 +247,7 @@ REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报
 - **C2 — 领域安全不变量成立：** T-014 通过；确认前零 setter、单会话、会话清理及 `recoverable → previewing(recoveryUnavailable)` 已由失败优先测试证明。
 - **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-021／T-022 按批准算法转绿，T-040 自动化复核确认权限、剪贴板、AX、observer、几何与预览各套件全部通过。 **2026-07-31 再次回退为未达成**：Tasks Gate 第二次重开使下游 Implementation Gate 一并重开；且第三次 Implementation REVIEW 的 Finding 3 判定 A2 豁免超出批准范围，系统边界的判定依据本身需按 T-053 重做。
 - **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 的两次运行中 T-027 与 T-030／T-031 套件全部通过。 **2026-07-31 再次回退为未达成**：Tasks Gate 第二次重开使下游 Implementation Gate 一并重开；且该闭环全部由 AXPress 驱动，不覆盖预览面板成为 key window 的真人路径，需按 T-055 以真人驱动重新建立。
-- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ ~~已回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 至 T-046 全部完成，含 P6 的真实环境复核与定向审计，详见 `evidence/T-039-acceptance-package.md` 第十节。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。 **2026-07-31 再次回退为未达成**：Solar 对 `5070607` 的第三次 Implementation Gate REVIEW 判定 `CHANGES REQUESTED`，6 项 MUST 未闭合；且 Tasks Gate 因 P7 重开，下游 Implementation Gate 随之重开。重新达成的前提是 T-052 至 T-056 全部完成，其中 T-055 要求真人鼠标／触控板驱动的复核证据。
+- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ ~~已回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 至 T-046 全部完成，含 P6 的真实环境复核与定向审计，详见 `evidence/T-039-acceptance-package.md` 第十节。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。 **2026-07-31 再次回退为未达成**：Solar 对 `5070607` 的第三次 Implementation Gate REVIEW 判定 `CHANGES REQUESTED`，6 项 MUST 未闭合；且 Tasks Gate 因 P7 重开，下游 Implementation Gate 随之重开。**重新达成的条件（唯一，全部满足方可）**：① T-052 至 T-056 全部完成；② T-055 的真人复核全部通过——TextEdit 与 Chrome/ChatGPT 各连续五次「确认替换 → 恢复原文」成功，Undo 行为、范围保真、恢复后外部变化、三类关键失败场景均有真人记录；③ 五道门禁全部从分支内 `scripts/` 执行并通过（含 `project-structure-check.sh`）；④ T-057 重建的验收包逐项区分真人驱动与脚本驱动证据，并标注受 AXPress 局限影响的项；⑤ Solar 对 T-057 发布的新 SHA 给出 Implementation Gate `PASS`。
 
 ## Plan Gate NIT 处置约束
 
