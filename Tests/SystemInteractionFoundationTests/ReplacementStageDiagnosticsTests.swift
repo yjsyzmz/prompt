@@ -168,11 +168,11 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
 
     // MARK: - A2 的聚焦应用归属
 
-    /// 真人用鼠标点「确认替换」时面板会成为 key window，而 A2 读的是
-    /// `kAXFocusedApplicationAttribute`，跟的是键盘焦点。若聚焦应用因此变成本
-    /// 进程，A2 会把目标判为已变化。报告必须能区分"聚焦应用是本进程"与
-    /// "聚焦应用是另一个外部应用"，否则无法判定这一点。
-    func testFrontmostStageReportsWhenTheFocusedApplicationIsThisProcess() async {
+    /// Plan `0c9883f` 第 197 行的 A2 原文是「**除工具自身 non-activating panel
+    /// 外**，没有其他应用成为用户的新外部目标」。真人用鼠标点「确认替换」时面板
+    /// 会成为 key window，`kAXFocusedApplicationAttribute` 随之指向本进程——这正
+    /// 是该豁免要覆盖的情形，不得据此拒绝写入。
+    func testFocusOnThisProcessDoesNotBlockTheReplacement() async {
         let probe = await StageProbe.make()
         probe.host.setFrontmostApplication(
             pid: ProcessInfo.processInfo.processIdentifier
@@ -180,12 +180,12 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
 
         let stage = await probe.attemptReplacement()
 
-        XCTAssertEqual(stage?.stage, .frontmostApplication)
         XCTAssertEqual(
-            stage?.focusedApplicationIsSelf,
-            true,
-            "the panel taking keyboard focus must be distinguishable"
+            stage?.stage,
+            .completed,
+            "the approved A2 exempts this tool's own panel from the check"
         )
+        XCTAssertNil(stage?.failure)
     }
 
     func testFrontmostStageReportsWhenTheFocusedApplicationIsAnotherApp() async {

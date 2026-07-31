@@ -655,16 +655,20 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return reject(.applicationRunning, .invalidTarget)
         }
         let focusedPID = currentExternalPID()
-        guard focusedPID == pid else {
-            // A2 reads kAXFocusedApplicationAttribute, which follows keyboard
-            // focus. Recording whether that focus landed on this process makes
-            // the panel-takes-focus case identifiable without exposing any
-            // other application's identity.
+        // Plan 0c9883f A2: "apart from this tool's own non-activating panel, no
+        // other application has become the user's new external target". The
+        // panel becomes key when the user clicks Confirm with a real mouse, so
+        // keyboard focus legitimately lands on this process at exactly the
+        // moment the write is authorised. Treating that as a stale target
+        // contradicted the approved precheck.
+        guard
+            focusedPID == pid
+                || focusedPID == ProcessInfo.processInfo.processIdentifier
+        else {
             return reject(
                 .frontmostApplication,
                 .invalidTarget,
-                focusedApplicationIsSelf:
-                    focusedPID == ProcessInfo.processInfo.processIdentifier
+                focusedApplicationIsSelf: false
             )
         }
         guard windowMatches(targetHandle: targetHandle) else {
