@@ -24,7 +24,7 @@
 
 ## 二、自动化结果
 
-- 单元与集成测试：**199 tests, 0 failures**
+- 单元与集成测试：**203 tests, 0 failures**
 - 构建：`./scripts/build.sh` → `BUILD SUCCEEDED`
 - 工程结构检查：由测试套件内的 `ProjectStructureTests` 承担，随
   `./scripts/unit-tests.sh` 一并执行 → passed。**更正**：本文件先前各版本与
@@ -37,8 +37,8 @@
 - 凭据扫描：`./scripts/secret-scan.sh` → 无命中
 - 空白与冲突标记：`git diff --check` → 无输出
 - 测试总数演进：109（T-031）→ 121（首次 HANDOFF）→ 149（T-021 RED）→
-  172（五项 Finding 修复后）→ 180（MUST 2）→ 184（MUST 3）→ 199（MUST 1），
-  净增 90，全部由失败优先测试驱动
+  172（五项 Finding 修复后）→ 180（MUST 2）→ 184（MUST 3）→ 199（MUST 1）→
+  203（焦点归属缺陷链），净增 94，全部由失败优先测试驱动
 - 详见 `evidence/T-040-downstream-automation-revalidation.md` 与
   `evidence/T-047-second-review-must-fixes.md`
 
@@ -88,6 +88,8 @@
 
 - 失败分类保留、剪贴板重试语义、不含内容的分级诊断：
   `evidence/T-047-second-review-must-fixes.md`
+- 键盘焦点归属引发的连锁缺陷（真机复测暴露）：
+  `evidence/T-048-focus-ownership-defect-chain.md`
 
 **范围外观察与决策**：`evidence/out-of-scope-observations.md`
 
@@ -211,6 +213,16 @@
     `ReplacementStageReport` 在类型上不含 `String` 字段，只有阶段标识、失败
     分类与 UTF-16 长度，因此不存在内容外泄路径；但长度本身是可观测的元数据，
     已如实披露。详见 T-047 与 T-045。
+13. **脚本驱动的闭环证据无法覆盖真人必经路径**：预览面板为让内部按钮可点而设
+    `canBecomeKey = true`，真人鼠标点击会使面板成为 key window，而辅助功能 API
+    的 AXPress 不会。因此 40 次 AXPress 自动化全绿的同时，真人点击 5 次全部
+    失败。**P5／P6 中凡由脚本驱动的闭环证据，都不覆盖「面板持有键盘焦点」这一
+    条件。** T-032、T-033 当初标记为人工通过，但若该缺陷是确定性的，人工点击本
+    不该成功；这一矛盾没有留下数据，无法回溯判断，不予推测。详见 T-048。
+14. **A3／A4 的真实 AX 解析路径无法单元测试**：该分支仅在
+    `authoritativeTarget` 为 `nil` 时执行，而合成宿主必然提供它，真实 AX 侧
+    没有可注入点。`efc73e6` 的唯一证据是真机手动验证（「确认替换 → 恢复原文」
+    完整闭环通过）。详见 T-048。
 
 ## 八、范围决策记录
 
@@ -262,6 +274,14 @@ Spec Gate；Feature 001 按现有规格收尾。详见
     suspension point。
 13. `2792b1d` — 第二轮 MUST 1 的生产装配：`OSLogReplacementDiagnosticsRecorder`
     经 `makeReplacementDiagnostics()` 注入 `convenience init()`。
+14. `d90ba37` — 诊断增加 `focusedApplicationIsSelf`（仅布尔，不含其他应用身份），
+    A2 行为未变；用于判定焦点是否落在本进程。
+15. `153eb41` — `validate` 的 A2 补上 `plan.md:197` 已批准的自身豁免。
+16. `efc73e6` — A3／A4 的身份解析由 `AXUIElementCreateSystemWide()` 改为
+    `AXUIElementCreateApplication(pid)`；不变量未变，删除已无调用者的
+    `currentFocusedElement()`。
+17. `6093146` — 抽出共用的 `frontmostApplicationIsAcceptable(pid:)`，
+    `validate` 与 `sharedPrechecks` 共用同一份 A2，消除两份拷贝漂移的可能。
 
 Finding 5 未产生代码变更，其结论为证据补齐 + 特定应用限制记录。
 
@@ -275,18 +295,21 @@ Finding 5 未产生代码变更，其结论为证据补齐 + 特定应用限制�
 - **C5 — 真实验收完整**：达成。TextEdit 与 ChatGPT 完整闭环（含多行）、
   VS Code 后备闭环、性能／显示／输入／隐私证据，以及 P6 的 T-040 至 T-045
   全部完成且可复现。2026-07-31 追加 40 次 ChatGPT 多行触发的分级诊断数据，
-  见 T-037 后续文件。
+  见 T-037 后续文件；并在真机手动完成「确认替换 → 恢复原文」完整闭环，修复了
+  焦点归属缺陷链，见 T-048。
 
 ## 结论
 
 全部 13 条功能需求、7 条非功能需求、17 个验收场景均已逐项核对并有可复现证据
-支撑。199 个自动化测试全绿，build、unit-tests（含 `ProjectStructureTests`）、
+支撑。203 个自动化测试全绿，build、unit-tests（含 `ProjectStructureTests`）、
 sdd-check、secret-scan、`git diff --check` 无未解释失败。C3、C4、C5 达成。
 
-第七节的 12 项已知限制与残余风险、第八节的范围决策一并提交 Reviewer 裁决。
+第七节的 14 项已知限制与残余风险、第八节的范围决策一并提交 Reviewer 裁决。
 需要 Reviewer 重点确认的披露事项：第 3 项（ChatGPT 多行历史间歇失败无法回溯
 归类，并撤回前一版的 A1–A4 归因）、第 4、5 项（R2 来源不可区分、whole-field
 setter 的 TOCTOU）、第 11 项（稳定性样本覆盖面有限）、第 12 项（分级诊断的
-长度元数据经统一日志可观测）。
+长度元数据经统一日志可观测），以及**第 13、14 项——脚本驱动的闭环证据不覆盖
+真人必经的键盘焦点路径，A3／A4 的真实 AX 解析无法单元测试**。后两项直接影响
+既有 P5／P6 证据的证明力，建议 Reviewer 优先裁决。
 
-可以针对三项 MUST 修复后的新 SHA 发布 Implementation Gate `HANDOFF`。
+可以针对焦点归属缺陷链修复后的新 SHA 发布 Implementation Gate `HANDOFF`。
