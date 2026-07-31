@@ -215,6 +215,42 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
         )
     }
 
+    /// A1–A4 在实现里有两份拷贝：替换路径在 `validate`，恢复路径在
+    /// `sharedPrechecks`。只给前者补上 Plan `0c9883f` 第 197 行的自身豁免，会让
+    /// 「替换成功但恢复原文失败」——真人点「恢复原文」时面板同样持有键盘焦点。
+    func testFocusOnThisProcessDoesNotBlockTheRecovery() async {
+        let probe = await StageProbe.make()
+        let originalFullText = probe.host.fullText
+        guard case .success(let context) = await probe.gateway
+            .replaceAfterAuthoritativeValidation(probe.snapshot)
+        else {
+            XCTFail("the replacement must succeed before recovery is meaningful")
+            return
+        }
+        XCTAssertNotEqual(
+            probe.host.fullText,
+            originalFullText,
+            "the replacement must have changed the field"
+        )
+        probe.host.setFrontmostApplication(
+            pid: ProcessInfo.processInfo.processIdentifier
+        )
+
+        let result = await probe.gateway.restoreAfterAuthoritativeValidation(context)
+
+        guard case .success = result else {
+            XCTFail(
+                "recovery must apply the same A2 exemption as the replacement path"
+            )
+            return
+        }
+        XCTAssertEqual(
+            probe.host.fullText,
+            originalFullText,
+            "the field must be back to its pre-replacement content"
+        )
+    }
+
     // MARK: - 成功路径与隐私边界
 
     func testSuccessfulReplacementReportsCompletionWithoutAFailure() async {

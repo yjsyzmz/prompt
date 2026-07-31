@@ -391,7 +391,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         guard targetApplicationIsRunning(pid: pid) else {
             return .failure(.invalidTarget)
         }
-        guard currentExternalPID() == pid else {
+        guard frontmostApplicationIsAcceptable(pid: pid) else {
             return .failure(.invalidTarget)
         }
         guard windowMatches(targetHandle: targetHandle) else {
@@ -654,17 +654,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         guard targetApplicationIsRunning(pid: pid) else {
             return reject(.applicationRunning, .invalidTarget)
         }
-        let focusedPID = currentExternalPID()
-        // Plan 0c9883f A2: "apart from this tool's own non-activating panel, no
-        // other application has become the user's new external target". The
-        // panel becomes key when the user clicks Confirm with a real mouse, so
-        // keyboard focus legitimately lands on this process at exactly the
-        // moment the write is authorised. Treating that as a stale target
-        // contradicted the approved precheck.
-        guard
-            focusedPID == pid
-                || focusedPID == ProcessInfo.processInfo.processIdentifier
-        else {
+        guard frontmostApplicationIsAcceptable(pid: pid) else {
             return reject(
                 .frontmostApplication,
                 .invalidTarget,
@@ -752,6 +742,21 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return false
         }
         return kill(pid, 0) == 0 || errno == EPERM
+    }
+
+    /// A2, in one place. Plan `0c9883f` states it as "apart from this tool's own
+    /// non-activating panel, no other application has become the user's new
+    /// external target". The panel becomes key when the user clicks Confirm or
+    /// Restore with a real mouse, so keyboard focus legitimately lands on this
+    /// process at exactly the moment the write is authorised.
+    ///
+    /// Both the replacement path and the recovery path call this. They used to
+    /// carry independent copies of the check, which is how the exemption ended
+    /// up applied to one and not the other.
+    private func frontmostApplicationIsAcceptable(pid: Int32) -> Bool {
+        let focusedPID = currentExternalPID()
+        return focusedPID == pid
+            || focusedPID == ProcessInfo.processInfo.processIdentifier
     }
 
     private func currentExternalPID() -> Int32? {
