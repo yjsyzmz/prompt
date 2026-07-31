@@ -208,9 +208,12 @@ final class EndToEndIntegrationTests: XCTestCase {
 
         XCTAssertEqual(env.host.setterAttemptCount, 0)
         XCTAssertEqual(env.host.fullText, originalFullText)
+        // MUST 2: the racing confirm was rejected by A3 before any setter ran,
+        // so the panel keeps the stale-target explanation instead of claiming a
+        // write was attempted and failed.
         XCTAssertEqual(
             env.presenter.lastState,
-            mapper.viewState(for: .writeFailed)
+            mapper.viewState(for: .staleTarget)
         )
     }
 

@@ -13,6 +13,7 @@ final class PreviewStateActionTests: XCTestCase {
             .hotKeyConflict: "快捷键当前不可用，可能已被其他应用占用。关闭占用它的应用后可以重新注册。",
             .clipboardReadFailed: "未能读取剪贴板文字，请重新复制后重试。",
             .clipboardWriteFailed: "未能复制到剪贴板，结果仍保留在预览中，可以重试。",
+            .targetNotWritable: "当前输入位置已不可写入，未做任何修改，结果仍可复制。",
         ]
 
         for status in PreviewStatus.allCases {
@@ -75,6 +76,10 @@ final class PreviewStateActionTests: XCTestCase {
             .clipboardWriteFailed: [
                 PreviewButton(action: .retry, title: "重试", isEnabled: true),
                 PreviewButton(action: .close, title: "关闭", isEnabled: true),
+            ],
+            .targetNotWritable: [
+                PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                PreviewButton(action: .cancel, title: "取消", isEnabled: true),
             ],
         ]
 

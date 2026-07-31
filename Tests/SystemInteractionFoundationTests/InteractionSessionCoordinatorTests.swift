@@ -200,6 +200,9 @@ private final class SessionTextTargetSpy: SessionTextTargetAccessing {
     private(set) var replaceCount = 0
     private(set) var restoreCount = 0
     var replacementSucceeds = true
+    /// The failure reported when `replacementSucceeds` is false. Defaults to the
+    /// attempted-write failure so existing scenarios keep their meaning.
+    var replacementFailure: DomainFailure = .writeFailed
     var recoveryIsValid = true
     var restorationSucceeds = true
 
@@ -207,9 +210,9 @@ private final class SessionTextTargetSpy: SessionTextTargetAccessing {
         replaceCount + restoreCount
     }
 
-    func replace(_ content: SessionContent) -> Bool {
+    func replace(_ content: SessionContent) -> Result<Void, DomainFailure> {
         replaceCount += 1
-        return replacementSucceeds
+        return replacementSucceeds ? .success(()) : .failure(replacementFailure)
     }
 
     func validateForRecovery(_ content: SessionContent) -> Bool {

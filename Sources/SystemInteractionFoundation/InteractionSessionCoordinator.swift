@@ -12,6 +12,10 @@ enum PreviewCapability: Equatable {
     case ready
     case writeFailed
     case recoveryUnavailable
+    /// NFR-007: an authoritative validation rejection keeps its own category so
+    /// that the panel can explain why nothing was written, instead of implying
+    /// that a write was attempted and failed.
+    case replacementRejected(DomainFailure)
 }
 
 enum InteractionSessionState: Equatable {
@@ -39,7 +43,7 @@ struct SessionContent: Equatable {
 }
 
 protocol SessionTextTargetAccessing: AnyObject {
-    func replace(_ content: SessionContent) -> Bool
+    func replace(_ content: SessionContent) -> Result<Void, DomainFailure>
     func validateForRecovery(_ content: SessionContent) -> Bool
     func restore(_ content: SessionContent) -> Bool
 }
@@ -71,7 +75,7 @@ final class InteractionSessionCoordinator {
             return content.mode == .clipboardInput
                 ? [.copyResult, .cancel]
                 : [.confirmReplacement, .copyResult, .cancel]
-        case .previewing(.writeFailed):
+        case .previewing(.writeFailed), .previewing(.replacementRejected):
             return [.copyResult, .cancel]
         case .previewing(.recoveryUnavailable):
             return [.copyOriginal, .close]
@@ -163,11 +167,16 @@ final class InteractionSessionCoordinator {
         }
 
         transition(to: .applying)
-        transition(
-            to: target.replace(content)
-                ? .recoverable
-                : .previewing(.writeFailed)
-        )
+        switch target.replace(content) {
+        case .success:
+            transition(to: .recoverable)
+        case .failure(.writeFailed):
+            // The only failure that actually reached the setter or its readback.
+            transition(to: .previewing(.writeFailed))
+        case .failure(let failure):
+            // Rejected before any write: keep the specific reason.
+            transition(to: .previewing(.replacementRejected(failure)))
+        }
     }
 
     func recoverOriginal() {

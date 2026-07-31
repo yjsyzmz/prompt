@@ -46,13 +46,13 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
         lastRecoveryFailure = nil
     }
 
-    func replace(_ content: SessionContent) -> Bool {
+    func replace(_ content: SessionContent) -> Result<Void, DomainFailure> {
         guard
             let targetHandle,
             let targetPID,
             content.mode != .clipboardInput
         else {
-            return false
+            return .failure(.unsupportedTarget)
         }
 
         let snapshot = AXWriteSnapshot(
@@ -69,9 +69,10 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
         switch result {
         case .success(let context):
             recoveryContext = context
-            return true
-        case .failure:
-            return false
+            return .success(())
+        case .failure(let failure):
+            // MUST 2: keep the specific rejection so the panel can explain it.
+            return .failure(failure)
         }
     }
 

@@ -352,6 +352,9 @@ final class AppLifecycleController {
             presentReady()
         case .previewing(.writeFailed):
             present(.writeFailed)
+        case .previewing(.replacementRejected(let failure)):
+            // NFR-007: explain the actual rejection instead of implying a write.
+            present(replacementRejectionStatus(for: failure))
         case .previewing(.recoveryUnavailable):
             presentRecoveryUnavailable()
         case .recoverable:
@@ -460,8 +463,25 @@ final class AppLifecycleController {
         textTarget.endSession()
     }
 
-    private func previewStatus(for failure: DomainFailure) -> PreviewStatus {
+    /// MUST 2: maps an authoritative-validation rejection onto the status that
+    /// describes it. None of these paths reached a setter, so none of them may
+    /// be presented as a failed write.
+    private func replacementRejectionStatus(
+        for failure: DomainFailure
+    ) -> PreviewStatus {
         switch failure {
+        case .secureInputActive:
+            return .secureInput
+        case .accessibilityPermissionRequired:
+            return .permissionRequired
+        case .attributeNotSettable, .unsupportedTarget:
+            return .targetNotWritable
+        default:
+            return .staleTarget
+        }
+    }
+
+    private func previewStatus(for failure: DomainFailure) -> PreviewStatus {        switch failure {
         case .secureInputActive:
             return .secureInput
         case .accessibilityPermissionRequired:

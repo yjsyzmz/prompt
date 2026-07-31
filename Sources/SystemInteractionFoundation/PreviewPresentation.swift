@@ -9,6 +9,7 @@ enum PreviewStatus: CaseIterable, Hashable, Sendable {
     case hotKeyConflict
     case clipboardReadFailed
     case clipboardWriteFailed
+    case targetNotWritable
 }
 
 enum PreviewUserAction: Hashable, Sendable {
@@ -152,6 +153,14 @@ struct PreviewPresentationMapper {
                 buttons: [
                     PreviewButton(action: .retry, title: "重试", isEnabled: true),
                     PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        case .targetNotWritable:
+            return PreviewViewState(
+                message: "当前输入位置已不可写入，未做任何修改，结果仍可复制。",
+                buttons: [
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .cancel, title: "取消", isEnabled: true),
                 ]
             )
         }
