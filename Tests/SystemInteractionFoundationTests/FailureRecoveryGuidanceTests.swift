@@ -23,7 +23,7 @@ final class FailureRecoveryGuidanceTests: XCTestCase {
             "a failed explicit copy must be reported to the user"
         )
         XCTAssertTrue(
-            env.presenter.lastState?.buttons.contains { $0.action == .retry } ?? false
+            env.presenter.lastState?.buttons.contains { $0.action == .retryCopy } ?? false
         )
     }
 

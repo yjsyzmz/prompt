@@ -74,7 +74,7 @@ final class PreviewStateActionTests: XCTestCase {
                 PreviewButton(action: .close, title: "关闭", isEnabled: true),
             ],
             .clipboardWriteFailed: [
-                PreviewButton(action: .retry, title: "重试", isEnabled: true),
+                PreviewButton(action: .retryCopy, title: "重试", isEnabled: true),
                 PreviewButton(action: .close, title: "关闭", isEnabled: true),
             ],
             .targetNotWritable: [

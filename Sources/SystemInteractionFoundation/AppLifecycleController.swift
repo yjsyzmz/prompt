@@ -102,6 +102,7 @@ final class AppLifecycleController {
     private var activeMonitoringTarget: AXMonitoringTarget?
     private var lastSource: SourceText?
     private var lastTransformed: TransformedText?
+    private var pendingCopyRetry: PendingCopyRetry?
     private var isPresenting = false
     private var pendingLatencyStart: UInt64?
 
@@ -259,20 +260,13 @@ final class AppLifecycleController {
         case .confirmReplacement:
             coordinator.confirmReplacement()
         case .copyResult:
-            if let lastTransformed,
-               !clipboard.copyResultAfterExplicitAction(lastTransformed) {
-                // NFR-007: an explicit copy that failed must not look like it
-                // succeeded.
-                present(.clipboardWriteFailed)
-            }
+            performCopyResult()
         case .cancel:
             coordinator.cancel()
         case .restoreOriginal:
             coordinator.recoverOriginal()
         case .copyOriginal:
-            if !coordinator.copyOriginal() {
-                present(.clipboardWriteFailed)
-            }
+            performCopyOriginal()
         case .openSettings:
             permissionFlow.openSettingsAfterExplicitAction()
             // FR-002/AC-003: the Accessibility deep link is not a stable
@@ -289,6 +283,16 @@ final class AppLifecycleController {
             beginClipboardInputSession()
         case .retry:
             beginDirectInteraction()
+        case .retryCopy:
+            // MUST 3: retry the copy that failed, not the whole session.
+            switch pendingCopyRetry {
+            case .result:
+                performCopyResult()
+            case .original:
+                performCopyOriginal()
+            case nil:
+                break
+            }
         case .retryRegistration:
             if start() == .registered {
                 dismissPresentation()
@@ -545,6 +549,37 @@ final class AppLifecycleController {
         )
     }
 
+    /// MUST 3: which explicit copy failed, so that a retry repeats that copy.
+    private enum PendingCopyRetry {
+        case result
+        case original
+    }
+
+    private func performCopyResult() {
+        guard let lastTransformed else {
+            return
+        }
+        if clipboard.copyResultAfterExplicitAction(lastTransformed) {
+            pendingCopyRetry = nil
+            sessionDidTransition(to: coordinator.state)
+        } else {
+            // NFR-007: an explicit copy that failed must not look like it
+            // succeeded, and the retry must repeat this same copy.
+            pendingCopyRetry = .result
+            present(.clipboardWriteFailed)
+        }
+    }
+
+    private func performCopyOriginal() {
+        if coordinator.copyOriginal() {
+            pendingCopyRetry = nil
+            sessionDidTransition(to: coordinator.state)
+        } else {
+            pendingCopyRetry = .original
+            present(.clipboardWriteFailed)
+        }
+    }
+
     private func present(_ status: PreviewStatus) {
         presentViewState(mapper.viewState(for: status))
     }
@@ -590,6 +625,7 @@ final class AppLifecycleController {
         lastSource = nil
         lastTransformed = nil
         pendingAnchorRect = nil
+        pendingCopyRetry = nil
         textTarget.endSession()
         targetMonitor.stopMonitoring()
         dismissPresentation()

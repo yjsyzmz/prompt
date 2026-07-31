@@ -22,6 +22,7 @@ enum PreviewUserAction: Hashable, Sendable {
     case recheckPermission
     case useClipboard
     case retry
+    case retryCopy
     case retryRegistration
     case close
 }
@@ -151,7 +152,7 @@ struct PreviewPresentationMapper {
             return PreviewViewState(
                 message: "未能复制到剪贴板，结果仍保留在预览中，可以重试。",
                 buttons: [
-                    PreviewButton(action: .retry, title: "重试", isEnabled: true),
+                    PreviewButton(action: .retryCopy, title: "重试", isEnabled: true),
                     PreviewButton(action: .close, title: "关闭", isEnabled: true),
                 ]
             )
