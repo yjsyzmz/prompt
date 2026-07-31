@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: tasks
-status: revised-pending-review
+status: revised-pending-review  # P7（T-047 至 T-050）已于 2026-07-31 完成，等待第三次 Implementation Gate 审核
 plan_version: "0c9883f8385c731b0cc084d22519224eada926ea"  # 重开后的 Plan Gate 第三版修订，Solar 已 PASS（2026-07-28）
 owner: "Fable (Comate), from T-028"
 reviewer: "Solar, from T-028"
@@ -154,6 +154,18 @@ P5 的人工复核范围由 Solar 在 Tasks Gate REVIEW 中裁决为"按影响�
 - [x] **T-044 [Verification] 复核 UTF-16 范围相关的特殊字符夹具。** 只重跑与新 UTF-16 范围算法直接相关的 TextEdit selected recovery 夹具，至少包含 Emoji、Unicode 组合字符与代理对；不重跑完整文字矩阵。完成条件：每类夹具记录具体码点构成、替换与恢复后逐 UTF-16 code unit 一致、范围外内容完全不变。— Depends on: T-040; Covers: FR-006, FR-012, NFR-004, AC-016; Evidence: `evidence/T-044-utf16-recovery-fixtures-revalidation.md`（2026-07-30：代理对与组合字符夹具，replacedSpanExact=true，恢复后指纹与原文完全相同，第二次命中 R2「含两端」边界）
 - [x] **T-045 [Audit] 定向隐私与安全审计。** 只针对本轮恢复实现变更执行定向审计，确认未新增内容日志、持久化、敏感附件或遥测，且恢复路径的基值与原文引用在会话结束时释放；不重跑与恢复无关的审计步骤。完成条件：逐项列出被审计的新增／修改代码位置与结论。— Depends on: T-040; Covers: FR-013, NFR-006, AC-014; Evidence: `evidence/T-045-recovery-privacy-audit.md`（2026-07-30：五项审计通过，本轮变更零新增日志/持久化/遥测，AXMonitoringTarget 不携带文本，引用在正常与竞态两路径均释放）
 - [x] **T-046 [Evidence] 更新验收包并重新发布 Implementation Gate HANDOFF。** ✅ **2026-07-30 完成**：验收包已重写（172 tests 与五道门禁全绿，13 FR／7 NFR／17 AC 逐项核对达成，10 项已知限制与残余风险如实披露），C3／C4／C5 达成。 更新 `evidence/T-039-acceptance-package.md` 的汇总、需求映射与已知风险（含 R2 不可区分与 whole-field setter 的 TOCTOU 残余风险披露），纳入 T-040 至 T-045 结果与原 Implementation REVIEW Finding 1、2、4、5、6 的修复证据；运行完整 build、unit-tests、`sdd-check`、`secret-scan`、`git diff --check`，确认无未解释失败后才可针对新 SHA 发布 Implementation Gate `HANDOFF`。— Depends on: T-040, T-041, T-042, T-043, T-044, T-045; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
+
+### P7 — 第二轮 Implementation Gate REVIEW 的三项 MUST（2026-07-31 新增）
+
+本段任务因 Solar 对 `9bb221e` 的第二轮 Implementation Gate REVIEW（`CHANGES
+REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报告的 MUST 2／MUST 3
+完成情况不成立（所称 commit 不存在，工作区处于无法编译的半成品状态，干净基线
+的真实测试数为 172 而非 193），因此三项 MUST 均从 `9bb221e` 重做。
+
+- [x] **T-047 [Fix] 保留并正确呈现 replacement 的具体失败（MUST 2）。** ✅ **2026-07-31 完成（`d505e32`）**：RED 为 180 tests／6 failures，实测五种未调用 setter 的拒绝全部显示「未能安全替换原文」且 `setterAttemptCount == 0`；GREEN 引入 `PreviewCapability.replacementRejected`、`replace` 返回 `Result<Void, DomainFailure>`、`PreviewStatus.targetNotWritable` 与 `replacementRejectionStatus(for:)`。连带更正 `EndToEndIntegrationTests` 中一条断言错误行为的既有断言。— Depends on: T-046; Covers: FR-008, NFR-007, AC-008; Evidence: `evidence/T-047-second-review-must-fixes.md`
+- [x] **T-048 [Fix] 剪贴板重试必须重试原始那次复制（MUST 3）。** ✅ **2026-07-31 完成（`8f72296`）**：RED 为 184 tests／5 failures，核心失败为重试后复制次数仍为 1；根因是失败面板的「重试」指向 `.retry`（重新捕获目标），恢复被拒后会丢掉用户唯一还能拿回的原文。GREEN 引入 `PreviewUserAction.retryCopy` 与 `pendingCopyRetry`。— Depends on: T-047; Covers: NFR-007, AC-013; Evidence: `evidence/T-047-second-review-must-fixes.md`
+- [x] **T-049 [Fix] 不含内容的分级诊断与真实环境稳定性数据（MUST 1）。** ✅ **2026-07-31 完成（`f1bda7a`、`2792b1d`）**：RED 为编译器逐项点名缺失的生产 API；GREEN 引入覆盖 11 个拒绝点的 `ReplacementStage`、类型上不含 `String` 的 `ReplacementStageReport`、同步的 `ReplacementDiagnosticsRecording`，并经 `makeReplacementDiagnostics()` 进入生产装配。真实环境采集 40 次 ChatGPT 多行触发：37 次进入替换路径且全部 `completed`，`failure != none` 为 0；3 次捕获阶段失败经延长粘贴沉降间隔后消失。同时撤回 T-037 后续文件中"失败发生在 A1–A4 之一"的无证据归因。— Depends on: T-048; Covers: FR-013, NFR-006, NFR-007; Evidence: `evidence/T-047-second-review-must-fixes.md`、`evidence/T-037-chatgpt-multiline-followup.md`
+- [x] **T-050 [Evidence] 更新验收包并重新发布 Implementation Gate HANDOFF。** ✅ **2026-07-31 完成**：验收包已更新（199 tests 与五道门禁全绿，已知限制由 10 项增至 12 项，含稳定性样本覆盖面与分级诊断长度元数据两项新披露），第七节第 3 项的归因已更正。— Depends on: T-047, T-048, T-049; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
 
 ## 检查点
 

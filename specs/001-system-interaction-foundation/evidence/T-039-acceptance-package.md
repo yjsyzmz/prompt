@@ -24,15 +24,23 @@
 
 ## 二、自动化结果
 
-- 单元与集成测试：**172 tests, 0 failures**，连续两次一致
+- 单元与集成测试：**199 tests, 0 failures**
 - 构建：`./scripts/build.sh` → `BUILD SUCCEEDED`
-- 工程结构检查：`./scripts/project-structure-check.sh` → passed
+- 工程结构检查：由测试套件内的 `ProjectStructureTests` 承担，随
+  `./scripts/unit-tests.sh` 一并执行 → passed。**更正**：本文件先前各版本与
+  T-016／T-024／T-028／T-031 等证据文件记有 `./scripts/project-structure-check.sh`
+  → passed，但该脚本在仓库中并不存在（`scripts/` 下只有 `build.sh`、
+  `find-xcode-container.sh`、`sdd-check.sh`、`secret-scan.sh`、`unit-tests.sh`，
+  且 `git log` 中该路径无任何提交记录）。结构检查本身确实在执行，只是入口是
+  测试而非脚本；上述记法为笔误，已在此更正。
 - SDD 制品校验：`./scripts/sdd-check.sh` → passed
 - 凭据扫描：`./scripts/secret-scan.sh` → 无命中
 - 空白与冲突标记：`git diff --check` → 无输出
 - 测试总数演进：109（T-031）→ 121（首次 HANDOFF）→ 149（T-021 RED）→
-  172（五项 Finding 修复后），净增 63，全部由失败优先测试驱动
-- 详见 `evidence/T-040-downstream-automation-revalidation.md`
+  172（五项 Finding 修复后）→ 180（MUST 2）→ 184（MUST 3）→ 199（MUST 1），
+  净增 90，全部由失败优先测试驱动
+- 详见 `evidence/T-040-downstream-automation-revalidation.md` 与
+  `evidence/T-047-second-review-must-fixes.md`
 
 ## 三、证据索引
 
@@ -75,6 +83,11 @@
 - UTF-16 特殊字符夹具：
   `evidence/T-044-utf16-recovery-fixtures-revalidation.md`
 - 定向隐私审计：`evidence/T-045-recovery-privacy-audit.md`
+
+**P7 第二轮 Implementation Gate REVIEW 的三项 MUST**
+
+- 失败分类保留、剪贴板重试语义、不含内容的分级诊断：
+  `evidence/T-047-second-review-must-fixes.md`
 
 **范围外观察与决策**：`evidence/out-of-scope-observations.md`
 
@@ -161,11 +174,14 @@
 2. **Chromium 异步应用辅助功能写入**：`setText` 返回后立即回读仍是旧值，
    必须依赖最多 5 次、约 500ms 的回读重试；多行尤其贴近该预算边缘。
    详见 T-042 与 T-037 后续文件。
-3. **ChatGPT 多行曾出现未定位的间歇失败**：2026-07-29 多次人工失败、
-   2026-07-30 五次自动全部成功，代码状态相同。六个假设已被实测排除
-   （换行形式、元素来源、引用陈旧、增强模式时序、面板在屏、确认前停留时长）；
-   失败侧唯一硬数据表明失败发生在 `validate` 的 A1–A4 之一，而非写入本身。
-   作为特定应用限制记录，建议在后续 Feature 继续观察。详见 T-037 后续文件。
+3. **ChatGPT 多行的历史间歇失败无法回溯归类**：2026-07-31 用不含内容的分级
+   诊断采集 40 次触发，37 次进入替换路径且全部 `completed`，`failure != none`
+   的记录数为 0；另 3 次失败在**捕获**阶段（`emptyOrUnsupported`），延长自动化
+   的粘贴沉降间隔后消失，属脚本时序而非产品缺陷。六个假设此前已被实测排除
+   （换行形式、元素来源、引用陈旧、增强模式时序、面板在屏、确认前停留时长）。
+   **此处更正前一版验收包的表述**：原文称"失败发生在 `validate` 的 A1–A4 之一"，
+   该归因建立在一次尚无埋点的采集上，本轮 A1–A4 拒绝记录为 0，结论撤回。
+   历史失败未留下阶段数据，无法回溯归类。详见 T-037 后续文件与 T-047。
 4. **R2 判定无法区分插入点来源**：`kAXSelectedTextRange` 只反映当前状态，
    "应用写入后自动塌陷"与"用户随后把光标移入结果范围"在 AX 层完全相同，
    两者都会进入受约束 fallback。安全性由六项前置条件的内容与范围外一致性
@@ -186,7 +202,15 @@
    读取阶段 fail-closed。详见 `evidence/out-of-scope-observations.md`。
 10. **验证环境注意事项**：每次重建二进制后 macOS 会使辅助功能授权失效——
     开关仍显示开启但 TCC 记录不匹配。需将开关关闭再打开（可通过辅助功能 API
-    自动完成）。不知此点会把授权失效误判为读写缺陷。
+    自动完成）。不知此点会把授权失效误判为读写缺陷。2026-07-31 的重建后授权
+    仍然有效，说明该现象并非每次重建必然出现。
+11. **稳定性样本的覆盖面有限**：2026-07-31 的 40 次触发全部来自同一台机器、
+    同一 Chrome 版本、同一个两行夹具，且由自动化驱动。跨机器、跨 Chrome 版本、
+    跨输入框类型以及真人操作节奏下的稳定性未验证。详见 T-037 后续文件。
+12. **分级诊断经 `os_log` 输出**：`replacement-stage` 记录会进入统一日志。
+    `ReplacementStageReport` 在类型上不含 `String` 字段，只有阶段标识、失败
+    分类与 UTF-16 长度，因此不存在内容外泄路径；但长度本身是可观测的元数据，
+    已如实披露。详见 T-047 与 T-045。
 
 ## 八、范围决策记录
 
@@ -202,7 +226,8 @@ Spec Gate；Feature 001 按现有规格收尾。详见
 - Implementation Gate 首次审核 `ebb6978` → `CHANGES REQUESTED`（6 项 MUST）
 - Plan Gate 重开三版修订：`1333438` → `dd939a4` → `0c9883f`（Solar `PASS`）
 - Tasks Gate 重开两版修订：`ae99e29` → `a8d0327`（Solar `PASS`）
-- 本次为重开后的首个 Implementation Gate `HANDOFF`
+- Implementation Gate 第二次审核 `9bb221e` → `CHANGES REQUESTED`（3 项 MUST）
+- 本次为三项 MUST 修复后的第三次 Implementation Gate `HANDOFF`
 
 **T-031 之后的全部生产代码变更**
 
@@ -225,6 +250,18 @@ Spec Gate；Feature 001 按现有规格收尾。详见
 8. `e724ba3` — Finding 6 复制失败呈现、剪贴板读取失败与空内容区分、设置深链
    手动导航指引、快捷键冲突重新注册。
 9. `1ce9d01` — Finding 7 按钮与内容区域的 `accessibilityLabel`。
+10. `d505e32` — 第二轮 MUST 2：`PreviewCapability.replacementRejected`、
+    `SessionTextTargetAccessing.replace` 改为 `Result<Void, DomainFailure>`、
+    `PreviewStatus.targetNotWritable`、`replacementRejectionStatus(for:)`。
+    未发生写入的拒绝不再显示为写入失败。
+11. `8f72296` — 第二轮 MUST 3：`PreviewUserAction.retryCopy` 与
+    `pendingCopyRetry`，复制失败后的重试重放同一次复制而非重开会话。
+12. `f1bda7a` — 第二轮 MUST 1：`ReplacementStage`、`ReplacementStageReport`、
+    `ReplacementDiagnosticsRecording`，替换路径 11 个拒绝点逐一可分；报告在
+    类型上不含 `String`，记录保持同步以避免在 A4 与 setter 之间引入
+    suspension point。
+13. `2792b1d` — 第二轮 MUST 1 的生产装配：`OSLogReplacementDiagnosticsRecorder`
+    经 `makeReplacementDiagnostics()` 注入 `convenience init()`。
 
 Finding 5 未产生代码变更，其结论为证据补齐 + 特定应用限制记录。
 
@@ -237,16 +274,19 @@ Finding 5 未产生代码变更，其结论为证据补齐 + 特定应用限制�
   全部生产装配仍由失败测试驱动。
 - **C5 — 真实验收完整**：达成。TextEdit 与 ChatGPT 完整闭环（含多行）、
   VS Code 后备闭环、性能／显示／输入／隐私证据，以及 P6 的 T-040 至 T-045
-  全部完成且可复现。
+  全部完成且可复现。2026-07-31 追加 40 次 ChatGPT 多行触发的分级诊断数据，
+  见 T-037 后续文件。
 
 ## 结论
 
 全部 13 条功能需求、7 条非功能需求、17 个验收场景均已逐项核对并有可复现证据
-支撑。172 个自动化测试连续两次全绿，build、project-structure、sdd-check、
-secret-scan、`git diff --check` 五道门禁无未解释失败。C3、C4、C5 达成。
+支撑。199 个自动化测试全绿，build、unit-tests（含 `ProjectStructureTests`）、
+sdd-check、secret-scan、`git diff --check` 无未解释失败。C3、C4、C5 达成。
 
-第七节的 10 项已知限制与残余风险、第八节的范围决策一并提交 Reviewer 裁决。
-其中第 3 项（ChatGPT 多行的间歇失败）与第 4、5 项（R2 来源不可区分、
-whole-field setter 的 TOCTOU）是需要 Reviewer 重点确认的披露事项。
+第七节的 12 项已知限制与残余风险、第八节的范围决策一并提交 Reviewer 裁决。
+需要 Reviewer 重点确认的披露事项：第 3 项（ChatGPT 多行历史间歇失败无法回溯
+归类，并撤回前一版的 A1–A4 归因）、第 4、5 项（R2 来源不可区分、whole-field
+setter 的 TOCTOU）、第 11 项（稳定性样本覆盖面有限）、第 12 项（分级诊断的
+长度元数据经统一日志可观测）。
 
-可以发布重开后的 Implementation Gate `HANDOFF`。
+可以针对三项 MUST 修复后的新 SHA 发布 Implementation Gate `HANDOFF`。
