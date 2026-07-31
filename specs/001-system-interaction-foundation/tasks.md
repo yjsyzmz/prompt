@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: tasks
-status: revised-pending-review  # P7（T-047 至 T-051）已于 2026-07-31 完成，等待第三次 Implementation Gate 审核
+status: revised-pending-review  # Tasks Gate 于 2026-07-31 第二次重开：P7（T-047 至 T-056）为已批准 Tasks SHA a8d0327 之后的实质变更，须先取得 Tasks PASS 才能重回 Implementation Gate
 plan_version: "0c9883f8385c731b0cc084d22519224eada926ea"  # 重开后的 Plan Gate 第三版修订，Solar 已 PASS（2026-07-28）
 owner: "Fable (Comate), from T-028"
 reviewer: "Solar, from T-028"
@@ -157,6 +157,19 @@ P5 的人工复核范围由 Solar 在 Tasks Gate REVIEW 中裁决为"按影响�
 
 ### P7 — 第二轮 Implementation Gate REVIEW 的三项 MUST，及真机复测暴露的焦点归属缺陷链（2026-07-31 新增）
 
+**Tasks Gate 第二次重开（2026-07-31）。** Solar 对 `5070607` 的第三次
+Implementation Gate REVIEW 判定 `CHANGES REQUESTED`，Finding 1（MUST）指出：
+T-047 至 T-051 是在已批准 Tasks SHA `a8d0327` 之后新增并执行的带依赖、覆盖与
+完成条件的任务，属 AGENTS.md 第 4 节的 material change，会重开 Tasks Gate 与
+全部下游 Gate。因此：
+
+- T-047 至 T-051 虽已执行完毕，**其任务定义本身尚未取得 Tasks PASS**，需在本次
+  重开的 Tasks Gate 中一并追认。
+- T-052 至 T-056 依据本轮 REVIEW 的 Finding 2 至 6 新增，**在 Tasks PASS 之前
+  不得开工**。
+- 下游 Implementation Gate 随之重开；C5 回退为未达成（见「检查点」）。
+- 聊天中的口头授权不能替代仓库里的 Gate 记录。
+
 本段任务因 Solar 对 `9bb221e` 的第二轮 Implementation Gate REVIEW（`CHANGES
 REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报告的 MUST 2／MUST 3
 完成情况不成立（所称 commit 不存在，工作区处于无法编译的半成品状态，干净基线
@@ -167,6 +180,12 @@ REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报
 - [x] **T-049 [Fix] 不含内容的分级诊断与真实环境稳定性数据（MUST 1）。** ✅ **2026-07-31 完成（`f1bda7a`、`2792b1d`）**：RED 为编译器逐项点名缺失的生产 API；GREEN 引入覆盖 11 个拒绝点的 `ReplacementStage`、类型上不含 `String` 的 `ReplacementStageReport`、同步的 `ReplacementDiagnosticsRecording`，并经 `makeReplacementDiagnostics()` 进入生产装配。真实环境采集 40 次 ChatGPT 多行触发：37 次进入替换路径且全部 `completed`，`failure != none` 为 0；3 次捕获阶段失败经延长粘贴沉降间隔后消失。同时撤回 T-037 后续文件中"失败发生在 A1–A4 之一"的无证据归因。— Depends on: T-048; Covers: FR-013, NFR-006, NFR-007; Evidence: `evidence/T-047-second-review-must-fixes.md`、`evidence/T-037-chatgpt-multiline-followup.md`
 - [x] **T-050 [Evidence] 更新验收包并重新发布 Implementation Gate HANDOFF。** ✅ **2026-07-31 完成**：验收包已更新（199 tests 与五道门禁全绿，已知限制由 10 项增至 12 项，含稳定性样本覆盖面与分级诊断长度元数据两项新披露），第七节第 3 项的归因已更正。— Depends on: T-047, T-048, T-049; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
 - [x] **T-051 [Fix] 修复键盘焦点归属引发的连锁缺陷。** ✅ **2026-07-31 完成（`d90ba37`、`153eb41`、`efc73e6`、`6093146`）**：分级诊断上线后用户手动复测仍失败，诊断把失败定位到 A2；加入不含内容的 `focusedApplicationIsSelf` 字段后实测 `focus-is-self=true`——预览面板为让内部按钮可点而设 `canBecomeKey = true`，用户鼠标点击时面板合法持有键盘焦点，导致所有基于系统级焦点的目标校验失败。四处同源缺陷：① `validate` 的 A2 缺少 `plan.md:197` 已批准的自身豁免；② A3／A4 经 `AXUIElementCreateSystemWide()` 解析「当前元素」，改为经 `AXUIElementCreateApplication(pid)` 问目标应用自身；③ `sharedPrechecks` 的 A2 同样缺少豁免，致替换成功而「恢复原文」失败；④ A1–A4 存在两份独立拷贝使缺陷可再生，已抽出共用的 `frontmostApplicationIsAcceptable(pid:)`。修复后真机手动完成「确认替换 → 恢复原文」完整闭环，203 tests 全绿。属实现不符合已批准 Plan 的符合性修复，不触发 Plan Gate 重开。缺陷 ② 的真实 AX 解析路径无法单元测试，唯一证据为真机验证，已在证据文件中披露。— Depends on: T-049; Covers: FR-007, FR-008, FR-012, NFR-002, NFR-007, AC-005, AC-006, AC-012; Evidence: `evidence/T-048-focus-ownership-defect-chain.md`
+- [ ] **T-052 [Fix] 分级诊断不得输出任何用户文字长度（REVIEW Finding 2，MUST）。** `SystemInteractionAdapters.swift:266-277` 目前把 `expectedLength` 与 `observedLength` 以 `.public` 写入 `os_log`，`DomainContracts.swift:75-101` 的 `ReplacementStageReport` 亦以长度为字段。长度是用户文字的可观测元数据，违反 FR-013／NFR-006 的明文隐私边界；已批准 Plan 未授权以「风险披露」豁免该边界。任务要求：先写失败测试断言诊断输出不含任何长度数字，再移除长度字段（或改为不可复原的等级化表示，须由 Plan 明确授权后方可采用——本任务范围内默认直接移除），并同步删除 T-047／T-048／T-039 中依赖长度的记述。— Depends on: Tasks PASS; Covers: FR-013, NFR-006; Evidence: 新增 `evidence/T-052-diagnostics-privacy-fix.md`
+- [ ] **T-053 [Fix] A2 豁免范围收窄到当前预览面板（REVIEW Finding 3，MUST）。** 现行 `frontmostApplicationIsAcceptable(pid:)` 豁免整个本进程（`focusedPID == ProcessInfo.processInfo.processIdentifier`），而 `plan.md:197` 批准的是「除工具自身 non-activating panel 外」——即仅当**当前预览面板**持有焦点时豁免，而非本进程的任意窗口。任务要求：先写失败测试覆盖「本进程但非预览面板窗口持有焦点时必须拒绝」，再把判定改为基于当前会话的预览面板窗口身份。— Depends on: Tasks PASS; Covers: FR-007, FR-008, NFR-002, AC-005; Evidence: 新增 `evidence/T-053-a2-panel-scoped-exemption.md`
+- [ ] **T-054 [Fix] 补齐 replacement 失败映射与测试覆盖（REVIEW Finding 4，MUST）。** 依 Solar 指出的缺口补齐 `replacementRejectionStatus(for:)` 的映射完整性与对应测试；须覆盖 `DomainFailure` 中当前落入 `default` 分支的取值，并对每一类给出可区分的呈现断言。任务要求：先补失败测试再改实现。— Depends on: Tasks PASS; Covers: FR-008, NFR-007, AC-008; Evidence: 新增 `evidence/T-054-failure-mapping-completeness.md`
+- [ ] **T-055 [Verify] 用真人鼠标／触控板重新验证受影响闭环（REVIEW Finding 5，MUST）。** AXPress 驱动不会使预览面板成为 key window，因此既有脚本驱动的闭环证据不覆盖真人必经路径。任务要求：在 T-052／T-053／T-054 落地后，由真人以鼠标或触控板重跑 TextEdit、Chrome/ChatGPT、VS Code 三处闭环的「确认替换 → 恢复原文」，逐次记录面板文案与分级诊断阶段；范围与是否需要重做 T-032／T-033 由 Solar 在本次 Tasks Gate 裁定。— Depends on: T-052, T-053, T-054; Covers: FR-007, FR-008, FR-012, AC-005, AC-006, AC-012; Evidence: 新增 `evidence/T-055-human-driven-revalidation.md`
+- [ ] **T-056 [Evidence] 更正「工程结构脚本不存在」的记录错误（REVIEW Finding 6，MUST）。** 该判断有误：`scripts/project-structure-check.sh` 在本功能分支中存在，本轮已独立运行通过（`Project structure check passed.`，exit 0）。此前的错误源于在主 worktree（`/Users/daidong/Documents/prompt/scripts/`）下查找，该目录不含此脚本。任务要求：撤回 `evidence/T-039-acceptance-package.md` 第二节的相关「更正」段落，恢复该脚本为独立门禁，并复核本轮五道门禁的执行入口记录是否一致。— Depends on: Tasks PASS; Covers: 无新增需求（记录准确性）; Evidence: `evidence/T-039-acceptance-package.md`
+
 
 ## 检查点
 
@@ -175,7 +194,7 @@ REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报
 - **C2 — 领域安全不变量成立：** T-014 通过；确认前零 setter、单会话、会话清理及 `recoverable → previewing(recoveryUnavailable)` 已由失败优先测试证明。
 - **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-021／T-022 按批准算法转绿，T-040 自动化复核确认权限、剪贴板、AX、observer、几何与预览各套件全部通过。
 - **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 的两次运行中 T-027 与 T-030／T-031 套件全部通过。
-- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ ~~已回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 至 T-046 全部完成，含 P6 的真实环境复核与定向审计，详见 `evidence/T-039-acceptance-package.md` 第十节。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。
+- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ ~~已回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 至 T-046 全部完成，含 P6 的真实环境复核与定向审计，详见 `evidence/T-039-acceptance-package.md` 第十节。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。 **2026-07-31 再次回退为未达成**：Solar 对 `5070607` 的第三次 Implementation Gate REVIEW 判定 `CHANGES REQUESTED`，6 项 MUST 未闭合；且 Tasks Gate 因 P7 重开，下游 Implementation Gate 随之重开。重新达成的前提是 T-052 至 T-056 全部完成，其中 T-055 要求真人鼠标／触控板驱动的复核证据。
 
 ## Plan Gate NIT 处置约束
 
@@ -187,6 +206,12 @@ REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报
 
 ## Tasks Gate 记录
 
+- **第二次重开（2026-07-31，当前待审）**：因 P7（T-047 至 T-051）在已批准
+  Tasks SHA `a8d0327` 之后新增并执行，构成 material change；Solar 对 `5070607`
+  的第三次 Implementation Gate REVIEW 以 Finding 1（MUST）要求先重开 Tasks
+  Gate。本次修订新增 T-052 至 T-056（对应 REVIEW 的 Finding 2 至 6），并把
+  T-047 至 T-051 提交追认。Tasks PASS 前不得开工 T-052 至 T-056，也不得重新
+  发起 Implementation Gate。
 - Plan Gate 通过提交（当前权威）：`0c9883f8385c731b0cc084d22519224eada926ea`
   —— 重开后的 Plan Gate 第三版修订，Solar `PASS`（2026-07-28，REVIEW 见 PR #2 issuecomment-5112794473）
 - Plan Gate 通过提交（历史，首次 Plan Gate，已被上述修订取代）：`c5666be0aefb4523e21a2544722511f087201360`
