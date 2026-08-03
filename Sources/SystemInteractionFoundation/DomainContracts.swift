@@ -30,7 +30,10 @@ struct DeterministicTransformer {
     }
 }
 
-enum DomainFailure: Error, Equatable {
+/// T-054: `CaseIterable` so the rejection mapping can be proven **total**. A new
+/// failure added here fails the mapping table test instead of being swallowed by
+/// a `default` branch.
+enum DomainFailure: Error, Equatable, CaseIterable {
     case hotKeyConflict
     case accessibilityPermissionRequired
     case secureInputActive

@@ -14,6 +14,9 @@ final class PreviewStateActionTests: XCTestCase {
             .clipboardReadFailed: "未能读取剪贴板文字，请重新复制后重试。",
             .clipboardWriteFailed: "未能复制到剪贴板，结果仍保留在预览中，可以重试。",
             .targetNotWritable: "当前输入位置已不可写入，未做任何修改，结果仍可复制。",
+            .sourceOrSelectionChanged: "原文或选区已经变化，未做任何修改，请重新选取。",
+            .targetTemporarilyUnavailable: "目标暂时无法访问，未做任何修改，可以重试。",
+            .unspecifiedFailure: "本次操作未能完成，未做任何修改，结果仍可复制。",
         ]
 
         for status in PreviewStatus.allCases {
@@ -78,6 +81,19 @@ final class PreviewStateActionTests: XCTestCase {
                 PreviewButton(action: .close, title: "关闭", isEnabled: true),
             ],
             .targetNotWritable: [
+                PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                PreviewButton(action: .cancel, title: "取消", isEnabled: true),
+            ],
+            .sourceOrSelectionChanged: [
+                PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                PreviewButton(action: .cancel, title: "取消", isEnabled: true),
+            ],
+            .targetTemporarilyUnavailable: [
+                PreviewButton(action: .retry, title: "重试", isEnabled: true),
+                PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                PreviewButton(action: .close, title: "关闭", isEnabled: true),
+            ],
+            .unspecifiedFailure: [
                 PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
                 PreviewButton(action: .cancel, title: "取消", isEnabled: true),
             ],

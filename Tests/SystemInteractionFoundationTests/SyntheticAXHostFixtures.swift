@@ -37,6 +37,7 @@ final class SyntheticAXTextHost: @unchecked Sendable {
     private var capturedElementGeneration = -1
     private var remainingForcedSetterFailures = 0
     private var remainingForcedContentReadFailures = 0
+    private var forcedContentReadFailure: DomainFailure = .axCannotComplete
     private var setterSilentlyDropsWrites = false
     private var replacementAttributeBlocked = false
 
@@ -214,8 +215,18 @@ final class SyntheticAXTextHost: @unchecked Sendable {
     }
 
     /// MUST 1: an unreadable target must be distinguishable from a changed one.
-    func failNextContentReads(_ count: Int) {
-        withLock { remainingForcedContentReadFailures = count }
+    ///
+    /// T-054: the injected failure is a parameter so that `axTimedOut`,
+    /// `accessibilityPermissionRequired` and `unknown` are reachable on the
+    /// replacement path and can be routed by the adjudicated mapping.
+    func failNextContentReads(
+        _ count: Int,
+        with failure: DomainFailure = .axCannotComplete
+    ) {
+        withLock {
+            remainingForcedContentReadFailures = count
+            forcedContentReadFailure = failure
+        }
     }
 
     func editSegmentExternally(_ newSegment: String) {
@@ -285,8 +296,8 @@ extension SyntheticAXTextHost: AXCaptureReading {
             guard range.location == selectionLocation else {
                 return .failure(.sourceChanged)
             }
-            guard consumeForcedContentReadFailureIfNeeded() else {
-                return .failure(.axCannotComplete)
+            if let injected = consumeForcedContentReadFailureIfNeeded() {
+                return .failure(injected)
             }
             contentReads += 1
             return .success(reportedSelectionLength == 0 ? "" : segment)
@@ -295,8 +306,8 @@ extension SyntheticAXTextHost: AXCaptureReading {
 
     func fullValue() -> Result<String, DomainFailure> {
         withLock {
-            guard consumeForcedContentReadFailureIfNeeded() else {
-                return .failure(.axCannotComplete)
+            if let injected = consumeForcedContentReadFailureIfNeeded() {
+                return .failure(injected)
             }
             contentReads += 1
             return .success(prefix + segment + suffix)
@@ -378,12 +389,12 @@ extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
         }
     }
 
-    private func consumeForcedContentReadFailureIfNeeded() -> Bool {
+    private func consumeForcedContentReadFailureIfNeeded() -> DomainFailure? {
         guard remainingForcedContentReadFailures > 0 else {
-            return true
+            return nil
         }
         remainingForcedContentReadFailures -= 1
-        return false
+        return forcedContentReadFailure
     }
 
     private func consumeForcedFailureIfNeeded() -> Bool {

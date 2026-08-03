@@ -10,6 +10,14 @@ enum PreviewStatus: CaseIterable, Hashable, Sendable {
     case clipboardReadFailed
     case clipboardWriteFailed
     case targetNotWritable
+    /// T-054: the content changed, which is a different fact — and a different
+    /// next step for the user — than the input position having moved.
+    case sourceOrSelectionChanged
+    /// T-054: the target could not be reached this time. Retrying is meaningful.
+    case targetTemporarilyUnavailable
+    /// T-054: fail-closed. Claims neither that the target changed nor that
+    /// anything was written.
+    case unspecifiedFailure
 }
 
 enum PreviewUserAction: Hashable, Sendable {
@@ -164,6 +172,64 @@ struct PreviewPresentationMapper {
                     PreviewButton(action: .cancel, title: "取消", isEnabled: true),
                 ]
             )
+        case .sourceOrSelectionChanged:
+            return PreviewViewState(
+                message: "原文或选区已经变化，未做任何修改，请重新选取。",
+                buttons: [
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .cancel, title: "取消", isEnabled: true),
+                ]
+            )
+        case .targetTemporarilyUnavailable:
+            return PreviewViewState(
+                message: "目标暂时无法访问，未做任何修改，可以重试。",
+                buttons: [
+                    PreviewButton(action: .retry, title: "重试", isEnabled: true),
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .close, title: "关闭", isEnabled: true),
+                ]
+            )
+        case .unspecifiedFailure:
+            return PreviewViewState(
+                message: "本次操作未能完成，未做任何修改，结果仍可复制。",
+                buttons: [
+                    PreviewButton(action: .copyResult, title: "复制结果", isEnabled: true),
+                    PreviewButton(action: .cancel, title: "取消", isEnabled: true),
+                ]
+            )
+        }
+    }
+
+    /// T-054: the adjudicated routing table for an authoritative-validation
+    /// rejection. Exhaustive on purpose — no `default` — so that adding a
+    /// `DomainFailure` forces an explicit decision here rather than silently
+    /// inheriting someone else's copy.
+    ///
+    /// Only `.writeFailed` may present as a write failure: it is the one class
+    /// that reached the setter or its readback.
+    func status(forReplacementRejection failure: DomainFailure) -> PreviewStatus {
+        switch failure {
+        case .invalidTarget, .recoveryTargetChanged:
+            return .staleTarget
+        case .sourceChanged:
+            return .sourceOrSelectionChanged
+        case .secureInputActive:
+            return .secureInput
+        case .accessibilityPermissionRequired:
+            return .permissionRequired
+        case .attributeNotSettable, .unsupportedTarget:
+            return .targetNotWritable
+        case .axTimedOut, .axCannotComplete:
+            return .targetTemporarilyUnavailable
+        case .writeFailed:
+            return .writeFailed
+        case .hotKeyConflict,
+             .emptySource,
+             .pasteboardReadFailed,
+             .pasteboardWriteFailed,
+             .panelPlacementFallback,
+             .unknown:
+            return .unspecifiedFailure
         }
     }
 }

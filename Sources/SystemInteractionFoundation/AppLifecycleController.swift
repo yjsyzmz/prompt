@@ -481,22 +481,13 @@ final class AppLifecycleController {
         textTarget.endSession()
     }
 
-    /// MUST 2: maps an authoritative-validation rejection onto the status that
-    /// describes it. None of these paths reached a setter, so none of them may
-    /// be presented as a failed write.
+    /// T-054: the routing table now lives in `PreviewPresentationMapper`, where it
+    /// is exhaustive over `DomainFailure` and directly testable. This method only
+    /// forwards, so there is one definition rather than two that can drift.
     private func replacementRejectionStatus(
         for failure: DomainFailure
     ) -> PreviewStatus {
-        switch failure {
-        case .secureInputActive:
-            return .secureInput
-        case .accessibilityPermissionRequired:
-            return .permissionRequired
-        case .attributeNotSettable, .unsupportedTarget:
-            return .targetNotWritable
-        default:
-            return .staleTarget
-        }
+        mapper.status(forReplacementRejection: failure)
     }
 
     private func previewStatus(for failure: DomainFailure) -> PreviewStatus {        switch failure {
