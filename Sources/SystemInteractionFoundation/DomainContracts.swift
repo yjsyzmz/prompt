@@ -73,15 +73,15 @@ enum ReplacementStage: String, Equatable, Sendable {
 }
 
 /// FR-013／NFR-006: a stage report carries only the stage, the failure category
-/// and UTF-16 code-unit counts. It has no `String` member by construction, so no
-/// captured or written text can reach a log through it.
+/// and — for A2 alone — whether keyboard focus was on this process. It has no
+/// `String` and no numeric member by construction, so neither the text nor any
+/// measure derived from it can reach a log through this type.
+///
+/// Tasks Gate 裁决（2026-07-31）：长度字段完全删除，不允许等级化表示。代价是
+/// B1 阶段只能报告「内容已变化」而无法给出量级。
 struct ReplacementStageReport: Equatable, Sendable {
     let stage: ReplacementStage
     let failure: DomainFailure?
-    /// UTF-16 length of the text the session expected to still be in place.
-    let expectedLength: Int
-    /// UTF-16 length actually observed, when the stage read anything at all.
-    let observedLength: Int?
     /// Only set by the A2 stage. `true` means the focused application was this
     /// process — which is what happens when the preview panel takes keyboard
     /// focus from a real mouse click. Carries no identity beyond "is it us".
@@ -90,14 +90,10 @@ struct ReplacementStageReport: Equatable, Sendable {
     init(
         stage: ReplacementStage,
         failure: DomainFailure? = nil,
-        expectedLength: Int,
-        observedLength: Int? = nil,
         focusedApplicationIsSelf: Bool? = nil
     ) {
         self.stage = stage
         self.failure = failure
-        self.expectedLength = expectedLength
-        self.observedLength = observedLength
         self.focusedApplicationIsSelf = focusedApplicationIsSelf
     }
 }

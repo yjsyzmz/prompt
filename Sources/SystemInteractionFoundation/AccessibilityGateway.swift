@@ -287,13 +287,11 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     func replaceAfterAuthoritativeValidation(
         _ snapshot: AXWriteSnapshot
     ) -> Result<AXRecoveryContext, DomainFailure> {
-        let expectedLength = snapshot.originalText.value.utf16.count
         guard snapshot.captureMode != .clipboardInput else {
             diagnostics?.record(
                 ReplacementStageReport(
                     stage: .unsupportedMode,
-                    failure: .unsupportedTarget,
-                    expectedLength: expectedLength
+                    failure: .unsupportedTarget
                 )
             )
             return .failure(.unsupportedTarget)
@@ -312,20 +310,13 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return .failure(failure)
         }
 
-        let writtenLength = snapshot.transformedText.value.utf16.count
-
         guard setText(
             snapshot.transformedText.value,
             mode: snapshot.captureMode,
             targetHandle: snapshot.targetHandle
         ) else {
             diagnostics?.record(
-                ReplacementStageReport(
-                    stage: .setter,
-                    failure: .writeFailed,
-                    expectedLength: expectedLength,
-                    observedLength: writtenLength
-                )
+                ReplacementStageReport(stage: .setter, failure: .writeFailed)
             )
             return .failure(.writeFailed)
         }
@@ -338,23 +329,12 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             // The setter reported success but the value never landed. This is a
             // different failure than a refused setter and must stay separable.
             diagnostics?.record(
-                ReplacementStageReport(
-                    stage: .readback,
-                    failure: .writeFailed,
-                    expectedLength: expectedLength,
-                    observedLength: writtenLength
-                )
+                ReplacementStageReport(stage: .readback, failure: .writeFailed)
             )
             return .failure(.writeFailed)
         }
 
-        diagnostics?.record(
-            ReplacementStageReport(
-                stage: .completed,
-                expectedLength: expectedLength,
-                observedLength: writtenLength
-            )
-        )
+        diagnostics?.record(ReplacementStageReport(stage: .completed))
         return .success(
             AXRecoveryContext(
                 targetHandle: snapshot.targetHandle,
@@ -632,19 +612,15 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         mode: CaptureMode,
         expectedText: String,
     ) -> Result<Void, DomainFailure> {
-        let expectedLength = expectedText.utf16.count
         func reject(
             _ stage: ReplacementStage,
             _ failure: DomainFailure,
-            observedLength: Int? = nil,
             focusedApplicationIsSelf: Bool? = nil
         ) -> Result<Void, DomainFailure> {
             diagnostics?.record(
                 ReplacementStageReport(
                     stage: stage,
                     failure: failure,
-                    expectedLength: expectedLength,
-                    observedLength: observedLength,
                     focusedApplicationIsSelf: focusedApplicationIsSelf
                 )
             )
@@ -690,11 +666,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         ) {
         case .success(let currentText):
             guard currentText == expectedText else {
-                return reject(
-                    .contentComparison,
-                    .sourceChanged,
-                    observedLength: currentText.utf16.count
-                )
+                return reject(.contentComparison, .sourceChanged)
             }
         case .failure(let failure):
             return reject(.contentRead, failure)

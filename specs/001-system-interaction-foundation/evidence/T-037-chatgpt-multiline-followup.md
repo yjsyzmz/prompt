@@ -39,7 +39,7 @@ unit、2 个换行。通过 `pbcopy` 放入剪贴板后用 System Events 模拟 
 
 `AccessibilityGateway` 的替换路径现在对 11 个拒绝点逐一记录
 `ReplacementStageReport`。该结构在类型上不含任何 `String` 字段，只携带阶段
-标识、`DomainFailure` 分类和两个 UTF-16 长度，生产侧经 `os_log`
+标识与 `DomainFailure` 分类，生产侧经 `os_log`
 （subsystem `com.systeminteractionfoundation.verification`，category
 `replacement-stage`）输出，符合 FR-013 与 NFR-006。
 
@@ -58,8 +58,13 @@ emoji 😀 与组合字符 é。转换结果 64 UTF-16 code unit。
 37 条阶段记录，全部为：
 
 ```text
-replacement-stage=completed failure=none expected-utf16=55 observed-utf16=64
+replacement-stage=completed failure=none
 ```
+
+（**T-052 更正**：本轮采集时诊断尚含 `expected-utf16` 与 `observed-utf16` 两个
+长度字段。Solar 在第三次 Implementation Gate REVIEW 的 Finding 2 判定长度属于
+用户文字的可观测元数据，违反 FR-013／NFR-006；T-052 已完全删除这两个字段，
+上文按删除后的实际输出格式改写。）
 
 `failure != none` 的记录数为 0；`setter`、`readback` 以及 A1–A4 各阶段的拒绝
 记录数均为 0。

@@ -112,18 +112,12 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
 
     func testExternalContentEditIsReportedAsTheComparisonStage() async {
         let probe = await StageProbe.make()
-        let replacement = "SYNTHETIC-001 外部改过的文字"
-        probe.host.editSegmentExternally(replacement)
+        probe.host.editSegmentExternally("SYNTHETIC-001 外部改过的文字")
 
         let stage = await probe.attemptReplacement()
 
         XCTAssertEqual(stage?.stage, .contentComparison)
         XCTAssertEqual(stage?.failure, .sourceChanged)
-        XCTAssertEqual(
-            stage?.observedLength,
-            replacement.utf16.count,
-            "the report carries lengths so a mismatch is measurable"
-        )
     }
 
     func testContentReadFailureIsDistinctFromContentComparison() async {
@@ -249,6 +243,46 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
             originalFullText,
             "the field must be back to its pre-replacement content"
         )
+    }
+
+    // MARK: - T-052：诊断不得携带任何内容度量
+
+    /// Tasks Gate 裁决：完全删除长度字段，不允许等级化表示。长度是用户文字的
+    /// 可观测元数据，FR-013／NFR-006 的边界不接受以「风险披露」豁免。
+    func testStageReportHasNoNumericContentMeasureField() async {
+        let probe = await StageProbe.make()
+        probe.host.switchWindow()
+        _ = await probe.attemptReplacement()
+
+        let reports = probe.recorder.snapshot()
+        XCTAssertFalse(reports.isEmpty)
+        for report in reports {
+            for child in Mirror(reflecting: report).children {
+                let typeName = String(describing: type(of: child.value))
+                XCTAssertFalse(
+                    typeName.contains("Int"),
+                    """
+                    FR-013: a stage report may not carry a numeric measure of \
+                    user text; found \(child.label ?? "?") of type \(typeName)
+                    """
+                )
+            }
+        }
+    }
+
+    func testStageReportDescriptionContainsNoDigits() async {
+        let probe = await StageProbe.make()
+        probe.host.editSegmentExternally("SYNTHETIC-001 外部改过的文字")
+        _ = await probe.attemptReplacement()
+
+        let descriptions = probe.recorder.snapshot().map { String(describing: $0) }
+        XCTAssertFalse(descriptions.isEmpty)
+        for description in descriptions {
+            XCTAssertNil(
+                description.rangeOfCharacter(from: .decimalDigits),
+                "FR-013: diagnostics must not expose any digit derived from content"
+            )
+        }
     }
 
     // MARK: - 成功路径与隐私边界

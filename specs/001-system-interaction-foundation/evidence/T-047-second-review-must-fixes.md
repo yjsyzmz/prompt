@@ -135,8 +135,8 @@ value of type 'SyntheticAXTextHost' has no member 'failNextContentReads'
 
 两个设计决定：
 
-1. **`ReplacementStageReport` 在类型上不含任何 `String` 字段**，只有阶段标识、
-   `DomainFailure?` 和两个 UTF-16 长度。隐私不依赖"记得别打印内容"，而是类型
+1. **`ReplacementStageReport` 在类型上不含任何 `String` 字段**，只有阶段标识与
+   `DomainFailure` 分类。隐私不依赖"记得别打印内容"，而是类型
    里没有内容可打印（FR-013、NFR-006）。有一条测试对所有实际产生的报告执行
    `String(describing:)` 并断言不含合成标记与夹具文字。
 2. **记录是同步的。** 若改为 `async`，A4 与 setter 之间会多出一个 suspension

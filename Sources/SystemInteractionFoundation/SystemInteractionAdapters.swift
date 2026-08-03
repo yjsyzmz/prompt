@@ -255,8 +255,9 @@ struct OSLogPresentationLatencyRecorder: PresentationLatencyRecording {
 }
 
 /// MUST 1: emits the replacement stage classification. `ReplacementStageReport`
-/// has no `String` member, so nothing read from or written to a target
-/// application can reach the log through this adapter (FR-013／NFR-006).
+/// has neither a `String` nor a numeric member, so neither the text nor any
+/// measure derived from it can reach the log through this adapter
+/// (FR-013／NFR-006).
 struct OSLogReplacementDiagnosticsRecorder: ReplacementDiagnosticsRecording {
     private let log = Logger(
         subsystem: "com.systeminteractionfoundation.verification",
@@ -265,14 +266,11 @@ struct OSLogReplacementDiagnosticsRecorder: ReplacementDiagnosticsRecording {
 
     func record(_ report: ReplacementStageReport) {
         let failure = report.failure.map { "\($0)" } ?? "none"
-        let observed = report.observedLength.map(String.init) ?? "na"
         let focusIsSelf = report.focusedApplicationIsSelf.map(String.init) ?? "na"
         log.info(
             """
             replacement-stage=\(report.stage.rawValue, privacy: .public) \
             failure=\(failure, privacy: .public) \
-            expected-utf16=\(report.expectedLength, privacy: .public) \
-            observed-utf16=\(observed, privacy: .public) \
             focus-is-self=\(focusIsSelf, privacy: .public)
             """
         )
