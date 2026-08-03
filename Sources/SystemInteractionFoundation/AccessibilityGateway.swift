@@ -284,6 +284,42 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         await monitorInvalidationSink.disableDirectActions(for: envelope)
     }
 
+    /// T-058: answers *why* the captured target would now be judged stale, using
+    /// the same identity checks as the write path's A1–A4.
+    ///
+    /// It is a pure query: it records nothing, writes nothing, and mutates no
+    /// actor state, so calling it cannot change what the monitor path does. It
+    /// lives here only because the identity checks are actor-isolated; the
+    /// caller decides whether and how to record the answer. The comparison uses
+    /// the pid captured with the target, which is the same pid A1 and A2 use.
+    func staleTargetAssessment(
+        for targetHandle: TargetHandle,
+        panelFocus: PanelFocusAuthorization
+    ) -> StaleTargetDiagnosticReport {
+        guard let pid = targetReferences[targetHandle]?.pid else {
+            return StaleTargetDiagnosticReport(reason: .identityUnknown)
+        }
+        guard targetApplicationIsRunning(pid: pid) else {
+            return StaleTargetDiagnosticReport(reason: .applicationTerminated)
+        }
+        if case .rejected(let focusedApplicationIsSelf) = frontmostApplicationCheck(
+            pid: pid,
+            panelFocus: panelFocus
+        ) {
+            return StaleTargetDiagnosticReport(
+                reason: .focusedApplicationChanged,
+                focusedApplicationIsSelf: focusedApplicationIsSelf
+            )
+        }
+        guard windowMatches(targetHandle: targetHandle) else {
+            return StaleTargetDiagnosticReport(reason: .windowIdentityChanged)
+        }
+        guard elementMatches(targetHandle: targetHandle) else {
+            return StaleTargetDiagnosticReport(reason: .elementIdentityChanged)
+        }
+        return StaleTargetDiagnosticReport(reason: .identityIntact)
+    }
+
     func replaceAfterAuthoritativeValidation(
         _ snapshot: AXWriteSnapshot,
         panelFocus: PanelFocusAuthorization

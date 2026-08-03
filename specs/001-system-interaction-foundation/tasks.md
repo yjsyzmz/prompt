@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: tasks
-status: revised-pending-review  # Tasks Gate 第三次重开第四版修订（2026-08-03）：P8 为 T-058、T-063、T-064、T-061、T-062，共 62 项任务；须取得 Tasks PASS 才能开工
+status: approved  # Solar 于 2026-08-03 对 `3e3bcc9` 给出 Tasks Gate `PASS`；P8 为 T-058、T-063、T-064、T-061、T-062，共 62 项任务。P8 执行中：T-058 已完成，下一项为 T-063
 plan_version: "0c9883f8385c731b0cc084d22519224eada926ea"  # 重开后的 Plan Gate 第三版修订，Solar 已 PASS（2026-07-28）
 owner: "Fable (Comate), from T-028"
 reviewer: "Solar, from T-028"
@@ -302,7 +302,7 @@ session／target 失效须立即停止、不得等到 deadline、不得追加写
 T-059 与 T-060 的修复方案才能被定义。** 现在就写修复方案等于凭推断行事——上一轮
 已因此付出七个外部探针加一个被撤回结论的代价，不再重复。
 
-- [ ] **T-058 [Fix] 为目标变化监听器路径补上不含内容的分级诊断（诊断前置，MUST）。** `AppLifecycleController.swift:364` 在监听器触发且会话处于 `previewing(.ready)` 时直接 `present(.staleTarget)`，该路径**没有任何埋点**，导致 T-055 暴露的两项缺陷无法归因（22 条阶段记录中 A1–A4 拒绝为零条，证明替换从未被请求）。任务要求：先写失败测试断言监听器触发导致的拒绝会产生一条可辨认的诊断记录，且该记录能区分「窗口变化／元素变化／焦点应用变化」三种依据；再实现。**沿用 T-052 的隐私边界：只记阶段标识与判定依据，不得含任何内容或长度。** 本任务不改变监听器的判定行为，只让原因可见。**必须继续遵守 Plan 的 observer 边界：`AXObserver` 回调只允许携带 session ID 与 target ID，不得为诊断向回调增加任何字段**——判定依据在控制器侧记录，不得回填进回调载荷。**本任务只做诊断：T-060（ChatGPT 二次替换）等修复任务须在本任务数据取得后经新一轮 Tasks Gate 定义，不得在本次 PASS 后临时定义并直接开发。** 观测对象须至少覆盖 ChatGPT 二次替换场景。— Depends on: Tasks PASS; Covers: FR-013, NFR-006, NFR-007; Evidence: 新增 `evidence/T-058-monitor-path-diagnostics.md`
+- [x] **T-058 [Fix] 为目标变化监听器路径补上不含内容的分级诊断（诊断前置，MUST）。** `AppLifecycleController.swift:364` 在监听器触发且会话处于 `previewing(.ready)` 时直接 `present(.staleTarget)`，该路径**没有任何埋点**，导致 T-055 暴露的两项缺陷无法归因（22 条阶段记录中 A1–A4 拒绝为零条，证明替换从未被请求）。任务要求：先写失败测试断言监听器触发导致的拒绝会产生一条可辨认的诊断记录，且该记录能区分「窗口变化／元素变化／焦点应用变化」三种依据；再实现。**沿用 T-052 的隐私边界：只记阶段标识与判定依据，不得含任何内容或长度。** 本任务不改变监听器的判定行为，只让原因可见。**必须继续遵守 Plan 的 observer 边界：`AXObserver` 回调只允许携带 session ID 与 target ID，不得为诊断向回调增加任何字段**——判定依据在控制器侧记录，不得回填进回调载荷。**本任务只做诊断：T-060（ChatGPT 二次替换）等修复任务须在本任务数据取得后经新一轮 Tasks Gate 定义，不得在本次 PASS 后临时定义并直接开发。** 观测对象须至少覆盖 ChatGPT 二次替换场景。— Depends on: Tasks PASS; Covers: FR-013, NFR-006, NFR-007; Evidence: 新增 `evidence/T-058-monitor-path-diagnostics.md`
 - [ ] **T-063 [Probe/Evidence] 在固定环境与固定次数下复现 ChatGPT 二次替换拒绝（MUST）。** 依 T-058 的埋点采集证据，为 T-064 的根因判断提供唯一依据。完成条件：① 记录 Chrome 与 ChatGPT 的**具体版本号**、macOS 版本、应用 SHA；② 使用**固定的合成夹具**（`SYNTHETIC-001` 标记，文本内容写入证据文件，保证可复现）；③ 由真人以鼠标／触控板复现二次替换场景**恰好 10 次**（固定样本数，不多不少；若中途因环境问题中断，须重置环境并重新计满 10 次，并在证据中记录被废弃的批次），每次记录：尝试编号、是否为二次替换、面板文案原文、监听器判定依据的原因分类、以及该次是否产生替换阶段记录；④ Google 搜索框**仅作范围外对照**，各跑 3 次并单独成表，不参与 001 的结论；⑤ 逐次记录**不得含任何内容或长度**，只记原因分类与结果。**本任务只采集，不分析根因、不改任何实现。** — Depends on: T-058; Covers: FR-013, NFR-006, NFR-007; Evidence: 新增 `evidence/T-063-second-replacement-probe.md`
 - [ ] **T-064 [Decision] 依 T-063 证据判定根因并把具体 Fix 任务写回 tasks.md（MUST）。** 完成条件：① **只依据 T-063 的记录**判定根因，不得引入未采集的推断；② 判定该根因是否触及已批准的 Plan `0c9883f`——若触及，必须先重开 Plan Gate 而非直接改实现；③ 列出所需的失败优先测试与**最小**修复范围，明确哪些变化应被容忍、哪些必须继续拒绝，不得为让场景通过而放宽写入安全约束；④ 把具体 Fix 任务（含依赖、覆盖、完成条件、Evidence 出口）写回 `tasks.md`；⑤ 提交新 SHA 并发起**新一轮 Tasks Gate HANDOFF**。**新 Tasks Gate `PASS` 之前不得实施任何 ChatGPT 修复。** 若 T-063 的证据不足以支撑判定，本任务的正确输出是「证据不足」并补充采集，不得以推断填补。— Depends on: T-063; Covers: 无新增需求（决策与任务定义）; Evidence: 新增 `evidence/T-064-second-replacement-root-cause.md`
 - **已移除（依 Solar Tasks Gate REVIEW，2026-08-03）**：原 T-059（Google 搜索框预览期被判目标变化）依 `BLOCKER` 移出 Feature 001——用户已在本会话早期将「Chrome 页内选区替换」与「所有输入框一致工作」划入后续 Feature，不得重新作为 001 的必须修复项；该现象已记入 `evidence/out-of-scope-observations.md` 观察 5。原 T-060（ChatGPT 二次替换被判目标变化）属 001 范围内缺陷，但其**修复任务须在 T-058 诊断数据取得后经新一轮 Tasks Gate 定义**，不得在本次 PASS 后临时定义并直接开发；本轮仅将其列为 T-058 必须覆盖的观测对象。

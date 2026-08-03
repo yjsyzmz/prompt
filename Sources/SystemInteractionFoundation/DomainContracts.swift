@@ -108,6 +108,56 @@ protocol ReplacementDiagnosticsRecording: Sendable {
     func record(_ report: ReplacementStageReport)
 }
 
+/// T-058: the target-change monitor refuses a preview without ever entering the
+/// replacement sequence, so no `ReplacementStage` can describe it — that is why
+/// T-055 collected 22 stage records with zero A1–A4 rejections while the user
+/// was being told the target had changed. This is the content-free
+/// classification of *why* the captured target was judged stale.
+enum StaleTargetReason: String, Equatable, Sendable, CaseIterable {
+    /// A1: the target application is gone.
+    case applicationTerminated
+    /// A2: keyboard focus is on an application that is neither the target nor
+    /// this session's own preview panel.
+    case focusedApplicationChanged
+    /// A3: the window identity no longer matches the capture.
+    case windowIdentityChanged
+    /// A4: the element identity no longer matches the capture.
+    case elementIdentityChanged
+    /// The observer fired but every identity check still matches. The refusal
+    /// therefore cannot be attributed to a target change — this is the value
+    /// that separates a real invalidation from a self-inflicted one.
+    case identityIntact
+    /// No retained reference for the handle, so there is nothing to compare.
+    /// Reported as its own case rather than guessed at.
+    case identityUnknown
+}
+
+/// FR-013／NFR-006: like `ReplacementStageReport`, this type has no `String` and
+/// no numeric member by construction, so neither the captured text nor any
+/// measure derived from it can reach a log through it.
+struct StaleTargetDiagnosticReport: Equatable, Sendable {
+    let reason: StaleTargetReason
+    /// Only set for `.focusedApplicationChanged`. `true` means keyboard focus
+    /// was on this process. Carries no identity beyond "is it us".
+    let focusedApplicationIsSelf: Bool?
+
+    init(
+        reason: StaleTargetReason,
+        focusedApplicationIsSelf: Bool? = nil
+    ) {
+        self.reason = reason
+        self.focusedApplicationIsSelf = focusedApplicationIsSelf
+    }
+}
+
+/// Deliberately separate from `ReplacementDiagnosticsRecording`: the monitor
+/// path is a different path with a different vocabulary, and a spy that
+/// silently ignored these records would let a green test hide a production path
+/// that still emits nothing.
+protocol StaleTargetDiagnosticsRecording: Sendable {
+    func record(_ report: StaleTargetDiagnosticReport)
+}
+
 /// T-053: the A2 exemption approved in `plan.md:197` covers **this tool's own
 /// non-activating panel**, not this process. This value carries the answer for
 /// exactly one action.

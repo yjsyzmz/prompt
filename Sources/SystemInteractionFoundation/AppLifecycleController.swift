@@ -90,9 +90,14 @@ final class AppLifecycleController {
     private let monitorBridge: MonitorInvalidationBridge
     private let clock: any MonotonicClockReading
     private let latencyRecorder: any PresentationLatencyRecording
+    /// T-058: content-free classification for the monitor path's refusals.
+    private let staleTargetDiagnostics: (any StaleTargetDiagnosticsRecording)?
 
     private(set) var captureWork: Task<Void, Never>?
     private(set) var cleanupWork: Task<Void, Never>?
+    /// T-058: the classification runs after the refusal has been presented, so
+    /// tests need a handle to await instead of polling.
+    private(set) var staleTargetDiagnosticsWork: Task<Void, Never>?
 
     private var activeSessionID: InteractionSessionID?
     private var activeTargetHandle: TargetHandle?
@@ -115,6 +120,7 @@ final class AppLifecycleController {
         gateway: AccessibilityGateway,
         targetMonitor: any TargetChangeMonitoring,
         presenter: any PreviewPresenting,
+        staleTargetDiagnostics: (any StaleTargetDiagnosticsRecording)? = nil,
         clock: any MonotonicClockReading = SystemMonotonicClock(),
         latencyRecorder: any PresentationLatencyRecording =
             OSLogPresentationLatencyRecorder()
@@ -122,6 +128,7 @@ final class AppLifecycleController {
         hotKey = GlobalHotKeyRegistrar(systemClient: hotKeySystemClient)
         self.clock = clock
         self.latencyRecorder = latencyRecorder
+        self.staleTargetDiagnostics = staleTargetDiagnostics
         secureInput = SecureInputGuard(checker: secureInputChecker)
         clipboard = ClipboardPolicy(pasteboard: pasteboard)
         self.gateway = gateway
@@ -184,7 +191,9 @@ final class AppLifecycleController {
             pasteboard: SystemPasteboardClient(),
             gateway: gateway,
             targetMonitor: monitor,
-            presenter: panelPresenter
+            presenter: panelPresenter,
+            staleTargetDiagnostics:
+                AppLifecycleController.makeStaleTargetDiagnostics()
         )
         monitorBox.controller = self
         panelPresenter.onAction = { [weak self] action in
@@ -199,6 +208,18 @@ final class AppLifecycleController {
     /// test can assert that the real wiring attaches one.
     static func makeReplacementDiagnostics() -> any ReplacementDiagnosticsRecording {
         OSLogReplacementDiagnosticsRecorder()
+    }
+
+    /// T-058: the production recorder for the monitor path. Kept as a factory
+    /// for the same reason as the replacement one — so the assembly test can
+    /// assert the real wiring attaches it instead of leaving that path silent.
+    static func makeStaleTargetDiagnostics() -> any StaleTargetDiagnosticsRecording {
+        OSLogStaleTargetDiagnosticsRecorder()
+    }
+
+    /// T-058: lets the assembly test confirm the monitor path is instrumented.
+    var staleTargetDiagnosticsIsAttached: Bool {
+        staleTargetDiagnostics != nil
     }
 
     static func makeTargetChangeMonitor(
@@ -361,7 +382,52 @@ final class AppLifecycleController {
         else {
             return
         }
+        // T-058: read the focus fact at the instant of the refusal, before the
+        // presentation touches anything, and never cache it — the panel is one
+        // reused instance, so a remembered answer would belong to a session
+        // that no longer exists (T-053).
+        let panelFocus = currentPanelFocusAuthorization()
         present(.staleTarget)
+        recordStaleTargetDiagnostics(
+            for: envelope.targetHandle,
+            panelFocus: panelFocus
+        )
+    }
+
+    /// T-058: makes the monitor path's refusal attributable without changing it.
+    ///
+    /// The refusal above has already been presented, so the classification can
+    /// neither delay nor alter it. The `AXObserver` callback keeps carrying
+    /// nothing but the session and target identifiers as `plan.md` requires; the
+    /// reason is derived here, on the receiving side, from the same identity
+    /// checks the write path uses.
+    private func recordStaleTargetDiagnostics(
+        for targetHandle: TargetHandle,
+        panelFocus: PanelFocusAuthorization
+    ) {
+        guard let recorder = staleTargetDiagnostics else {
+            return
+        }
+        let gateway = self.gateway
+        staleTargetDiagnosticsWork = Task {
+            let report = await gateway.staleTargetAssessment(
+                for: targetHandle,
+                panelFocus: panelFocus
+            )
+            recorder.record(report)
+        }
+    }
+
+    /// T-053: only a presenter that can answer "is the panel I am presenting
+    /// right now the key window" grants the A2 exemption. Anything else stays
+    /// unexempted.
+    private func currentPanelFocusAuthorization() -> PanelFocusAuthorization {
+        guard let ownership = presenter as? any PreviewPanelFocusOwnership else {
+            return .notOwned
+        }
+        return PanelFocusAuthorization(
+            currentSessionPanelIsKey: ownership.currentSessionPanelIsKey()
+        )
     }
 
     fileprivate func sessionDidTransition(to state: InteractionSessionState) {

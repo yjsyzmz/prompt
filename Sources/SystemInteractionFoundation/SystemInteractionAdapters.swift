@@ -276,3 +276,26 @@ struct OSLogReplacementDiagnosticsRecorder: ReplacementDiagnosticsRecording {
         )
     }
 }
+
+/// T-058: emits the monitor path's refusal reason. That path never enters the
+/// replacement sequence, so it needs its own category — a refusal that produced
+/// no `replacement-stage` line at all is exactly what made the T-055 findings
+/// unattributable. `StaleTargetDiagnosticReport` has neither a `String` nor a
+/// numeric member, so no content and no measure of content can reach the log
+/// through this adapter (FR-013／NFR-006).
+struct OSLogStaleTargetDiagnosticsRecorder: StaleTargetDiagnosticsRecording {
+    private let log = Logger(
+        subsystem: "com.systeminteractionfoundation.verification",
+        category: "stale-target-reason"
+    )
+
+    func record(_ report: StaleTargetDiagnosticReport) {
+        let focusIsSelf = report.focusedApplicationIsSelf.map(String.init) ?? "na"
+        log.info(
+            """
+            stale-target-reason=\(report.reason.rawValue, privacy: .public) \
+            focus-is-self=\(focusIsSelf, privacy: .public)
+            """
+        )
+    }
+}
