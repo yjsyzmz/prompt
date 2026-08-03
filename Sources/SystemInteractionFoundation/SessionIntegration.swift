@@ -23,13 +23,32 @@ protocol TargetChangeMonitoring: AnyObject {
 @MainActor
 final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing {
     private let gateway: AccessibilityGateway
+    /// T-053: consulted on `MainActor` at the instant each action runs. Held as
+    /// the source of the answer, never as the answer itself.
+    private weak var panelFocusOwnership: (any PreviewPanelFocusOwnership)?
     private var targetHandle: TargetHandle?
     private var targetPID: Int32?
     private var recoveryContext: AXRecoveryContext?
     private(set) var lastRecoveryFailure: DomainFailure?
 
-    init(gateway: AccessibilityGateway) {
+    init(
+        gateway: AccessibilityGateway,
+        panelFocusOwnership: (any PreviewPanelFocusOwnership)? = nil
+    ) {
         self.gateway = gateway
+        self.panelFocusOwnership = panelFocusOwnership
+    }
+
+    /// T-053: evaluated here, on `MainActor`, at the instant the action runs.
+    /// Deliberately not stored: the panel instance is reused across sessions, so
+    /// a remembered `true` would authorise a later session that never earned it.
+    private func currentPanelFocusAuthorization() -> PanelFocusAuthorization {
+        guard let panelFocusOwnership else {
+            return .notOwned
+        }
+        return PanelFocusAuthorization(
+            currentSessionPanelIsKey: panelFocusOwnership.currentSessionPanelIsKey()
+        )
     }
 
     func beginSession(targetHandle: TargetHandle, pid: Int32?) {
@@ -63,8 +82,12 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
             transformedText: content.transformed
         )
         let gateway = self.gateway
+        let panelFocus = currentPanelFocusAuthorization()
         let result = Self.performBlocking {
-            await gateway.replaceAfterAuthoritativeValidation(snapshot)
+            await gateway.replaceAfterAuthoritativeValidation(
+                snapshot,
+                panelFocus: panelFocus
+            )
         }
         switch result {
         case .success(let context):
@@ -86,8 +109,12 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
         }
 
         let gateway = self.gateway
+        let panelFocus = currentPanelFocusAuthorization()
         let result = Self.performBlocking {
-            await gateway.restoreAfterAuthoritativeValidation(recoveryContext)
+            await gateway.restoreAfterAuthoritativeValidation(
+                recoveryContext,
+                panelFocus: panelFocus
+            )
         }
         switch result {
         case .success:

@@ -166,13 +166,15 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
     /// 外**，没有其他应用成为用户的新外部目标」。真人用鼠标点「确认替换」时面板
     /// 会成为 key window，`kAXFocusedApplicationAttribute` 随之指向本进程——这正
     /// 是该豁免要覆盖的情形，不得据此拒绝写入。
-    func testFocusOnThisProcessDoesNotBlockTheReplacement() async {
+    func testFocusOnThisProcessWithPanelKeyDoesNotBlockTheReplacement() async {
         let probe = await StageProbe.make()
         probe.host.setFrontmostApplication(
             pid: ProcessInfo.processInfo.processIdentifier
         )
 
-        let stage = await probe.attemptReplacement()
+        let stage = await probe.attemptReplacement(
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+        )
 
         XCTAssertEqual(
             stage?.stage,
@@ -180,6 +182,54 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
             "the approved A2 exempts this tool's own panel from the check"
         )
         XCTAssertNil(stage?.failure)
+    }
+
+    /// T-053：豁免的范围是**当前会话的预览面板**，不是本进程。焦点落在本进程的
+    /// 其他窗口（设置窗口、关于窗口、或面板已关闭而焦点仍在本进程）时必须拒绝。
+    func testFocusOnThisProcessWithoutPanelKeyIsRejected() async {
+        let probe = await StageProbe.make()
+        probe.host.setFrontmostApplication(
+            pid: ProcessInfo.processInfo.processIdentifier
+        )
+
+        let stage = await probe.attemptReplacement(
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: false)
+        )
+
+        XCTAssertEqual(
+            stage?.stage,
+            .frontmostApplication,
+            "process-wide focus is not an exemption; only the session panel is"
+        )
+        XCTAssertEqual(stage?.failure, .invalidTarget)
+        XCTAssertEqual(
+            stage?.focusedApplicationIsSelf,
+            true,
+            "the report must still say the focus was on this process"
+        )
+        XCTAssertEqual(
+            probe.host.setterAttemptCount,
+            0,
+            "a rejected A2 must not reach the setter"
+        )
+    }
+
+    /// 面板持有焦点的授权不得帮助另一个外部应用通过 A2。
+    func testPanelKeyDoesNotExemptADifferentExternalApplication() async {
+        let probe = await StageProbe.make()
+        probe.host.moveFocusToDifferentApplication()
+
+        let stage = await probe.attemptReplacement(
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+        )
+
+        XCTAssertEqual(stage?.stage, .frontmostApplication)
+        XCTAssertEqual(stage?.failure, .invalidTarget)
+        XCTAssertEqual(
+            stage?.focusedApplicationIsSelf,
+            false,
+            "a genuinely different application is not this process"
+        )
     }
 
     func testFrontmostStageReportsWhenTheFocusedApplicationIsAnotherApp() async {
@@ -216,7 +266,10 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
         let probe = await StageProbe.make()
         let originalFullText = probe.host.fullText
         guard case .success(let context) = await probe.gateway
-            .replaceAfterAuthoritativeValidation(probe.snapshot)
+            .replaceAfterAuthoritativeValidation(
+                probe.snapshot,
+                panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+            )
         else {
             XCTFail("the replacement must succeed before recovery is meaningful")
             return
@@ -230,7 +283,10 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
             pid: ProcessInfo.processInfo.processIdentifier
         )
 
-        let result = await probe.gateway.restoreAfterAuthoritativeValidation(context)
+        let result = await probe.gateway.restoreAfterAuthoritativeValidation(
+            context,
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+        )
 
         guard case .success = result else {
             XCTFail(
@@ -242,6 +298,40 @@ final class ReplacementStageDiagnosticsTests: XCTestCase {
             probe.host.fullText,
             originalFullText,
             "the field must be back to its pre-replacement content"
+        )
+    }
+
+    /// T-053：恢复路径的豁免范围同样限定为当前会话面板。
+    func testRecoveryIsRejectedWhenFocusIsThisProcessButNotThePanel() async {
+        let probe = await StageProbe.make()
+        guard case .success(let context) = await probe.gateway
+            .replaceAfterAuthoritativeValidation(
+                probe.snapshot,
+                panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+            )
+        else {
+            XCTFail("the replacement must succeed before recovery is meaningful")
+            return
+        }
+        let textAfterReplacement = probe.host.fullText
+        probe.host.setFrontmostApplication(
+            pid: ProcessInfo.processInfo.processIdentifier
+        )
+
+        let result = await probe.gateway.restoreAfterAuthoritativeValidation(
+            context,
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: false)
+        )
+
+        guard case .failure(let failure) = result else {
+            XCTFail("recovery must be refused without the session panel key")
+            return
+        }
+        XCTAssertEqual(failure, .invalidTarget)
+        XCTAssertEqual(
+            probe.host.fullText,
+            textAfterReplacement,
+            "a refused recovery must not write anything"
         )
     }
 
@@ -368,8 +458,18 @@ private struct StageProbe {
 
     /// Runs one authoritative replacement and returns the single stage report it
     /// produced.
-    func attemptReplacement() async -> ReplacementStageReport? {
-        _ = await gateway.replaceAfterAuthoritativeValidation(snapshot)
+    /// Runs one authoritative replacement and returns the single stage report it
+    /// produced. `panelFocus` defaults to the session panel holding focus,
+    /// because that is what a real mouse-driven confirmation looks like.
+    func attemptReplacement(
+        panelFocus: PanelFocusAuthorization = PanelFocusAuthorization(
+            currentSessionPanelIsKey: true
+        )
+    ) async -> ReplacementStageReport? {
+        _ = await gateway.replaceAfterAuthoritativeValidation(
+            snapshot,
+            panelFocus: panelFocus
+        )
         return recorder.snapshot().last
     }
 }

@@ -285,7 +285,8 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     }
 
     func replaceAfterAuthoritativeValidation(
-        _ snapshot: AXWriteSnapshot
+        _ snapshot: AXWriteSnapshot,
+        panelFocus: PanelFocusAuthorization
     ) -> Result<AXRecoveryContext, DomainFailure> {
         guard snapshot.captureMode != .clipboardInput else {
             diagnostics?.record(
@@ -301,7 +302,8 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             targetHandle: snapshot.targetHandle,
             pid: snapshot.pid,
             mode: snapshot.captureMode,
-            expectedText: snapshot.originalText.value
+            expectedText: snapshot.originalText.value,
+            panelFocus: panelFocus
         ) {
         case .success:
             break
@@ -350,15 +352,20 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     /// W1–W4 algorithm and never touch a selected range, while selected
     /// captures continue into C1–C4 with the R1/R2/R3 classification.
     func restoreAfterAuthoritativeValidation(
-        _ recovery: AXRecoveryContext
+        _ recovery: AXRecoveryContext,
+        panelFocus: PanelFocusAuthorization
     ) -> Result<Void, DomainFailure> {
         switch recovery.captureMode {
         case .clipboardInput:
             return .failure(.recoveryTargetChanged)
         case .wholeField:
-            return restoreWholeField(recovery)
+            return restoreWholeField(recovery, panelFocus: panelFocus)
         case .selectedText(let capturedRange):
-            return restoreSelected(recovery, capturedRange: capturedRange)
+            return restoreSelected(
+                recovery,
+                capturedRange: capturedRange,
+                panelFocus: panelFocus
+            )
         }
     }
 
@@ -366,12 +373,16 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     /// path so that it always targets the attribute that path actually writes.
     private func sharedPrechecks(
         targetHandle: TargetHandle,
-        pid: Int32
+        pid: Int32,
+        panelFocus: PanelFocusAuthorization
     ) -> Result<Void, DomainFailure> {
         guard targetApplicationIsRunning(pid: pid) else {
             return .failure(.invalidTarget)
         }
-        guard frontmostApplicationIsAcceptable(pid: pid) else {
+        if case .rejected = frontmostApplicationCheck(
+            pid: pid,
+            panelFocus: panelFocus
+        ) {
             return .failure(.invalidTarget)
         }
         guard windowMatches(targetHandle: targetHandle) else {
@@ -400,11 +411,13 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
 
     /// W1–W4.
     private func restoreWholeField(
-        _ recovery: AXRecoveryContext
+        _ recovery: AXRecoveryContext,
+        panelFocus: PanelFocusAuthorization
     ) -> Result<Void, DomainFailure> {
         if case .failure(let failure) = sharedPrechecks(
             targetHandle: recovery.targetHandle,
-            pid: recovery.pid
+            pid: recovery.pid,
+            panelFocus: panelFocus
         ) {
             return .failure(failure)
         }
@@ -452,11 +465,13 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     /// C1–C4 with the R1/R2/R3 classification.
     private func restoreSelected(
         _ recovery: AXRecoveryContext,
-        capturedRange: AXTextRange
+        capturedRange: AXTextRange,
+        panelFocus: PanelFocusAuthorization
     ) -> Result<Void, DomainFailure> {
         if case .failure(let failure) = sharedPrechecks(
             targetHandle: recovery.targetHandle,
-            pid: recovery.pid
+            pid: recovery.pid,
+            panelFocus: panelFocus
         ) {
             return .failure(failure)
         }
@@ -611,6 +626,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         pid: Int32,
         mode: CaptureMode,
         expectedText: String,
+        panelFocus: PanelFocusAuthorization,
     ) -> Result<Void, DomainFailure> {
         func reject(
             _ stage: ReplacementStage,
@@ -630,11 +646,14 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         guard targetApplicationIsRunning(pid: pid) else {
             return reject(.applicationRunning, .invalidTarget)
         }
-        guard frontmostApplicationIsAcceptable(pid: pid) else {
+        if case .rejected(let focusedApplicationIsSelf) = frontmostApplicationCheck(
+            pid: pid,
+            panelFocus: panelFocus
+        ) {
             return reject(
                 .frontmostApplication,
                 .invalidTarget,
-                focusedApplicationIsSelf: false
+                focusedApplicationIsSelf: focusedApplicationIsSelf
             )
         }
         guard windowMatches(targetHandle: targetHandle) else {
@@ -716,19 +735,41 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         return kill(pid, 0) == 0 || errno == EPERM
     }
 
+    /// The outcome of A2, carrying the focus-ownership fact the diagnostics need
+    /// so that the frontmost application is read exactly once. Reading it twice
+    /// would both cost an extra AX round trip and risk two different answers.
+    private enum FrontmostApplicationCheck {
+        case acceptable
+        case rejected(focusedApplicationIsSelf: Bool)
+    }
+
     /// A2, in one place. Plan `0c9883f` states it as "apart from this tool's own
     /// non-activating panel, no other application has become the user's new
-    /// external target". The panel becomes key when the user clicks Confirm or
-    /// Restore with a real mouse, so keyboard focus legitimately lands on this
-    /// process at exactly the moment the write is authorised.
+    /// external target".
+    ///
+    /// The exemption is scoped to the panel the current session is presenting,
+    /// not to this process: `panelFocus` is evaluated on `MainActor` at the
+    /// instant the action runs and is never cached. Focus on any other window of
+    /// this process — a settings window, or the panel already ordered out — is
+    /// not an exemption.
     ///
     /// Both the replacement path and the recovery path call this. They used to
     /// carry independent copies of the check, which is how the exemption ended
     /// up applied to one and not the other.
-    private func frontmostApplicationIsAcceptable(pid: Int32) -> Bool {
+    private func frontmostApplicationCheck(
+        pid: Int32,
+        panelFocus: PanelFocusAuthorization
+    ) -> FrontmostApplicationCheck {
         let focusedPID = currentExternalPID()
-        return focusedPID == pid
-            || focusedPID == ProcessInfo.processInfo.processIdentifier
+        if focusedPID == pid {
+            return .acceptable
+        }
+        let focusedApplicationIsSelf =
+            focusedPID == ProcessInfo.processInfo.processIdentifier
+        if focusedApplicationIsSelf, panelFocus.currentSessionPanelIsKey {
+            return .acceptable
+        }
+        return .rejected(focusedApplicationIsSelf: focusedApplicationIsSelf)
     }
 
     private func currentExternalPID() -> Int32? {

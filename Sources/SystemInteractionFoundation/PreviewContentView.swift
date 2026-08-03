@@ -70,7 +70,7 @@ private final class FirstMouseHostingView: NSHostingView<PreviewContentView> {
 }
 
 @MainActor
-final class PreviewPanelController: PreviewPresenting {
+final class PreviewPanelController: PreviewPresenting, PreviewPanelFocusOwnership {
     private static let panelSize = CGSize(width: 380, height: 140)
 
     var onAction: (PreviewUserAction) -> Void = { _ in }
@@ -126,6 +126,12 @@ final class PreviewPanelController: PreviewPresenting {
 
     func dismiss() {
         panel.orderOut(nil)
+    }
+
+    /// T-053: the A2 exemption is scoped to this panel, not to this process.
+    /// Read live at action time; the caller must not remember the answer.
+    func currentSessionPanelIsKey() -> Bool {
+        NSApp.keyWindow === panel
     }
 
     private func applyRootView(_ state: PreviewViewState) {

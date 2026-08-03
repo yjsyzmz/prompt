@@ -146,6 +146,107 @@ final class ProductionTargetMonitorAssemblyTests: XCTestCase {
             "the production factory must supply a stage recorder"
         )
     }
+
+    /// T-053：面板焦点归属必须在**每个动作发生时**重新求值，不得缓存为可跨动作
+    /// 复用的布尔授权。预览面板是全应用单实例、跨会话复用的，缓存一个 `true`
+    /// 等于把授权发给了后续任何一次动作。
+    func testPanelFocusIsReevaluatedForEveryAction() async {
+        let host = SyntheticAXTextHost.selectionFixture()
+        let gateway = AccessibilityGateway(
+            captureReader: host,
+            authoritativeTarget: host
+        )
+        let ownership = PanelFocusOwnershipSpy()
+        let target = GatewaySessionTextTarget(
+            gateway: gateway,
+            panelFocusOwnership: ownership
+        )
+        guard case .success(let captured) = await gateway.capture(
+            sessionID: InteractionSessionID()
+        ) else {
+            XCTFail("the selection fixture must capture successfully")
+            return
+        }
+        let pid = await gateway.authoritativePID(for: captured.targetHandle)
+        target.beginSession(targetHandle: captured.targetHandle, pid: pid)
+        let content = SessionContent(
+            source: captured.sourceText,
+            transformed: DeterministicTransformer().transform(captured.sourceText),
+            mode: captured.captureMode
+        )
+
+        XCTAssertEqual(
+            ownership.callCount,
+            0,
+            "nothing may be asked before an action runs"
+        )
+        _ = target.replace(content)
+        XCTAssertEqual(ownership.callCount, 1, "the confirm action asks once")
+        _ = target.restore(content)
+        XCTAssertEqual(
+            ownership.callCount,
+            2,
+            "the restore action must ask again rather than reuse the answer"
+        )
+    }
+
+    /// 面板不再是 key（已关闭或被其他窗口取代）时，旧的授权不得继续放行。
+    func testPanelFocusLostBetweenActionsRevokesTheExemption() async {
+        let host = SyntheticAXTextHost.selectionFixture()
+        let gateway = AccessibilityGateway(
+            captureReader: host,
+            authoritativeTarget: host
+        )
+        let ownership = PanelFocusOwnershipSpy()
+        let target = GatewaySessionTextTarget(
+            gateway: gateway,
+            panelFocusOwnership: ownership
+        )
+        guard case .success(let captured) = await gateway.capture(
+            sessionID: InteractionSessionID()
+        ) else {
+            XCTFail("the selection fixture must capture successfully")
+            return
+        }
+        let pid = await gateway.authoritativePID(for: captured.targetHandle)
+        target.beginSession(targetHandle: captured.targetHandle, pid: pid)
+        let content = SessionContent(
+            source: captured.sourceText,
+            transformed: DeterministicTransformer().transform(captured.sourceText),
+            mode: captured.captureMode
+        )
+        guard case .success = target.replace(content) else {
+            XCTFail("the replacement must succeed before recovery is meaningful")
+            return
+        }
+        let textAfterReplacement = host.fullText
+
+        // The user moves keyboard focus to this process but away from the panel,
+        // then asks to restore.
+        host.setFrontmostApplication(pid: ProcessInfo.processInfo.processIdentifier)
+        ownership.isKey = false
+
+        XCTAssertFalse(
+            target.restore(content),
+            "a lost panel focus must revoke the exemption"
+        )
+        XCTAssertEqual(
+            host.fullText,
+            textAfterReplacement,
+            "a refused recovery must not write anything"
+        )
+    }
+}
+
+@MainActor
+private final class PanelFocusOwnershipSpy: PreviewPanelFocusOwnership {
+    var isKey = true
+    private(set) var callCount = 0
+
+    func currentSessionPanelIsKey() -> Bool {
+        callCount += 1
+        return isKey
+    }
 }
 
 private final class AssemblySchedulerSpy: AXObserverRunLoopScheduling {

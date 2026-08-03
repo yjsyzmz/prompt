@@ -394,3 +394,35 @@ extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
         return false
     }
 }
+
+// MARK: - T-053 测试便捷入口
+
+/// T-053 给 `replaceAfterAuthoritativeValidation` 与
+/// `restoreAfterAuthoritativeValidation` 增加了 `panelFocus` 参数，生产侧刻意
+/// **不提供默认值**——遗漏该参数应当是编译错误，而不是静默退化为无豁免。
+///
+/// 既有的写入与恢复套件验证的是 A3／A4／B1、R1–R3 与 fallback 六项门禁，其共同
+/// 前提是「真人点了面板上的按钮」，即当前会话面板持有焦点。这里为测试目标提供带
+/// 该前提的便捷重载，避免在 55 处调用点重复同一个常量，同时保持生产 API 的显式性。
+///
+/// 需要验证豁免边界本身的用例（焦点在本进程但不在面板）必须显式传入
+/// `panelFocus`，见 `ReplacementStageDiagnosticsTests`。
+extension AccessibilityGateway {
+    func replaceAfterAuthoritativeValidation(
+        _ snapshot: AXWriteSnapshot
+    ) -> Result<AXRecoveryContext, DomainFailure> {
+        replaceAfterAuthoritativeValidation(
+            snapshot,
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+        )
+    }
+
+    func restoreAfterAuthoritativeValidation(
+        _ recovery: AXRecoveryContext
+    ) -> Result<Void, DomainFailure> {
+        restoreAfterAuthoritativeValidation(
+            recovery,
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+        )
+    }
+}

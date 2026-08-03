@@ -105,6 +105,32 @@ protocol ReplacementDiagnosticsRecording: Sendable {
     func record(_ report: ReplacementStageReport)
 }
 
+/// T-053: the A2 exemption approved in `plan.md:197` covers **this tool's own
+/// non-activating panel**, not this process. This value carries the answer for
+/// exactly one action.
+///
+/// It must be produced on `MainActor` at the instant a confirm or restore action
+/// runs, and must never be stored as a reusable authorization: the preview panel
+/// is a single instance reused across sessions, so a cached `true` would grant a
+/// later session an exemption it never earned.
+struct PanelFocusAuthorization: Sendable, Equatable {
+    /// `true` only when the key window is, at this instant, the panel the
+    /// current session is presenting.
+    let currentSessionPanelIsKey: Bool
+
+    /// The safe default. Any path that cannot prove panel ownership uses this.
+    static let notOwned = PanelFocusAuthorization(currentSessionPanelIsKey: false)
+}
+
+/// Answers "is the panel I am presenting right now the key window?".
+///
+/// `MainActor`-isolated because the answer comes from AppKit window state, and
+/// must be read at action time rather than remembered.
+@MainActor
+protocol PreviewPanelFocusOwnership: AnyObject {
+    func currentSessionPanelIsKey() -> Bool
+}
+
 enum RecoveryAction: Equatable {
     case retryRegistration
     case openSettings

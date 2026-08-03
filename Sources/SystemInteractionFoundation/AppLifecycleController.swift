@@ -136,7 +136,12 @@ final class AppLifecycleController {
             clipboardInput: permissionBridge
         )
 
-        let sessionTextTarget = GatewaySessionTextTarget(gateway: gateway)
+        let sessionTextTarget = GatewaySessionTextTarget(
+            gateway: gateway,
+            // T-053: only a presenter that can answer "is my panel key right
+            // now" grants the A2 exemption. Anything else stays unexempted.
+            panelFocusOwnership: presenter as? any PreviewPanelFocusOwnership
+        )
         textTarget = sessionTextTarget
 
         let observerBridge = SessionObserverBridge()
