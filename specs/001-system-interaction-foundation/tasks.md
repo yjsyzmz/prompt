@@ -1,7 +1,7 @@
 ---
 feature: "001-system-interaction-foundation"
 stage: tasks
-status: revised-pending-review  # Tasks Gate 第三次重开（2026-08-03）：P8（T-058 至 T-062）为 T-055 真人复核暴露的缺陷，须取得 Tasks PASS 才能开工
+status: revised-pending-review  # Tasks Gate 第三次重开第二版修订（2026-08-03）：P8 为 T-058、T-061、T-062，须取得 Tasks PASS 才能开工；Google 搜索框选区兼容依 BLOCKER 移出 001
 plan_version: "0c9883f8385c731b0cc084d22519224eada926ea"  # 重开后的 Plan Gate 第三版修订，Solar 已 PASS（2026-07-28）
 owner: "Fable (Comate), from T-028"
 reviewer: "Solar, from T-028"
@@ -60,6 +60,15 @@ reviewer: "Solar, from T-028"
 表中 FR-009／FR-010／FR-012／NFR-002 对应的 T-021／T-022 已于 2026-07-28 按 Plan `0c9883f` 重写，覆盖关系在重新转绿前不成立。受影响需求的最终覆盖还需 P6 段的 T-040 至 T-046 完成：自动化复核见 T-040，恢复相关的人工与审计复核见 T-041 至 T-045，汇总见 T-046。
 
 **P7 对追踪表的影响（2026-07-31，Tasks Gate 第二次重开第三版）**：T-050 与 T-046 的验收证据结论已被 `5070607` 的 Implementation REVIEW 推翻，表中凡以 T-039／T-046 为验收证据的行，其覆盖在 T-057 重建验收包之前均不成立。新增覆盖关系：FR-013／NFR-006 的隐私边界由 T-052 重新落实；FR-007／FR-008／NFR-002 的目标有效性判定由 T-053 重新落实；FR-008／NFR-007 的失败呈现由 T-054 重新落实；FR-007／FR-008／FR-012／NFR-002／NFR-007 与 AC-005／AC-006／AC-012／AC-013／AC-017 的真实环境证据由 T-055 以真人驱动重建；全部需求的最终出口唯一收敛到 T-057。凡由 AXPress 驱动的既有证据均不覆盖预览面板成为 key window 的真人路径，须在 T-057 中逐项标注。
+
+**P8 对追踪表的影响（2026-08-03，第二版修订）**：T-055 已取得的 (a)(b) 结果因后续
+代码变更而失效，须由 T-062 在最终代码上重取，因此**凡以 T-055 为验收证据的行，其
+覆盖在 T-062 完成前均不成立**。新增覆盖关系：FR-013／NFR-006／NFR-007 的诊断可见性
+由 T-058 落实（监听器路径，遵守 observer 回调只带 session ID 与 target ID 的边界）；
+FR-008／NFR-007 的回读确认边界由 T-061 落实（有界、单次 setter、超时 fail-closed；
+**与 AC-008、NFR-001 无关**——NFR-001 的 300ms 只约束确认前的预览呈现）；
+FR-007／FR-008／FR-012／NFR-007 与 AC-005／AC-006／AC-012／AC-013／AC-017 的真实
+环境证据由 T-062 重建。Google 搜索框选区兼容依 `BLOCKER` 移出 001，不出现在本表。
 
 ## 任务
 
@@ -248,10 +257,19 @@ REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报
 - [ ] **T-055 [Verify] 真人鼠标／触控板复核受影响闭环（REVIEW Finding 5，MUST）。** AXPress 驱动不会使预览面板成为 key window，因此既有脚本驱动的闭环证据不覆盖真人必经路径。**Tasks Gate 裁决（Solar，2026-07-31）的范围边界：限定为 TextEdit、Chrome/ChatGPT 两处闭环加关键失败场景；不重跑全部 P5；不要求 VS Code。** 任务要求：在 T-052／T-053／T-054 全部落地并重建二进制后，由真人以鼠标或触控板执行并逐次记录面板文案与分级诊断阶段。**本轮 Tasks Gate REVIEW 判定上一版缩窄了已裁定范围，现恢复为：** (a) **TextEdit 连续五次**「确认替换 → 恢复原文」，五次全部成功方算通过，任一次失败须记录阶段并停止；(b) **Chrome/ChatGPT 连续五次**同上，且**五次全部使用多行文本**；(c) **Undo 行为**：替换后与恢复后分别执行应用自身的撤销，记录撤销栈的实际表现（AX 写入是否进入该应用的 undo 栈），两处应用的结论分别记录，不得互相推断（AC-017）；(d) **范围保真**：选中替换后校验未选中部分（前缀与后缀）逐字未被改动，且选区边界未漂移；含 emoji 与组合字符的样本至少一次（AC-012）；(e) **恢复后的外部变化**：恢复完成后由真人在目标应用中继续编辑，确认会话已结束、不再有任何后续写入，且面板不再提供恢复动作；(f) **关键失败场景，时序必须严格按下列顺序执行**：(f1) 确认前切换到另一应用，再点「确认替换」——A2 必须拒绝且 `setterAttemptCount` 为 0；(f2) 确认前在目标应用中外部改动原文，再点「确认替换」——B1 必须拒绝并显示「原文／选区已变化」而非 `staleTarget`；(f3) **替换成功之后、点「恢复原文」之前**，由真人在目标应用中修改已写入的结果，然后点「恢复原文」——恢复必须被拒绝并显示「目标应用、窗口或输入位置已经变化，无法直接恢复」，且不得发生任何写入；(f4) 在 f3 的被拒面板上点「复制原文」，制造剪贴板写入失败后重试——须走 T-048 的 `retryCopy` 路径且重放的是原文而非结果；(f5) **窗口变化**：替换成功后、恢复前切换目标应用的窗口（或新建窗口）再点恢复——A3 必须拒绝；(f6) **元素变化**：替换成功后、恢复前点击目标应用内的另一个输入位置再点恢复——A4 必须拒绝。每项须记录真实面板文案原文与对应 `replacement-stage` 记录；禁止以 AXPress 或 AppleScript 点击替代真人点击。**不重跑全部 P5，不要求 VS Code。**— Depends on: T-052, T-053, T-054; Covers: FR-007, FR-008, FR-012, NFR-007, AC-005, AC-006, AC-012, AC-013; Evidence: 新增 `evidence/T-055-human-driven-revalidation.md`
   - **进度（2026-08-03，未完成）**：代码状态 `a645769` 下由真人鼠标执行。(a) TextEdit 连续五次通过；(b) Chrome/ChatGPT 连续五次多行通过；阶段记录 19 条 `completed` 与之一致。**(c)(d)(e) 与 f1–f6 共九项未执行，不计入通过。** 本轮暴露三项缺陷：Google 搜索框在预览期间被判目标变化、ChatGPT 二次替换被判目标变化、ChatGPT 三次 `readback failure=writeFailed`。前两项**无法归因**——22 条阶段记录中 A1–A4 拒绝为零条，说明替换从未被请求，文案来自 `AppLifecycleController.swift:364` 监听器路径，而该路径无埋点。已排除写入失败与 B1 拒绝（T-054 已使 `sourceChanged` 具备独立文案）。补埋点与修复见 P8，本任务不自行开工。
 - [ ] **T-056 [Evidence] 更正「工程结构脚本不存在」的记录错误（REVIEW Finding 6，MUST）。** 该判断有误：`scripts/project-structure-check.sh` 在本功能分支中存在，本轮已独立运行通过（`Project structure check passed.`，exit 0）。此前的错误源于在主 worktree（`/Users/daidong/Documents/prompt/scripts/`）下查找，该目录不含此脚本。任务要求：撤回 `evidence/T-039-acceptance-package.md` 第二节的相关「更正」段落，恢复该脚本为独立门禁，并复核本轮五道门禁的执行入口记录是否一致。— Depends on: Tasks PASS; Covers: 无新增需求（记录准确性）; Evidence: `evidence/T-039-acceptance-package.md`
-- [ ] **T-057 [Evidence] 重建最终验收包并发布 Implementation Gate HANDOFF（REVIEW 要求新增）。** T-050 的产出已整体失效，最终验收改由本任务承担。任务要求：(a) 依 T-052 至 T-056 的实际结果重写 `evidence/T-039-acceptance-package.md`，删除长度元数据的「风险披露」、撤回「结构脚本不存在」的错误更正、更新真实测试计数；(b) 重新逐项核对 13 条 FR、7 条 NFR、17 个 AC，并明确区分哪些证据由真人驱动、哪些由脚本驱动；(c) 重新评估既有 P5／P6 证据的证明力并如实标注受 AXPress 局限影响的项；(d) 五道门禁全部从**分支内** `scripts/` 执行并记录（含 `project-structure-check.sh`）；(e) C3、C4、C5 依实际结果重新判定；(f) 提交推送后发布 Implementation Gate HANDOFF。**完整的最终检查出口（唯一，逐项均须在验收包中留痕）**：① `build.sh` → `BUILD SUCCEEDED`；② `unit-tests.sh` → 全绿，记录真实测试计数；③ `project-structure-check.sh` → passed；④ `sdd-check.sh` → exit 0；⑤ `secret-scan.sh` → 无命中；⑥ `git diff --check` → 无输出；⑦ 以上六项全部从**分支内** `scripts/` 执行，不得使用主 worktree 的脚本；⑧ 诊断输出经 `log stream` 实测确认不含任何长度或内容度量；⑨ 13 条 FR、7 条 NFR、17 个 AC 逐项核对且每项标明证据来源为真人驱动或脚本驱动；⑩ C3、C4、C5 依实际结果重新判定并写明依据；⑪ 已知限制清单重建，删除长度元数据「风险披露」与「结构脚本不存在」两处错误记述；⑫ **`unit-tests.sh` 须连续执行两次且两次全绿、计数一致**，以排除偶发；⑬ **所有门禁命令的执行位置须记录为 `.worktrees/fable` 下的分支内 `scripts/`（即 `bash scripts/<name>.sh`），禁止使用 `../../scripts/` 指向主 worktree**；⑭ **同步更新 PR #2 的描述**：head SHA 改为本次 HANDOFF 的准确 SHA、任务总数改为 57、并移除仍指向 `9bb221e` 与 46 个任务的过时表述。任一项未留痕即不得发布 HANDOFF。— Depends on: T-052, T-053, T-054, T-055, T-056; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
+- [ ] **T-057 [Evidence] 重建最终验收包并发布 Implementation Gate HANDOFF（REVIEW 要求新增）。** T-050 的产出已整体失效，最终验收改由本任务承担。任务要求：(a) 依 T-052 至 T-056 的实际结果重写 `evidence/T-039-acceptance-package.md`，删除长度元数据的「风险披露」、撤回「结构脚本不存在」的错误更正、更新真实测试计数；(b) 重新逐项核对 13 条 FR、7 条 NFR、17 个 AC，并明确区分哪些证据由真人驱动、哪些由脚本驱动；(c) 重新评估既有 P5／P6 证据的证明力并如实标注受 AXPress 局限影响的项；(d) 五道门禁全部从**分支内** `scripts/` 执行并记录（含 `project-structure-check.sh`）；(e) C3、C4、C5 依实际结果重新判定；(f) 提交推送后发布 Implementation Gate HANDOFF。**完整的最终检查出口（唯一，逐项均须在验收包中留痕）**：① `build.sh` → `BUILD SUCCEEDED`；② `unit-tests.sh` → 全绿，记录真实测试计数；③ `project-structure-check.sh` → passed；④ `sdd-check.sh` → exit 0；⑤ `secret-scan.sh` → 无命中；⑥ `git diff --check` → 无输出；⑦ 以上六项全部从**分支内** `scripts/` 执行，不得使用主 worktree 的脚本；⑧ 诊断输出经 `log stream` 实测确认不含任何长度或内容度量；⑨ 13 条 FR、7 条 NFR、17 个 AC 逐项核对且每项标明证据来源为真人驱动或脚本驱动；⑩ C3、C4、C5 依实际结果重新判定并写明依据；⑪ 已知限制清单重建，删除长度元数据「风险披露」与「结构脚本不存在」两处错误记述；⑫ **`unit-tests.sh` 须连续执行两次且两次全绿、计数一致**，以排除偶发；⑬ **所有门禁命令的执行位置须记录为 `.worktrees/fable` 下的分支内 `scripts/`（即 `bash scripts/<name>.sh`），禁止使用 `../../scripts/` 指向主 worktree**；⑭ **同步更新 PR #2 的描述**：head SHA 改为本次 HANDOFF 的准确 SHA、任务总数改为 60、并移除仍指向 `9bb221e` 与 46 个任务的过时表述。 **2026-08-03 追加（P8）**：⑮ T-058 与 T-061 的证据已归档；⑯ T-062 的完整 T-055 重跑结果已归档且逐项标注真人驱动；⑰ 已知限制清单补入「Google 搜索框选区兼容已移出 001，见 `evidence/out-of-scope-observations.md` 观察 5」。任一项未留痕即不得发布 HANDOFF。— Depends on: T-052, T-053, T-054, T-055, T-056; Covers: FR-001 至 FR-013, NFR-001 至 NFR-007, AC-001 至 AC-017; Evidence: `evidence/T-039-acceptance-package.md`
 
 
-### P8 — T-055 真人复核暴露的缺陷（2026-08-03 新增，待 Tasks Gate 审核）
+### P8 — T-055 真人复核暴露的缺陷（2026-08-03 新增，第二版修订待审）
+
+**第二版修订（2026-08-03）。** Solar 对 `fa194a5` 的 Tasks Gate REVIEW 判定
+`CHANGES REQUESTED`，含一项 `BLOCKER`，本版已全部落实：① Google 搜索框选区兼容
+依 `BLOCKER` 移出 001，记入 `out-of-scope-observations.md`；② T-058 只做诊断，
+修复任务须经新一轮 Tasks Gate 定义，不得在本次 PASS 后临时定义即开发；③ T-058
+必须遵守 observer 回调只携带 session ID 与 target ID 的 Plan 边界；④ T-061 更正
+错误引用的 AC-008 与 NFR-001，改为有界、单次 setter、超时 fail-closed；⑤ T-062
+改为在最终代码上重跑**完整** T-055；⑥ P8 已接入需求追踪表、C3／C4／C5 与 T-057
+出口。
 
 **Tasks Gate 第三次重开。** T-055 执行中由真人在 Google 搜索框与 ChatGPT 二次替换
 场景发现两项缺陷，另有三次 ChatGPT `readback` 写入失败。用户明确选择「严格守流程、
@@ -261,11 +279,10 @@ REQUESTED`，3 项 MUST）而新增。开工前核对发现：上一次会话报
 T-059 与 T-060 的修复方案才能被定义。** 现在就写修复方案等于凭推断行事——上一轮
 已因此付出七个外部探针加一个被撤回结论的代价，不再重复。
 
-- [ ] **T-058 [Fix] 为目标变化监听器路径补上不含内容的分级诊断（诊断前置，MUST）。** `AppLifecycleController.swift:364` 在监听器触发且会话处于 `previewing(.ready)` 时直接 `present(.staleTarget)`，该路径**没有任何埋点**，导致 T-055 暴露的两项缺陷无法归因（22 条阶段记录中 A1–A4 拒绝为零条，证明替换从未被请求）。任务要求：先写失败测试断言监听器触发导致的拒绝会产生一条可辨认的诊断记录，且该记录能区分「窗口变化／元素变化／焦点应用变化」三种依据；再实现。**沿用 T-052 的隐私边界：只记阶段标识与判定依据，不得含任何内容或长度。** 本任务不改变监听器的判定行为，只让原因可见。— Depends on: Tasks PASS; Covers: FR-013, NFR-006, NFR-007; Evidence: 新增 `evidence/T-058-monitor-path-diagnostics.md`
-- [ ] **T-059 [Fix] 修复 Google 搜索框在预览期间被判目标变化（MUST，方案待 T-058 数据）。** 现象：google.com 搜索框选中文字唤出预览后，鼠标移向面板过程中面板即显示「原输入位置已经变化，不能安全替换。」ChatGPT 与 TextEdit 同操作成功。**根因未知**，禁止在 T-058 阶段数据取得前写入任何推断性方案。任务要求：依 T-058 数据确定判定依据后，先写覆盖该依据的失败测试再改实现；若结论为「网页应用在预览期间重绘输入元素」，须同时给出「哪些变化应被容忍、哪些必须继续拒绝」的边界，不得为通过而放宽安全约束。— Depends on: T-058; Covers: FR-007, FR-008, NFR-002, AC-005; Evidence: 新增 `evidence/T-059-chromium-preview-invalidation.md`
-- [ ] **T-060 [Fix] 修复 ChatGPT 二次替换被判目标变化（MUST，方案待 T-058 数据）。** 现象：ChatGPT 中成功替换一次后，就现有文本再次唤出预览，鼠标移向面板时显示同一文案。**根因未知**，与 T-059 是否同源亦未确定，须由 T-058 数据判定；若同源则合并处理并在证据中说明。任务要求同 T-059：先有数据，再有测试，最后改实现。— Depends on: T-058; Covers: FR-007, FR-008, NFR-002, AC-005; Evidence: 新增 `evidence/T-060-second-replacement-invalidation.md`
-- [ ] **T-061 [Fix] 处理 ChatGPT readback 写入失败（MUST）。** T-055 抓到 3 条 `replacement-stage=readback failure=writeFailed`：setter 报告成功但回读未确认，现有五次／约 500ms 重试预算耗尽。这与 T-059／T-060 是不同问题（那两项从未到达 setter）。已知事实：Chromium 异步应用写入，立即回读返回写入前的值（T-037 已记录）。任务要求：先写失败测试固定「回读确认必须容忍异步应用」的期望，再调整重试策略；**不得以放弃回读确认的方式让测试通过**——回读是 AC-008「未确认写入不得报成功」的唯一保障。若结论是重试预算需加大，须给出预算依据与对 NFR-001 响应时间的影响评估。— Depends on: Tasks PASS; Covers: FR-008, NFR-001, AC-008; Evidence: 新增 `evidence/T-061-readback-retry-budget.md`
-- [ ] **T-062 [Verify] 补齐 T-055 未执行的九项。** T-055 的 (c) Undo、(d) 范围保真、(e) 恢复后外部变化、(f1) 至 (f6) 共九项尚未执行。任务要求：在 T-058 至 T-061 落地并重建后，由真人以鼠标／触控板补齐这九项，逐项记录面板文案原文与对应阶段记录；时序约束与 T-055 相同，f3／f5／f6 必须发生在替换成功之后、恢复之前。— Depends on: T-058, T-059, T-060, T-061; Covers: FR-007, FR-008, FR-012, NFR-007, AC-005, AC-006, AC-012, AC-013, AC-017; Evidence: `evidence/T-055-human-driven-revalidation.md`
+- [ ] **T-058 [Fix] 为目标变化监听器路径补上不含内容的分级诊断（诊断前置，MUST）。** `AppLifecycleController.swift:364` 在监听器触发且会话处于 `previewing(.ready)` 时直接 `present(.staleTarget)`，该路径**没有任何埋点**，导致 T-055 暴露的两项缺陷无法归因（22 条阶段记录中 A1–A4 拒绝为零条，证明替换从未被请求）。任务要求：先写失败测试断言监听器触发导致的拒绝会产生一条可辨认的诊断记录，且该记录能区分「窗口变化／元素变化／焦点应用变化」三种依据；再实现。**沿用 T-052 的隐私边界：只记阶段标识与判定依据，不得含任何内容或长度。** 本任务不改变监听器的判定行为，只让原因可见。**必须继续遵守 Plan 的 observer 边界：`AXObserver` 回调只允许携带 session ID 与 target ID，不得为诊断向回调增加任何字段**——判定依据在控制器侧记录，不得回填进回调载荷。**本任务只做诊断：T-060（ChatGPT 二次替换）等修复任务须在本任务数据取得后经新一轮 Tasks Gate 定义，不得在本次 PASS 后临时定义并直接开发。** 观测对象须至少覆盖 ChatGPT 二次替换场景。— Depends on: Tasks PASS; Covers: FR-013, NFR-006, NFR-007; Evidence: 新增 `evidence/T-058-monitor-path-diagnostics.md`
+- **已移除（依 Solar Tasks Gate REVIEW，2026-08-03）**：原 T-059（Google 搜索框预览期被判目标变化）依 `BLOCKER` 移出 Feature 001——用户已在本会话早期将「Chrome 页内选区替换」与「所有输入框一致工作」划入后续 Feature，不得重新作为 001 的必须修复项；该现象已记入 `evidence/out-of-scope-observations.md` 观察 5。原 T-060（ChatGPT 二次替换被判目标变化）属 001 范围内缺陷，但其**修复任务须在 T-058 诊断数据取得后经新一轮 Tasks Gate 定义**，不得在本次 PASS 后临时定义并直接开发；本轮仅将其列为 T-058 必须覆盖的观测对象。
+- [ ] **T-061 [Fix] 把回读确认改为有界、单次 setter、超时 fail-closed（MUST）。** T-055 抓到 3 条 `replacement-stage=readback failure=writeFailed`：setter 报告成功但回读未确认，现有五次重试预算耗尽。这与 T-058 观测的拒绝是不同问题（那些从未到达 setter）。已知事实：Chromium 异步应用写入，立即回读返回写入前的值（T-037 已记录）。**依 Solar Tasks Gate REVIEW 更正引用**：本任务与 AC-008、NFR-001 无关——NFR-001 的 300ms 只约束确认前的预览呈现，**不包含确认之后的回读**，因此不存在需要协商的时间上限。任务要求：先写失败测试固定三条期望，再改实现——(1) **setter 只调用一次**，重试只重复回读，不得重复写入；(2) 回读有明确的**上界**（次数与总时长均有界，写入证据文件）；(3) 上界内仍未确认则 **fail-closed**，报告写入未确认而非成功。**不得以放弃回读确认的方式让测试通过。** — Depends on: Tasks PASS; Covers: FR-008, NFR-007; Evidence: 新增 `evidence/T-061-readback-confirmation-bound.md`
+- [ ] **T-062 [Verify] 在最终代码上重跑完整 T-055（MUST）。** **依 Solar Tasks Gate REVIEW 更正范围**：不是只补九个未执行项，而是在 T-058、T-061 及后续新一轮 Tasks Gate 定义的修复全部落地后的**最终代码**上，由真人以鼠标／触控板重跑 T-055 的**全部**内容——(a) TextEdit 连续五次、(b) Chrome/ChatGPT 连续五次多行、(c) Undo、(d) 范围保真、(e) 恢复后外部变化、(f1) 至 (f6)。此前在 `a645769` 上取得的 (a)(b) 结果因代码已变更而不再具备证明力，须重取。逐项记录面板文案原文与对应阶段记录；时序约束不变，f3／f5／f6 必须发生在替换成功之后、恢复之前；禁止以 AXPress 或 AppleScript 代点。— Depends on: T-058, T-061, 及后续 Tasks Gate 定义的修复任务; Covers: FR-007, FR-008, FR-012, NFR-007, AC-005, AC-006, AC-012, AC-013, AC-017; Evidence: `evidence/T-055-human-driven-revalidation.md`
 
 ## 检查点
 
@@ -274,7 +291,7 @@ T-059 与 T-060 的修复方案才能被定义。** 现在就写修复方案等�
 - **C2 — 领域安全不变量成立：** T-014 通过；确认前零 setter、单会话、会话清理及 `recoverable → previewing(recoveryUnavailable)` 已由失败优先测试证明。
 - **C3 — 系统边界可控：** T-028 通过；权限、剪贴板、AX、observer、几何和预览各自有测试，并且权威写入验证未被监控事件取代。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-021／T-022 按批准算法转绿，T-040 自动化复核确认权限、剪贴板、AX、observer、几何与预览各套件全部通过。 **2026-07-31 再次回退为未达成**：Tasks Gate 第二次重开使下游 Implementation Gate 一并重开；且第三次 Implementation REVIEW 的 Finding 3 判定 A2 豁免超出批准范围，系统边界的判定依据本身需按 T-053 重做。
 - **C4 — 合成闭环通过：** T-031 通过；全部生产装配由 T-030 的端到端失败测试驱动。~~2026-07-28 起回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 的两次运行中 T-027 与 T-030／T-031 套件全部通过。 **2026-07-31 再次回退为未达成**：Tasks Gate 第二次重开使下游 Implementation Gate 一并重开；且该闭环全部由 AXPress 驱动，不覆盖预览面板成为 key window 的真人路径，需按 T-055 以真人驱动重新建立。
-- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ ~~已回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 至 T-046 全部完成，含 P6 的真实环境复核与定向审计，详见 `evidence/T-039-acceptance-package.md` 第十节。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。 **2026-07-31 再次回退为未达成**：Solar 对 `5070607` 的第三次 Implementation Gate REVIEW 判定 `CHANGES REQUESTED`，6 项 MUST 未闭合；且 Tasks Gate 因 P7 重开，下游 Implementation Gate 随之重开。**重新达成的条件（唯一，全部满足方可）**：① T-052 至 T-056 全部完成；② T-055 的真人复核全部通过——TextEdit 与 Chrome/ChatGPT 各连续五次「确认替换 → 恢复原文」成功，Undo 行为、范围保真、恢复后外部变化、三类关键失败场景均有真人记录；③ 五道门禁全部从分支内 `scripts/` 执行并通过（含 `project-structure-check.sh`）；④ T-057 重建的验收包逐项区分真人驱动与脚本驱动证据，并标注受 AXPress 局限影响的项；⑤ Solar 对 T-057 发布的新 SHA 给出 Implementation Gate `PASS`。
+- **C5 — 真实验收完整：** T-039 通过；TextEdit 与 Chrome/ChatGPT 完整闭环、VS Code 后备闭环、性能/显示/输入/隐私证据均可复现。 ~~已达成（2026-07-28）~~ ~~已回退为未达成~~ **已于 2026-07-30 重新达成**：T-040 至 T-046 全部完成，含 P6 的真实环境复核与定向审计，详见 `evidence/T-039-acceptance-package.md` 第十节。原记录：121 tests 全绿，build/structure/sdd/secret/diff-check 五道门禁通过，7 项已知限制已如实披露，详见 `evidence/T-039-acceptance-package.md`。 **2026-07-31 再次回退为未达成**：Solar 对 `5070607` 的第三次 Implementation Gate REVIEW 判定 `CHANGES REQUESTED`，6 项 MUST 未闭合；且 Tasks Gate 因 P7 重开，下游 Implementation Gate 随之重开。**重新达成的条件（唯一，全部满足方可）**：① T-052 至 T-056 全部完成；② T-055 的真人复核全部通过——TextEdit 与 Chrome/ChatGPT 各连续五次「确认替换 → 恢复原文」成功，Undo 行为、范围保真、恢复后外部变化、三类关键失败场景均有真人记录；③ 五道门禁全部从分支内 `scripts/` 执行并通过（含 `project-structure-check.sh`）；④ T-057 重建的验收包逐项区分真人驱动与脚本驱动证据，并标注受 AXPress 局限影响的项；⑤ Solar 对 T-057 发布的新 SHA 给出 Implementation Gate `PASS`。 **2026-08-03 追加（P8）**：⑥ T-058 与 T-061 完成；⑦ T-058 的诊断数据取得后，ChatGPT 二次替换的修复任务经**新一轮 Tasks Gate** 定义并完成——不得在本次 PASS 后临时定义即开发；⑧ T-062 在最终代码上重跑**完整** T-055 并全部通过（此前 `a645769` 上的 (a)(b) 结果已失效，不再计入）。Google 搜索框选区兼容依 `BLOCKER` 移出 001，不作为 C5 条件。
 
 ## Plan Gate NIT 处置约束
 
@@ -293,6 +310,13 @@ T-059 与 T-060 的修复方案才能被定义。** 现在就写修复方案等�
   「严格守流程、快速推进」，故先提交任务定义，Tasks PASS 前不动生产代码。
   P7 的 T-052 至 T-054 已在上一次 Tasks PASS 后按序完成并推送
   （`3761281`、`247890d`、`a645769`）。
+- **第三次重开第二版修订（2026-08-03，当前待审）**：Solar 对 `fa194a5` 判
+  `CHANGES REQUESTED`，含一项 `BLOCKER`。已落实：原 T-059（Google 搜索框）移出
+  001 并记入 `evidence/out-of-scope-observations.md` 观察 5；原 T-060 从任务列表
+  移除，其修复须经新一轮 Tasks Gate 定义；T-058 补入 observer 回调只带 session ID
+  与 target ID 的边界约束；T-061 更正错误引用的 AC-008 与 NFR-001，改为有界、
+  单次 setter、超时 fail-closed；T-062 改为在最终代码上重跑完整 T-055；P8 已接入
+  需求追踪表、C5 条件（追加 ⑥⑦⑧）与 T-057 出口（追加 ⑮⑯⑰）。
 
 - **第二次重开（2026-07-31，当前待审）**：因 P7（T-047 至 T-051）在已批准
   Tasks SHA `a8d0327` 之后新增并执行，构成 material change；Solar 对 `5070607`

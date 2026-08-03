@@ -45,6 +45,10 @@
 页面焦点回到输入框，面板随即显示「原输入位置已经变化，不能安全替换。」
 同一操作在 ChatGPT 与 TextEdit 均成功。
 
+**范围裁决（Solar Tasks Gate REVIEW，2026-08-03，`BLOCKER`）**：本项已移出
+Feature 001，归入 2026-07-28 用户决策划出的后续 Feature，记入
+`evidence/out-of-scope-observations.md` 观察 5。001 内只保留 T-058 的诊断埋点。
+
 ### 缺陷 B：ChatGPT 二次替换被判目标变化
 
 真人报告：在 ChatGPT 中成功替换一次后，就现有文本再次按 ⌃⌥⌘P 唤出预览，鼠标移向
