@@ -227,3 +227,21 @@ StaleTargetDiagnosticsTests.swift:84: error: XCTAssertEqual failed:
    真机 `log stream` 的实测确认是 T-057 出口 ⑧ 的内容，不在本任务范围。
 4. **本任务不修任何缺陷。** ChatGPT 二次替换仍会被拒绝；本任务只让每一次拒绝可以
    被归因。修复须经 T-063 采集、T-064 判定、并取得新一轮 Tasks Gate `PASS`。
+
+## 审核结论与延期记录
+
+Solar 于 2026-08-03 对 `661bb76` 给出 T-058 `PASS`：独立验证 232 tests / 0 failures，
+构建、本地门禁与 GitHub Checks 全绿，无 `BLOCKER`、无 `MUST`。
+
+一项非阻塞 `SHOULD` 予以**延期至 T-057**，理由如下（依 Review 契约，延期须记录理由）：
+
+- finding：`testProductionAssemblyAttachesStaleTargetDiagnostics` 实际是手动把
+  `makeStaleTargetDiagnostics()` 注入成员初始化器，只证明工厂返回非 nil，并未证明
+  `convenience init()`（真正的生产装配入口）用了它。
+- 接受该判断。同一弱点在既有的
+  `testProductionAssemblyAttachesReplacementDiagnostics` 上同样存在，因此这是一处
+  应统一补强的装配断言，不是 T-058 引入的新缺口。
+- 延期理由：补强需要为 `convenience init()` 提供可观测的装配断言，会触及两条诊断
+  路径的装配测试；T-057 的出口本就要求逐项重建验收包并重跑全部门禁，在那里一次
+  改到位比在 P8 中途插入更小、更不易遗漏。T-057 出口 ⑮ 已要求 T-058 证据归档，
+  本节即该记录。

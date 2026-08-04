@@ -72,7 +72,44 @@ enum ReplacementStage: String, Equatable, Sendable {
     case attributeSettable
     case setter
     case readback
+    /// T-061: the readback loop stopped early because the session or the target
+    /// stopped being valid. Distinct from `readback`, which means the budget was
+    /// spent without a match — waiting longer would have helped in neither case,
+    /// but only one of them says the target went away.
+    case readbackAborted
     case completed
+}
+
+/// T-061: the readback confirmation budget. Both bounds are explicit and both
+/// are enforced: the loop stops at `maximumAttempts` readbacks or once the
+/// monotonic deadline passes, whichever comes first.
+///
+/// With the default values the time bound binds first — the backoffs after
+/// seven failed attempts sum to 1350ms, which exceeds the 1200ms deadline — so
+/// a target that never applies the write costs at most 1200ms plus eight
+/// readbacks, never an unbounded wait.
+struct ReadbackBudget: Equatable, Sendable {
+    let maximumAttempts: Int
+    let totalBudgetNanoseconds: UInt64
+    let initialBackoffNanoseconds: UInt64
+    let maximumBackoffNanoseconds: UInt64
+
+    static let `default` = ReadbackBudget(
+        maximumAttempts: 8,
+        totalBudgetNanoseconds: 1_200_000_000,
+        initialBackoffNanoseconds: 50_000_000,
+        maximumBackoffNanoseconds: 250_000_000
+    )
+}
+
+/// Why a readback loop ended. Content-free by construction.
+enum ReadbackOutcome: Equatable, Sendable {
+    /// The written text was read back identically. The only success criterion.
+    case confirmed
+    /// The budget was spent without a match.
+    case unconfirmed
+    /// The session or the target became invalid, so waiting was pointless.
+    case aborted
 }
 
 /// FR-013／NFR-006: a stage report carries only the stage, the failure category

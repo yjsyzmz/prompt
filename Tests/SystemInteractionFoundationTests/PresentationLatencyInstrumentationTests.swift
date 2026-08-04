@@ -107,7 +107,9 @@ private struct LatencyEnvironment {
 // MARK: - Fakes and spies
 
 @MainActor
-private final class LatencyClockFake: @preconcurrency MonotonicClockReading {
+private final class LatencyClockFake:
+    @preconcurrency MonotonicClockReading, @unchecked Sendable
+{
     var nextSamples: [UInt64] = []
     private var index = 0
 

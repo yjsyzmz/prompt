@@ -122,6 +122,12 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     private let authoritativeTarget: (any AXAuthoritativeTargetAccessing)?
     /// MUST 1: content-free stage classification for the replacement path.
     private let diagnostics: (any ReplacementDiagnosticsRecording)?
+    /// T-061: the readback budget is measured on a monotonic clock, and the wait
+    /// between readbacks is injected so both bounds are assertable.
+    private let clock: any MonotonicClockReading
+    private let sleeper: any MonotonicSleeping
+    private let readbackBudget: ReadbackBudget
+    private var readbackAttempts = 0
     private var targetReferences: [TargetHandle: AXTargetReference] = [:]
     private var activeMonitorEnvelope: AXMonitorCallbackEnvelope?
     private var monitorInvalidationSink: (any AXMonitorInvalidationReceiving)?
@@ -130,12 +136,24 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         captureReader: any AXCaptureReading,
         sourceTextFactory: any AXSourceTextCreating = DefaultAXSourceTextFactory(),
         authoritativeTarget: (any AXAuthoritativeTargetAccessing)? = nil,
-        diagnostics: (any ReplacementDiagnosticsRecording)? = nil
+        diagnostics: (any ReplacementDiagnosticsRecording)? = nil,
+        clock: any MonotonicClockReading = SystemMonotonicClock(),
+        sleeper: any MonotonicSleeping = SystemMonotonicSleeper(),
+        readbackBudget: ReadbackBudget = .default
     ) {
         self.captureReader = captureReader
         self.sourceTextFactory = sourceTextFactory
         self.authoritativeTarget = authoritativeTarget
         self.diagnostics = diagnostics
+        self.clock = clock
+        self.sleeper = sleeper
+        self.readbackBudget = readbackBudget
+    }
+
+    /// T-061: how many readbacks the actor has performed. Lets a test prove that
+    /// an aborted loop really left its remaining budget unspent.
+    func readbackAttemptCount() -> Int {
+        readbackAttempts
     }
 
     /// MUST 1: lets the assembly tests confirm that the production wiring really
@@ -359,15 +377,29 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return .failure(.writeFailed)
         }
 
-        guard writtenTextConfirmed(
+        switch confirmWrittenText(
             snapshot.transformedText.value,
             mode: snapshot.captureMode,
-            targetHandle: snapshot.targetHandle
-        ) else {
+            targetHandle: snapshot.targetHandle,
+            pid: snapshot.pid
+        ) {
+        case .confirmed:
+            break
+        case .unconfirmed:
             // The setter reported success but the value never landed. This is a
             // different failure than a refused setter and must stay separable.
             diagnostics?.record(
                 ReplacementStageReport(stage: .readback, failure: .writeFailed)
+            )
+            return .failure(.writeFailed)
+        case .aborted:
+            // T-061: the target went away mid-confirmation. Fail closed with the
+            // same safe fallback, but keep the two causes distinguishable.
+            diagnostics?.record(
+                ReplacementStageReport(
+                    stage: .readbackAborted,
+                    failure: .writeFailed
+                )
             )
             return .failure(.writeFailed)
         }
@@ -475,16 +507,17 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             return .failure(.recoveryTargetChanged)
         }
 
-        // W3 and W4: exactly one setter, then readback confirmation.
+        // W3 and W4: exactly one setter, then bounded readback confirmation.
         guard setText(
             recovery.originalText.value,
             mode: .wholeField,
             targetHandle: recovery.targetHandle
-        ), writtenTextConfirmed(
+        ), confirmWrittenText(
             recovery.originalText.value,
             mode: .wholeField,
-            targetHandle: recovery.targetHandle
-        ) else {
+            targetHandle: recovery.targetHandle,
+            pid: recovery.pid
+        ) == .confirmed else {
             return .failure(.recoveryTargetChanged)
         }
         return .success(())
@@ -582,11 +615,12 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             recovery.originalText.value,
             mode: recovery.captureMode,
             targetHandle: recovery.targetHandle
-        ), writtenTextConfirmed(
+        ), confirmWrittenText(
             recovery.originalText.value,
             mode: recovery.captureMode,
-            targetHandle: recovery.targetHandle
-        ) else {
+            targetHandle: recovery.targetHandle,
+            pid: recovery.pid
+        ) == .confirmed else {
             return .failure(.recoveryTargetChanged)
         }
         return .success(())
@@ -642,16 +676,17 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             with: recovery.originalText.value
         )
 
-        // 6: one setter, then readback confirmation.
+        // 6: one setter, then bounded readback confirmation.
         guard setText(
             restoredValue,
             mode: .wholeField,
             targetHandle: recovery.targetHandle
-        ), writtenTextConfirmed(
+        ), confirmWrittenText(
             restoredValue,
             mode: .wholeField,
-            targetHandle: recovery.targetHandle
-        ) else {
+            targetHandle: recovery.targetHandle,
+            pid: recovery.pid
+        ) == .confirmed else {
             return .failure(.recoveryTargetChanged)
         }
         return .success(())
@@ -932,30 +967,94 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         }
     }
 
-    /// Some targets (notably Chromium web content) report a successful
-    /// AXSelectedText/AXValue write without applying it. A write only counts
-    /// as successful when the new text can be read back (FR-010: replacement
-    /// must be confirmed, otherwise keep the result and report writeFailed).
-    /// Chromium applies accessibility writes asynchronously in the renderer
-    /// process, so the readback retries briefly before failing closed.
-    private func writtenTextConfirmed(
+    /// T-061: confirms the write inside a bounded budget.
+    ///
+    /// Some targets — notably Chromium web content — report a successful
+    /// `AXSelectedText`/`AXValue` write without having applied it, because the
+    /// renderer applies accessibility writes asynchronously. FR-010 therefore
+    /// makes the readback the only success criterion: the setter has already run
+    /// exactly once by the time this is called, and nothing here writes — a
+    /// retry repeats only the readback.
+    ///
+    /// The loop ends for one of three reasons — the text was read back
+    /// identically, the budget was spent, or the target stopped being valid —
+    /// and the caller can tell them apart.
+    private func confirmWrittenText(
         _ expectedText: String,
         mode: CaptureMode,
-        targetHandle: TargetHandle
-    ) -> Bool {
-        for attempt in 0 ..< 5 {
-            if attempt > 0 {
-                usleep(100_000)
+        targetHandle: TargetHandle,
+        pid: Int32
+    ) -> ReadbackOutcome {
+        // (1) The budget is a monotonic deadline. A wall-clock adjustment during
+        // the loop cannot shorten or extend it.
+        let deadline = clock.now() &+ readbackBudget.totalBudgetNanoseconds
+        var backoff = readbackBudget.initialBackoffNanoseconds
+        var attempt = 0
+
+        while true {
+            // (7) Waiting only makes sense while the target could still both
+            // receive the write and report it back.
+            guard readbackTargetStillValid(
+                targetHandle: targetHandle,
+                pid: pid
+            ) else {
+                return .aborted
             }
+
+            attempt += 1
+            readbackAttempts += 1
             if writeReadbackMatches(
                 expectedText,
                 mode: mode,
                 targetHandle: targetHandle
             ) {
-                return true
+                return .confirmed
             }
+
+            guard attempt < readbackBudget.maximumAttempts else {
+                return .unconfirmed
+            }
+            let now = clock.now()
+            guard now < deadline else {
+                return .unconfirmed
+            }
+            // (2) Bounded backoff: doubling, capped, and never past the deadline.
+            sleeper.sleep(nanoseconds: min(backoff, deadline - now))
+            backoff = min(
+                backoff &* 2,
+                readbackBudget.maximumBackoffNanoseconds
+            )
         }
-        return false
+    }
+
+    /// The three observable ways a session or target dies under us: the
+    /// application exited, or the window/element identity moved. These are the
+    /// same A1／A3／A4 checks the write path already trusts, so a released
+    /// capture — which is what ending a session or closing the panel does — also
+    /// fails them: with no retained reference there is no window or element left
+    /// to match.
+    private func readbackTargetStillValid(
+        targetHandle: TargetHandle,
+        pid: Int32
+    ) -> Bool {
+        targetApplicationIsRunning(pid: pid)
+            && windowMatches(targetHandle: targetHandle)
+            && elementMatches(targetHandle: targetHandle)
+    }
+
+    /// T-061 (3): the readback comparison unit is the UTF-16 code unit, the same
+    /// unit FR-012 already mandates for ranges.
+    ///
+    /// `String ==` compares canonical forms, so it would accept a target that
+    /// silently renormalised the text. That is a different code-unit sequence
+    /// than the one we asked for, and confirming it would mean claiming a write
+    /// we did not actually make. Prefix or length comparison is excluded for the
+    /// same reason.
+    private func readbackTextMatches(
+        _ candidate: String,
+        _ expected: String
+    ) -> Bool {
+        (candidate as NSString).isEqual(to: expected)
     }
 
     private func writeReadbackMatches(
@@ -977,7 +1076,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
                     in: currentRange,
                     targetHandle: targetHandle
                 ),
-                selectionValue == expectedText
+                readbackTextMatches(selectionValue, expectedText)
             {
                 return true
             }
@@ -992,7 +1091,10 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             )
             guard candidateRange.location >= 0,
                 NSMaxRange(candidateRange) <= (fullValue as NSString).length,
-                (fullValue as NSString).substring(with: candidateRange) == expectedText
+                readbackTextMatches(
+                    (fullValue as NSString).substring(with: candidateRange),
+                    expectedText
+                )
             else {
                 return false
             }
@@ -1000,7 +1102,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         case .wholeField:
             guard
                 case .success(let fullValue) = wholeValue(targetHandle: targetHandle),
-                fullValue == expectedText
+                readbackTextMatches(fullValue, expectedText)
             else {
                 return false
             }

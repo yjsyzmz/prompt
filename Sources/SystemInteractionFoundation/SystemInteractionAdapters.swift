@@ -211,13 +211,38 @@ struct SecureInputGuard {
     }
 }
 
-protocol MonotonicClockReading {
+protocol MonotonicClockReading: Sendable {
     func now() -> UInt64
 }
 
 struct SystemMonotonicClock: MonotonicClockReading {
     func now() -> UInt64 {
         DispatchTime.now().uptimeNanoseconds
+    }
+}
+
+/// T-061: the readback loop waits between attempts. The wait is injected so the
+/// bound can be asserted without a test spending real seconds, and so the waits
+/// themselves stay observable.
+protocol MonotonicSleeping: Sendable {
+    func sleep(nanoseconds: UInt64)
+}
+
+/// `nanosleep` rather than `usleep`: an interrupted sleep must finish its
+/// remaining time instead of returning early and silently shortening the budget.
+struct SystemMonotonicSleeper: MonotonicSleeping {
+    func sleep(nanoseconds: UInt64) {
+        guard nanoseconds > 0 else {
+            return
+        }
+        var request = timespec(
+            tv_sec: Int(nanoseconds / 1_000_000_000),
+            tv_nsec: Int(nanoseconds % 1_000_000_000)
+        )
+        var remaining = timespec()
+        while nanosleep(&request, &remaining) == -1, errno == EINTR {
+            request = remaining
+        }
     }
 }
 

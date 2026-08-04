@@ -173,7 +173,7 @@ private final class ContentReaderSpy {
     }
 }
 
-private final class MonotonicClockStub: MonotonicClockReading {
+private final class MonotonicClockStub: MonotonicClockReading, @unchecked Sendable {
     private var samples: [UInt64]
     private(set) var sampleCallCount = 0
 

@@ -39,6 +39,14 @@ final class AXAuthoritativeWriteRecoveryTests: XCTestCase {
                 .selectedText,
                 .attributeSettable,
                 .setSelectedText,
+                // T-061: every readback is preceded by a validity check, so the
+                // loop stops the moment the target can no longer report the
+                // write instead of waiting out the whole budget. A2 is not
+                // re-read here — the panel legitimately holds focus during a
+                // mouse-driven confirmation.
+                .targetApplicationRunning,
+                .windowIdentity,
+                .elementIdentity,
                 .selectedRange,
                 .selectedText,
             ]
