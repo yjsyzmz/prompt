@@ -992,6 +992,15 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
         var attempt = 0
 
         while true {
+            // T-065: the session ended, the panel closed, or a new session took
+            // over. `plan.md` 第 387 行 requires the in-flight task to be
+            // cancelled then, so stop here instead of spending the rest of the
+            // budget. This is why the caller must not block `MainActor`: the
+            // cancellation can only arrive if `MainActor` is free to serve it.
+            if Task.isCancelled {
+                return .aborted
+            }
+
             // (7) Waiting only makes sense while the target could still both
             // receive the write and report it back.
             guard readbackTargetStillValid(

@@ -20,6 +20,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         await env.controller.captureWork?.value
         env.host.switchWindow()
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(
             env.host.setterAttemptCount,
@@ -44,6 +45,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         await env.controller.captureWork?.value
         env.host.invalidateElement()
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 0)
         XCTAssertEqual(
@@ -60,6 +62,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         await env.controller.captureWork?.value
         env.host.terminateApplication()
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 0)
         XCTAssertEqual(
@@ -76,6 +79,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         await env.controller.captureWork?.value
         env.host.moveFocusToDifferentApplication()
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 0)
         XCTAssertEqual(
@@ -92,6 +96,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         await env.controller.captureWork?.value
         env.host.editSegmentExternally("SYNTHETIC-001 外部改过的文字")
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(
             env.host.setterAttemptCount,
@@ -117,6 +122,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         env.hotKey.press()
         await env.controller.captureWork?.value
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertGreaterThan(
             env.host.setterAttemptCount,
@@ -148,6 +154,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         await env.controller.captureWork?.value
         env.host.switchWindow()
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         guard let state = env.presenter.lastState else {
             XCTFail("a rejection must present a state")
@@ -285,6 +292,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
             await env.controller.captureWork?.value
             mutate(env.host)
             env.controller.handle(.confirmReplacement)
+            await env.controller.applyWork?.value
 
             XCTAssertEqual(
                 env.presenter.lastState?.message,
@@ -307,6 +315,7 @@ final class ReplacementFailureMappingTests: XCTestCase {
         env.hotKey.press()
         await env.controller.captureWork?.value
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertGreaterThan(
             env.host.setterAttemptCount,

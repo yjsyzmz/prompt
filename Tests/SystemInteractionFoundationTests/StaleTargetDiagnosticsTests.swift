@@ -100,8 +100,10 @@ final class StaleTargetDiagnosticsTests: XCTestCase {
         await env.reachReadyPreview()
 
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
         env.host.collapseSelectionAfterWrite()
         env.controller.handle(.restoreOriginal)
+        await env.controller.recoverWork?.value
         await env.controller.cleanupWork?.value
 
         await env.reachReadyPreview()

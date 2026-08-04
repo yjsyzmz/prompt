@@ -40,6 +40,7 @@ final class EndToEndIntegrationTests: XCTestCase {
         XCTAssertEqual(env.monitor.startCount, 1)
 
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 1)
         XCTAssertEqual(env.host.selectedSegment, transformed.value)
@@ -64,6 +65,7 @@ final class EndToEndIntegrationTests: XCTestCase {
 
         env.host.collapseSelectionAfterWrite()
         env.controller.handle(.restoreOriginal)
+        await env.controller.recoverWork?.value
         await env.controller.cleanupWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 2)
@@ -205,6 +207,7 @@ final class EndToEndIntegrationTests: XCTestCase {
         // The monitor event only disables the button; the authoritative
         // validation remains the actual write gate if a confirm still races in.
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 0)
         XCTAssertEqual(env.host.fullText, originalFullText)
@@ -230,6 +233,7 @@ final class EndToEndIntegrationTests: XCTestCase {
 
         env.host.failNextSetterAttempts(1)
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(env.host.setterAttemptCount, 1)
         XCTAssertEqual(env.host.fullText, originalFullText)
@@ -250,10 +254,12 @@ final class EndToEndIntegrationTests: XCTestCase {
         env.hotKey.press()
         await env.controller.captureWork?.value
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
         XCTAssertEqual(env.host.setterAttemptCount, 1)
 
         env.host.editSegmentExternally("SYNTHETIC-001 被外部修改的结果")
         env.controller.handle(.restoreOriginal)
+        await env.controller.recoverWork?.value
 
         XCTAssertEqual(
             env.presenter.lastState?.message,
@@ -336,6 +342,7 @@ final class EndToEndIntegrationTests: XCTestCase {
         XCTAssertEqual(env.pasteboard.readCount, 1)
 
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
         XCTAssertEqual(env.host.setterAttemptCount, 0)
     }
 }

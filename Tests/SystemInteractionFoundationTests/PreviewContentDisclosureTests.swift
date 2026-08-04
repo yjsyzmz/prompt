@@ -83,6 +83,7 @@ final class PreviewContentDisclosureTests: XCTestCase {
         env.hotKey.press()
         await env.controller.captureWork?.value
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
 
         XCTAssertEqual(env.presenter.lastState?.sourceText, expectedSource)
         XCTAssertEqual(env.presenter.lastState?.resultText, expectedResult.value)

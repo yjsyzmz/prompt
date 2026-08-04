@@ -56,10 +56,12 @@ final class ClipboardRetrySemanticsTests: XCTestCase {
         await env.controller.captureWork?.value
         let expectedOriginal = env.expectedSourceText
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
         // Force the recovery to be refused so that copying the original becomes
         // the only remaining way to get the text back.
         env.host.editSegmentExternally("SYNTHETIC-001 外部改过的文字")
         env.controller.handle(.restoreOriginal)
+        await env.controller.recoverWork?.value
         XCTAssertTrue(
             env.presenter.lastState?.buttons.contains {
                 $0.action == .copyOriginal

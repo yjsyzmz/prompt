@@ -99,6 +99,17 @@ final class AppLifecycleController {
     /// tests need a handle to await instead of polling.
     private(set) var staleTargetDiagnosticsWork: Task<Void, Never>?
 
+    /// T-065: the write and recovery now run as cancellable coordinator tasks
+    /// (`plan.md` 第 129–136、387 行). Exposed so a test can await the exact
+    /// in-flight work instead of guessing at scheduling.
+    var applyWork: Task<Void, Never>? {
+        coordinator.applyWork
+    }
+
+    var recoverWork: Task<Void, Never>? {
+        coordinator.recoverWork
+    }
+
     private var activeSessionID: InteractionSessionID?
     private var activeTargetHandle: TargetHandle?
     private var pendingAnchorRect: CGRect?

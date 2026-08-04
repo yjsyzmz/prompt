@@ -6,7 +6,7 @@ final class InteractionSessionCoordinatorTests: XCTestCase {
     private let original = SourceText("SYNTHETIC-001-original")
     private let transformed = TransformedText(value: "【系统交互验证】\nSYNTHETIC-001-original")
 
-    func testDirectSessionTraversesTheCompleteApprovedStatePath() {
+    func testDirectSessionTraversesTheCompleteApprovedStatePath() async {
         let fixture = makeFixture()
 
         XCTAssertEqual(fixture.coordinator.state, .idle)
@@ -26,6 +26,7 @@ final class InteractionSessionCoordinatorTests: XCTestCase {
         )
 
         fixture.coordinator.confirmReplacement()
+        await fixture.coordinator.applyWork?.value
         fixture.coordinator.close()
 
         XCTAssertEqual(
@@ -87,7 +88,7 @@ final class InteractionSessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(fixture.pasteboard.writeCount, 0)
     }
 
-    func testClipboardInputNeverOffersOrPerformsDirectReplacement() {
+    func testClipboardInputNeverOffersOrPerformsDirectReplacement() async {
         let fixture = makeFixture()
 
         fixture.coordinator.beginClipboardSession(
@@ -102,20 +103,23 @@ final class InteractionSessionCoordinatorTests: XCTestCase {
         )
 
         fixture.coordinator.confirmReplacement()
+        await fixture.coordinator.applyWork?.value
 
         XCTAssertEqual(fixture.coordinator.state, .previewing(.ready))
         XCTAssertEqual(fixture.target.directWriteCount, 0)
         XCTAssertEqual(fixture.pasteboard.writeCount, 0)
     }
 
-    func testFailedRecoveryValidationDisablesFurtherDirectWrites() {
+    func testFailedRecoveryValidationDisablesFurtherDirectWrites() async {
         let fixture = makeReadyDirectSession()
         fixture.coordinator.confirmReplacement()
+        await fixture.coordinator.applyWork?.value
         XCTAssertEqual(fixture.coordinator.state, .recoverable)
         XCTAssertEqual(fixture.target.replaceCount, 1)
 
         fixture.target.recoveryIsValid = false
         fixture.coordinator.recoverOriginal()
+        await fixture.coordinator.recoverWork?.value
 
         XCTAssertEqual(
             fixture.coordinator.state,
@@ -129,18 +133,22 @@ final class InteractionSessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(fixture.target.restoreCount, 0)
 
         fixture.coordinator.confirmReplacement()
+        await fixture.coordinator.applyWork?.value
         fixture.coordinator.recoverOriginal()
+        await fixture.coordinator.recoverWork?.value
 
         XCTAssertEqual(fixture.target.replaceCount, 1)
         XCTAssertEqual(fixture.target.restoreCount, 0)
         XCTAssertEqual(fixture.pasteboard.writeCount, 0)
     }
 
-    func testRecoveryUnavailableOnlyCopiesOriginalOrCloses() {
+    func testRecoveryUnavailableOnlyCopiesOriginalOrCloses() async {
         let fixture = makeReadyDirectSession()
         fixture.coordinator.confirmReplacement()
+        await fixture.coordinator.applyWork?.value
         fixture.target.recoveryIsValid = false
         fixture.coordinator.recoverOriginal()
+        await fixture.coordinator.recoverWork?.value
 
         fixture.coordinator.copyOriginal()
 

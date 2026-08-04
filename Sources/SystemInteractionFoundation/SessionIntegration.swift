@@ -65,7 +65,7 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
         lastRecoveryFailure = nil
     }
 
-    func replace(_ content: SessionContent) -> Result<Void, DomainFailure> {
+    func replace(_ content: SessionContent) async -> Result<Void, DomainFailure> {
         guard
             let targetHandle,
             let targetPID,
@@ -81,14 +81,11 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
             originalText: content.source,
             transformedText: content.transformed
         )
-        let gateway = self.gateway
         let panelFocus = currentPanelFocusAuthorization()
-        let result = Self.performBlocking {
-            await gateway.replaceAfterAuthoritativeValidation(
-                snapshot,
-                panelFocus: panelFocus
-            )
-        }
+        let result = await gateway.replaceAfterAuthoritativeValidation(
+            snapshot,
+            panelFocus: panelFocus
+        )
         switch result {
         case .success(let context):
             recoveryContext = context
@@ -99,23 +96,20 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
         }
     }
 
-    func validateForRecovery(_ content: SessionContent) -> Bool {
+    func validateForRecovery(_ content: SessionContent) async -> Bool {
         recoveryContext != nil
     }
 
-    func restore(_ content: SessionContent) -> Bool {
+    func restore(_ content: SessionContent) async -> Bool {
         guard let recoveryContext else {
             return false
         }
 
-        let gateway = self.gateway
         let panelFocus = currentPanelFocusAuthorization()
-        let result = Self.performBlocking {
-            await gateway.restoreAfterAuthoritativeValidation(
-                recoveryContext,
-                panelFocus: panelFocus
-            )
-        }
+        let result = await gateway.restoreAfterAuthoritativeValidation(
+            recoveryContext,
+            panelFocus: panelFocus
+        )
         switch result {
         case .success:
             self.recoveryContext = nil
@@ -126,24 +120,4 @@ final class GatewaySessionTextTarget: @preconcurrency SessionTextTargetAccessing
             return false
         }
     }
-
-    private static func performBlocking<T: Sendable>(
-        _ operation: @escaping @Sendable () async -> T
-    ) -> T {
-        let box = ResultBox<T>()
-        let semaphore = DispatchSemaphore(value: 0)
-        Task.detached(priority: .userInitiated) {
-            box.value = await operation()
-            semaphore.signal()
-        }
-        semaphore.wait()
-        guard let value = box.value else {
-            fatalError("blocking gateway bridge finished without a result")
-        }
-        return value
-    }
-}
-
-private final class ResultBox<T>: @unchecked Sendable {
-    var value: T?
 }

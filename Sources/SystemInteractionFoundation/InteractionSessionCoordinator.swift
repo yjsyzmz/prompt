@@ -42,10 +42,18 @@ struct SessionContent: Equatable {
     let mode: CaptureMode
 }
 
+/// `plan.md` 第 129–136 行批准的契约：写入与恢复都是 `async`。同步协议加
+/// `DispatchSemaphore` 桥是对该契约的偏离——它会在回读期间占住 `MainActor`，
+/// 使会话结束、面板关闭与新会话抢占都无法被处理（T-065）。
+///
+/// `@MainActor`：`plan.md` 第 52 行把 UI 与 Coordinator 放在主 actor，AX 引用由
+/// gateway actor 串行拥有。因此本协议的实现留在主 actor，真正的挂起发生在它内部
+/// `await` gateway 的那一刻——那一刻主 actor 被释放。
+@MainActor
 protocol SessionTextTargetAccessing: AnyObject {
-    func replace(_ content: SessionContent) -> Result<Void, DomainFailure>
-    func validateForRecovery(_ content: SessionContent) -> Bool
-    func restore(_ content: SessionContent) -> Bool
+    func replace(_ content: SessionContent) async -> Result<Void, DomainFailure>
+    func validateForRecovery(_ content: SessionContent) async -> Bool
+    func restore(_ content: SessionContent) async -> Bool
 }
 
 protocol SessionPasteboardAccessing: AnyObject {
@@ -65,6 +73,11 @@ final class InteractionSessionCoordinator {
 
     private(set) var state: InteractionSessionState = .idle
     private(set) var currentSessionID: InteractionSessionID?
+
+    /// T-065：`plan.md` 第 387 行要求会话结束时取消异步任务。句柄同时让测试能确定性
+    /// 地等待在途写入／恢复结束，而不是靠 `Task.yield()` 猜调度。
+    private(set) var applyWork: Task<Void, Never>?
+    private(set) var recoverWork: Task<Void, Never>?
 
     var availableActions: [SessionAction] {
         switch state {
@@ -161,13 +174,40 @@ final class InteractionSessionCoordinator {
         guard
             state == .previewing(.ready),
             let content,
+            let sessionID = currentSessionID,
             content.mode != .clipboardInput
         else {
             return
         }
 
         transition(to: .applying)
-        switch target.replace(content) {
+        // T-065: the await releases `MainActor` for the whole write and readback,
+        // so a close, cancel or new session raised meanwhile is actually served.
+        applyWork = Task { [weak self] in
+            guard let self else {
+                return
+            }
+            let outcome = await self.target.replace(content)
+            self.applyCompleted(outcome, for: sessionID)
+        }
+    }
+
+    /// `plan.md` 第 55 行与并发规则：异步结果返回时必须再次匹配当前 session ID，
+    /// 旧结果直接丢弃。取消后回来的结果**不得**进入 `recoverable`——那会把一次
+    /// 未被承认的写入变成可恢复状态。
+    private func applyCompleted(
+        _ outcome: Result<Void, DomainFailure>,
+        for sessionID: InteractionSessionID
+    ) {
+        guard
+            !Task.isCancelled,
+            sessionID == currentSessionID,
+            state == .applying
+        else {
+            return
+        }
+
+        switch outcome {
         case .success:
             transition(to: .recoverable)
         case .failure(.writeFailed):
@@ -180,16 +220,40 @@ final class InteractionSessionCoordinator {
     }
 
     func recoverOriginal() {
-        guard state == .recoverable, let content else {
+        guard
+            state == .recoverable,
+            let content,
+            let sessionID = currentSessionID
+        else {
             return
         }
 
-        guard target.validateForRecovery(content) else {
-            transition(to: .previewing(.recoveryUnavailable))
+        recoverWork = Task { [weak self] in
+            guard let self else {
+                return
+            }
+            guard await self.target.validateForRecovery(content) else {
+                self.recoveryCompleted(restored: false, for: sessionID)
+                return
+            }
+            let restored = await self.target.restore(content)
+            self.recoveryCompleted(restored: restored, for: sessionID)
+        }
+    }
+
+    private func recoveryCompleted(
+        restored: Bool,
+        for sessionID: InteractionSessionID
+    ) {
+        guard
+            !Task.isCancelled,
+            sessionID == currentSessionID,
+            state == .recoverable
+        else {
             return
         }
 
-        if target.restore(content) {
+        if restored {
             endSession()
         } else {
             transition(to: .previewing(.recoveryUnavailable))
@@ -226,6 +290,7 @@ final class InteractionSessionCoordinator {
 
     private func replaceCurrentSession() {
         let hadActiveSession = currentSessionID != nil
+        cancelInFlightWork()
         currentSessionID = nil
         content = nil
         if hadActiveSession {
@@ -234,9 +299,19 @@ final class InteractionSessionCoordinator {
     }
 
     private func endSession() {
+        cancelInFlightWork()
         currentSessionID = nil
         content = nil
         transition(to: .ended)
+    }
+
+    /// `plan.md` 第 387 行：会话结束时取消异步任务。取消会传播进 gateway 的回读
+    /// 循环，使其在下一次检查点立即停止，而不是耗完整个预算。
+    private func cancelInFlightWork() {
+        applyWork?.cancel()
+        applyWork = nil
+        recoverWork?.cancel()
+        recoverWork = nil
     }
 
     private func transition(to newState: InteractionSessionState) {

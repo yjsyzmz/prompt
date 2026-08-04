@@ -31,8 +31,10 @@ final class PresentationLatencyInstrumentationTests: XCTestCase {
         await env.controller.captureWork?.value
 
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
         env.host.collapseSelectionAfterWrite()
         env.controller.handle(.restoreOriginal)
+        await env.controller.recoverWork?.value
         await env.controller.cleanupWork?.value
 
         XCTAssertEqual(

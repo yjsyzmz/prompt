@@ -1,183 +1,205 @@
-# T-065 会话／面板关闭中止回读：判定须重开 Plan Gate
+# T-065 会话／面板关闭立即中止回读
 
-## 结论（先说结果）
+## 结论
 
-**T-065 的输出是「须重开 Plan Gate」，本任务不实施修复。**
+**已修复并转绿。** 三项经生产 bridge 的测试从真实 RED 变为 GREEN，全套 246 项、
+**0 skipped**、0 failures。
 
-真实 RED 已取得并记录在下面。使该 RED 转绿的**任何可行路径都会改变已批准 Plan
-`0c9883f` 的数据流、状态机或写入隔离方式**，因此按 T-065 自身的约束——「若修复会改变
-已批准的数据流、状态机或写入隔离方式，必须先重开 Plan Gate 再动实现」——本任务在此
-停止，不在任务内自行变更架构。
+修复是**回到已批准 Plan**，不是变更架构：`plan.md` 早已规定 `TextTargetAccessing`
+的写入与恢复是 `async`、会话结束时取消异步任务、异步结果返回时按 session ID 去重。
+真正偏离 Plan 的是被移除的同步协议与 `DispatchSemaphore` 桥。
 
-## 任务边界
+## 一、Owner 上一轮判断错误的更正
 
-- 来源：Solar 对 `ad5c9df` 的 REVIEW Finding 1（MUST）；Tasks Gate 第四次重开第二版
-  修订 `1e66ad1` 已 `PASS`，授权范围是「只执行 T-065」。
-- 覆盖：FR-008、FR-010、FR-013、NFR-002、NFR-007。
-- 执行日期：2026-08-04。父提交 `1e66ad1912611197442a2fed58e3666658f2de4c`。
-- P9 唯一顺序中本任务位列第一；T-066、T-067、T-069、T-070 在本任务最终通过前不得开工。
+`005ca4c` 的证据结论是「任何可行修复都触及已批准 Plan，因此必须重开 Plan Gate」。
+**该结论错误，已由本文件取代。** Solar 对 `005ca4c` 的 REVIEW Finding 1 指出并给出
+行号，Owner 逐条核对 `plan.md` 后确认引用准确：
 
-## 一、被指出的缺口
+- 第 130–135 行：`TextTargetAccessing.replace / restore / release` **全部是 `async`**；
+- 第 52 行：UI 与 Coordinator 在 `MainActor`，AX 引用由 `AccessibilityGateway`
+  actor 串行拥有；
+- 第 55 行：「所有异步结果返回时必须再次匹配当前 session ID，旧结果直接丢弃并清理」；
+- 组件表：`InteractionSessionCoordinator` 的职责明确含「异步结果去重」；
+- 第 158 行：`applying` 状态已在批准的状态机内；
+- 第 387 行：「会话结束时取消异步任务、停止观察、释放 target handle」。
 
-T-061 条件 (7) 要求：回读期间若 session 或 target 失效（**含面板关闭**、目标应用退出、
-窗口／元素身份变化），必须**立即停止**回读。
+**错误原因是可指认的**：Owner 从实现代码与 T-065 的约束文本推理，**没有先读
+`plan.md` 的接口章节**就下了「须重开 Plan Gate」的结论。这与本项目反复纠正的
+「先查证再断言」是同一类错误，只是这次发生在 Owner 自己身上。
 
-`5f5f4cf` 交付的 `testTargetInvalidationDuringReadbackStopsImmediately` 只在 fake
-sleeper 回调里直接令合成 AX 元素失效。它证明的是 **A3／A4 外部变化能在下一轮被看到**，
-**没有**证明 session／panel-close 中止。两者不是同一件事：前者由目标侧变化驱动，后者
-由**本应用自己的会话生命周期**驱动，而后者的处理全部发生在 `MainActor` 上。
+## 二、修复内容
 
-## 二、生产调用链的事实
-
-确认替换的完整链路：
-
-```text
-用户点击「确认替换」                          （MainActor）
-  → AppLifecycleController.handle(.confirmReplacement)
-  → InteractionSessionCoordinator.confirmReplacement()   同步
-  → GatewaySessionTextTarget.replace(_:)                  同步
-  → performBlocking { … }
-        Task.detached { await gateway.replaceAfterAuthoritativeValidation(…) }
-        semaphore.wait()          ← MainActor 线程在此停住
-  → AccessibilityGateway.confirmWrittenText(…)            actor 内
-        每轮之间 sleeper.sleep(nanoseconds:) → nanosleep   同步阻塞
-```
-
-关键事实：`semaphore.wait()` 期间 **`MainActor` 线程被占住**。而会话生命周期的三个中止
-入口——面板关闭／取消、`coordinator.close()`、新会话抢占——**全部只能在 `MainActor` 上
-被处理**。因此在回读窗口内：
-
-- 用户的点击无法被处理（主线程停住，AppKit 事件循环停转）；
-- `finishSession()` 触发的 `releaseTarget` 也只能排在被同步休眠占住的 actor 之后；
-- 任何「在 `MainActor` 上置一个取消标志」的方案都不成立——没有代码能在 `MainActor`
-  上运行。
-
-## 三、失败优先测试（经生产 bridge，非替身驱动）
-
-新增 `Tests/SystemInteractionFoundationTests/ReadbackSessionAbortTests.swift`。装配中
-**只有时钟与休眠是替身**，`InteractionSessionCoordinator`、`GatewaySessionTextTarget`
-及其 `DispatchSemaphore` 桥、`AccessibilityGateway` 全部是生产对象。
-
-三个触发各一项测试：
-
-- `testClosingThePanelDuringReadbackStopsItWithoutWaitingForTheDeadline` ——
-  `controller.handle(.close)`
-- `testCoordinatorCloseDuringReadbackStopsItWithoutWaitingForTheDeadline` ——
-  `controller.stop()`（内部 `coordinator.close()`）
-- `testNewSessionPreemptionDuringReadbackStopsTheOldReadback` —— 回读进行中再按快捷键
-
-中止请求从**回读循环所在的 detached task** 发起，投递到 `MainActor`：
+### 1. 恢复 `plan.md` 批准的 `async` 契约
 
 ```swift
-nonisolated func requestOnMainActor(
-    _ action: @escaping @Sendable @MainActor (AppLifecycleController) -> Void
-) {
-    Task { @MainActor [controller] in action(controller) }
+@MainActor
+protocol SessionTextTargetAccessing: AnyObject {
+    func replace(_ content: SessionContent) async -> Result<Void, DomainFailure>
+    func validateForRecovery(_ content: SessionContent) async -> Bool
+    func restore(_ content: SessionContent) async -> Bool
 }
 ```
 
-这正是真实情形的形状：中止请求只能排队等 `MainActor`，测试要断言的就是**排队的中止
-请求能否及时生效**。
+`GatewaySessionTextTarget` 内的 `performBlocking`／`DispatchSemaphore`／`ResultBox`
+**已整体删除**，改为直接 `await gateway.…`。协议留在 `MainActor`（`plan.md` 第 52 行），
+真正的挂起发生在 `await` gateway 那一刻——那一刻 `MainActor` 被释放。
 
-每项断言四件事：① 剩余回读次数不再被消耗；② 中止后不再继续等待（无需等到 deadline）；
-③ 不追加任何写入（setter 仍为 1）；④ 未确认的结果不得进入 `recoverable`。
+### 2. 协调器保存并取消在途任务
 
-## 四、真实 RED
+```swift
+private(set) var applyWork: Task<Void, Never>?
+private(set) var recoverWork: Task<Void, Never>?
 
-在加入 skip 开关**之前**运行 `bash scripts/unit-tests.sh`：
+private func cancelInFlightWork() {
+    applyWork?.cancel();  applyWork = nil
+    recoverWork?.cancel(); recoverWork = nil
+}
+```
+
+`endSession()` 与 `replaceCurrentSession()` 都调用它，覆盖取消、关闭与新会话抢占三条
+路径（`plan.md` 第 387 行）。
+
+### 3. 结果回到 `MainActor` 后按 session ID 与状态 fail-closed
+
+```swift
+private func applyCompleted(
+    _ outcome: Result<Void, DomainFailure>,
+    for sessionID: InteractionSessionID
+) {
+    guard !Task.isCancelled, sessionID == currentSessionID, state == .applying else {
+        return
+    }
+    …
+}
+```
+
+`sessionID` 在**启动时捕获**，回来时与 `currentSessionID` 比对。被取消或已离开
+`applying` 的结果一律丢弃，**不得进入 `recoverable`**（`plan.md` 第 55 行）。
+`recoveryCompleted` 同构。
+
+### 4. 取消传播进回读循环
+
+```swift
+if Task.isCancelled {
+    return .aborted
+}
+```
+
+置于每轮回读之前。取消能生效的前提正是 `MainActor` 不再被占住——否则取消请求根本
+排不到执行。这一行与第 1 项是同一个修复的两半，缺任一半都无效（见第四节负向对照）。
+
+## 三、确定性握手（Finding 3）
+
+上一版测试用 `Task.yield()` 猜调度，Solar 判定失败或通过都无法归因。现改为显式握手，
+逐步证明四件事：
+
+```swift
+controller.handle(.confirmReplacement)
+let inFlight = controller.applyWork      // 取消会清空句柄，先抓住在途任务
+await waitFor(sleepEntered)              // (a) 第一轮 sleep 已进入回读循环
+abort(controller)                        // (b) 中止在 MainActor 上实际执行完毕
+abortCompleted.signal()                  // (c) 才放行后续回读
+await inFlight?.value                    // (d) 等生产任务真正结束
+```
+
+- `sleepEntered` 由 sleeper 替身在第一轮 sleep 内 `signal()`，随后 `wait()` 在
+  `abortCompleted` 上把回读**卡住**，因此 (b) 与 (c) 的先后是被强制的，不是碰巧。
+- `waitFor` 用 `withCheckedContinuation` + 全局队列桥接信号量，**不占用
+  `MainActor`**。
+- 第 (b) 步能被执行本身就是被测行为：若 `MainActor` 仍被 semaphore 占住，这一行根本
+  轮不到运行。
+
+## 四、真实 RED → GREEN
+
+### RED（`005ca4c`，旧同步桥）
 
 ```text
 Executed 245 tests, with 6 failures (0 unexpected)
-
-Failing tests:
-  ReadbackSessionAbortTests.testClosingThePanelDuringReadbackStopsItWithoutWaitingForTheDeadline()
-  ReadbackSessionAbortTests.testCoordinatorCloseDuringReadbackStopsItWithoutWaitingForTheDeadline()
-  ReadbackSessionAbortTests.testNewSessionPreemptionDuringReadbackStopsTheOldReadback()
-
-ReadbackSessionAbortTests.swift:186: XCTAssertLessThan failed: ("8") is not less than ("8")
-  - 中止请求到达后，剩余回读次数必须不再被消耗
-ReadbackSessionAbortTests.swift:191: XCTAssertLessThan failed: ("7") is not less than ("7")
-  - 无需等到 deadline：中止后不得继续等待
+  8 次回读全部消耗（断言要求 < 8）
+  7 次等待全部走完（断言要求 < 7）
 ```
 
-三个触发的结果完全一致：**8 次回读全部消耗、7 次等待全部走完**，中止请求无一生效。
+三个触发结果一致；`setter == 1` 与「未进入 recoverable」两条断言当时**通过**，说明
+缺口性质是「中止没有及时发生」，而不是「中止后做错事」。
 
-值得单独指出的是断言 ③ 与 ④ **通过了**：setter 仍只调用一次，未确认的结果也没有进入
-`recoverable`。所以这次失败的性质是精确的——**不是「中止后做错了事」，而是「中止压根
-没有及时发生」**，与 Finding 1 的判断一字不差。
-
-## 五、修复路径穷举与判定
-
-要让排队的中止请求在回读期间生效，`MainActor` 必须在回读期间是空闲的。可行路径只有
-以下四条，逐条判定：
-
-1. **把确认路径改为端到端异步**（去掉 `performBlocking`）——须改动
-   `SessionTextTargetAccessing` 的**同步契约**与协调器的同步状态转移。
-   → 触及已批准的**数据流与状态机**。
-2. **`replace()` 提前返回，确认结果稍后投递**——须新增「确认中」状态并改变结果如何
-   到达状态机。
-   → 触及已批准的**数据流与状态机**。
-3. **阻塞期间抽运 run loop**——使 `MainActor` 在一次写入进行中变为可重入，新会话可能
-   在写入中途启动。
-   → 触及已批准的**写入隔离方式**，且降低安全性。
-4. **在 `MainActor` 上轮询取消标志**——不成立：`MainActor` 被占住，没有任何代码能置位。
-   → 技术上不可行。
-
-**四条中三条触及已批准 Plan，第四条不可行。因此不存在「不改架构即可修复」的路径。**
-
-依 T-065 的明文约束，本任务到此停止，输出「须重开 Plan Gate」及上述依据。同时**不得**
-把「阻塞 actor／MainActor」记作可接受的已知限制——Solar 已判定这不是限制而是待修缺陷，
-本文件不做此登记。
-
-## 六、关于把红色测试留在仓库里的处理（须审）
-
-红色测试直接入库会让 `unit-tests.sh` 长期失败，而任何 HANDOFF 都要求该门禁全绿。三个
-选项：① 就地留红；② 不入库，只在证据里贴 RED 输出；③ 入库但显式跳过。
-
-**选择 ③**，理由：① 会阻塞后续所有 HANDOFF；② 会让这三项断言在下一轮无迹可寻。实现
-方式是**单一开关**，不存在逐个测试悄悄跳过的空间：
-
-```swift
-/// 置为 `false` 即可重新启用全部三项。修复须先取得 Plan Gate 批准，届时由修复
-/// 提交把它改掉——这是本文件唯一的开关。
-private static let planGateStillPending = true
-
-try XCTSkipIf(Self.planGateStillPending, Self.pendingPlanGate)
-```
-
-skip 消息内含任务号、原因（须先重开 Plan Gate）与本证据文件路径。加入开关后：
+### GREEN（本次）
 
 ```text
-Executed 245 tests, with 3 tests skipped and 0 failures (0 unexpected)
-** TEST SUCCEEDED **
+Executed 246 tests, with 0 failures (0 unexpected)   ← 0 skipped
 ```
 
-**这一处理是 Owner 的决定，请 Reviewer 在本轮明确裁决。** 若认为红色测试必须留红、
-或必须改用其他方式标记，我按裁决改。
+三项测试实测 `readbackAttemptCount == 1`、`sleptDurations.count == 1`：中止在第一轮
+等待后立即生效，剩余预算未被消耗。
 
-## 七、改动清单
+### 负向对照（证明 GREEN 归因于取消机制，而非调度运气）
 
-- `Tests/SystemInteractionFoundationTests/ReadbackSessionAbortTests.swift`：新增
-- `SystemInteractionFoundation.xcodeproj/project.pbxproj`：注册新测试文件
-- **生产代码零改动**：`Sources/` 下未修改任何文件
+把回读循环里的取消检查临时改为永不成立（`if Task.isCancelled, false`），其余不动：
 
-## 八、门禁
+```text
+Executed 246 tests, with 6 failures (0 unexpected)
+
+ReadbackSessionAbortTests.swift:24: XCTAssertLessThan failed: ("8") is not less than ("8")
+ReadbackSessionAbortTests.swift:24: XCTAssertLessThan failed: ("7") is not less than ("7")
+ReadbackSessionAbortTests.swift:33: 同上
+ReadbackSessionAbortTests.swift:42: 同上
+```
+
+**恰好这三项失败，其余 243 项不受影响。** 恢复该行后重新全绿。这条对照是本次
+GREEN 可归因性的直接证据。
+
+### 新增第四项测试
+
+`testCancelledWriteNeverReachesRecoverableEvenIfItLaterSucceeds`：让写入在回读中途
+真正落地，同时结束会话。断言旧 session 的成功结果**不得**进入 `recoverable`——这是
+`plan.md` 第 55 行去重规则的直接断言，也是 Solar 列出的残余风险之一。
+
+## 五、`skip` 处理的最终状态
+
+`005ca4c` 曾以单一开关 `planGateStillPending` + `XCTSkipIf` 入库三项红色测试。依
+Solar 裁决——「只可作为缺口证明提交中的临时标记，不接受其作为 T-065 完成态」——该
+开关与全部 skip 已**整体删除**。本次交付 **0 skipped**，测试计数 246。
+
+## 六、改动清单
+
+生产代码：
+
+- `Sources/.../InteractionSessionCoordinator.swift`：协议改 `async` 并加 `@MainActor`；
+  `confirmReplacement`／`recoverOriginal` 改为启动可取消任务；新增 `applyWork`、
+  `recoverWork`、`applyCompleted`、`recoveryCompleted`、`cancelInFlightWork`
+- `Sources/.../SessionIntegration.swift`：删除 `performBlocking`、`DispatchSemaphore`
+  与 `ResultBox`，三个方法改为 `async`
+- `Sources/.../AccessibilityGateway.swift`：回读循环每轮前检查 `Task.isCancelled`
+- `Sources/.../AppLifecycleController.swift`：暴露 `applyWork`／`recoverWork` 直通句柄
+
+测试：
+
+- `Tests/.../ReadbackSessionAbortTests.swift`：重写为确定性握手，删除 skip 开关，
+  新增第四项测试
+- 九个既有测试文件共插入 35 处 `await …applyWork?.value` / `await …recoverWork?.value`，
+  四处测试签名补 `async`；**未改动任何断言、期望值、注释或测试名**（已用 diff 过滤
+  逐行核对）
+- `Tests/.../ProductionTargetMonitorAssemblyTests.swift`：四处调用点补 `await`
+
+## 七、门禁
 
 全部从**分支内** `scripts/` 执行（工作目录 `.worktrees/fable`）：
 
 - `build.sh` → `BUILD SUCCEEDED`
-- `unit-tests.sh` → `Executed 245 tests, with 3 tests skipped and 0 failures`（连续两次）
+- `unit-tests.sh` → `Executed 246 tests, with 0 failures`，**0 skipped**（连续两次）
 - `project-structure-check.sh` → passed
 - `sdd-check.sh` → exit 0
 - `secret-scan.sh` → 无命中
 - `git diff --check` → 无输出
 
-## 九、已知限制与残余风险
+## 八、已知限制与残余风险（如实披露）
 
-1. **缺口未修，只被证明。** 回读期间的会话／面板关闭中止仍不成立；在 Plan Gate 批准
-   修复之前，最坏情况下 `MainActor` 会被占住约 1200ms，期间用户的取消与关闭无法被处理。
-   **此项不作为可接受限制登记**，它是待修缺陷。
-2. **三项测试当前被跳过。** 它们不提供任何回归保护，直到 Plan Gate 批准的修复把开关
-   置为 `false`。
-3. **本任务未判断修复方案。** 第五节只穷举了路径并判定其是否触及已批准 Plan，**没有
-   选定**任何一条，也没有设计接口。方案选择属重开后的 Plan Gate。
+1. **单次已经开始的 AX 调用不可中断。** 取消只在两次回读之间的检查点生效，最坏情况
+   下要等当前那一次 AX 查询自行返回。**本任务不声称能原子或即时中断单次系统调用**，
+   这一项按 Solar 要求留给 T-066 的口径记录。
+2. **`ProductionTargetMonitorAssemblyTests.testElementLevelChangeDeliversEnvelopeToGateway`
+   在本次改动过程中出现过一次失败、复跑通过。** 该测试用
+   `await Task.yield()` + `settle()` 同步，属 Finding 3 批评的同一类非确定性写法；本次
+   未改它（不在 T-065 授权范围）。**如实登记为已观察到的间歇性**，建议由 Reviewer
+   裁决是否单独立项，不建议在 T-065 内顺手改。
+3. **本任务只解决「中止能否及时发生」。** 回读预算的严格 deadline 属 T-066，三条
+   recovery 路径的覆盖属 T-067，均未开工。

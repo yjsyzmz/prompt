@@ -9,98 +9,72 @@ import XCTest
 /// tasks.md T-061 条件 (7) 明文要求的 session／panel-close 中止。
 ///
 /// 本套件走完整生产装配：`AppLifecycleController` → `InteractionSessionCoordinator`
-/// → `GatewaySessionTextTarget.replace`（`DispatchSemaphore.wait()` 阻塞 `MainActor`）
-/// → `AccessibilityGateway.confirmWrittenText`（actor 内同步 `nanosleep`）。只有时钟
-/// 与休眠被替身化，其余全是生产对象。
+/// → `GatewaySessionTextTarget.replace`（`plan.md` 第 129–136 行批准的 `async` 契约）
+/// → `AccessibilityGateway.confirmWrittenText`。只有时钟与休眠被替身化。
 ///
-/// **本文件的测试当前处于 `XCTSkip` 状态，原因写在每个测试的 skip 消息里**：真实
-/// RED 已记录于 `evidence/T-065-readback-session-abort.md`，而使其转绿需要改变已批准
-/// 的数据流／写入隔离方式，按 T-065 的约束必须先重开 Plan Gate。skip 是为了让门禁
-/// 反映「尚未修复」而不是「已经通过」，并在 Plan Gate 批准后由修复提交移除。
+/// 依 REVIEW（`005ca4c`）Finding 3，三项测试使用**确定性握手**而不是 `Task.yield()`
+/// 猜调度，逐步证明：(a) 第一轮 sleep 已进入；(b) 中止已在 `MainActor` 上实际处理
+/// 完毕；(c) 才放行后续回读；(d) 等生产任务结束后再断言。
 @MainActor
 final class ReadbackSessionAbortTests: XCTestCase {
-    /// 置为 `false` 即可重新启用全部三项。修复须先取得 Plan Gate 批准，届时由修复
-    /// 提交把它改掉——这是本文件唯一的开关，不存在逐个测试悄悄跳过的空间。
-    private static let planGateStillPending = true
-
-    private static let pendingPlanGate = """
-        T-065：使本测试转绿需要让 MainActor 在回读期间仍能处理会话结束，\
-        这会改变已批准 Plan 0c9883f 的数据流与写入隔离方式，须先重开 Plan Gate。\
-        真实 RED 已记录于 evidence/T-065-readback-session-abort.md：\
-        三个触发全部消耗完 8 次回读与 7 次等待，中止请求无一生效。
-        """
-
     // MARK: - 触发一：真人在回读进行中关闭面板
 
-    func testClosingThePanelDuringReadbackStopsItWithoutWaitingForTheDeadline() async throws {
-        try XCTSkipIf(Self.planGateStillPending, Self.pendingPlanGate)
-
+    func testClosingThePanelDuringReadbackStopsItWithoutWaitingForTheDeadline() async {
         let env = await AbortEnvironment.make()
-        await env.reachReadyPreview()
-        env.host.acceptSetterWithoutApplying()
-        env.sleeper.onSleep = { [env] sleepIndex in
-            if sleepIndex == 1 {
-                env.requestOnMainActor { controller in
-                    controller.handle(.close)
-                }
-            }
+        await env.assertAbortStopsReadback { controller in
+            controller.handle(.close)
         }
-
-        env.controller.handle(.confirmReplacement)
-        await env.settle()
-
-        try await env.assertAbortedEarly()
     }
 
     // MARK: - 触发二：协调器在回读进行中结束会话
 
-    func testCoordinatorCloseDuringReadbackStopsItWithoutWaitingForTheDeadline() async throws {
-        try XCTSkipIf(Self.planGateStillPending, Self.pendingPlanGate)
-
+    func testCoordinatorCloseDuringReadbackStopsItWithoutWaitingForTheDeadline() async {
         let env = await AbortEnvironment.make()
-        await env.reachReadyPreview()
-        env.host.acceptSetterWithoutApplying()
-        env.sleeper.onSleep = { [env] sleepIndex in
-            if sleepIndex == 1 {
-                env.requestOnMainActor { controller in
-                    controller.stop()
-                }
-            }
+        await env.assertAbortStopsReadback { controller in
+            controller.stop()
         }
-
-        env.controller.handle(.confirmReplacement)
-        await env.settle()
-
-        try await env.assertAbortedEarly()
     }
 
     // MARK: - 触发三：新会话在回读进行中抢占旧会话
 
-    func testNewSessionPreemptionDuringReadbackStopsTheOldReadback() async throws {
-        try XCTSkipIf(Self.planGateStillPending, Self.pendingPlanGate)
+    func testNewSessionPreemptionDuringReadbackStopsTheOldReadback() async {
+        let env = await AbortEnvironment.make()
+        await env.assertAbortStopsReadback { [hotKey = env.hotKey] _ in
+            hotKey.press()
+        }
+    }
 
+    // MARK: - 取消之后不得让旧结果进入 recoverable
+
+    /// `plan.md` 第 55 行：异步结果返回时必须再次匹配当前 session ID。被取消的写入
+    /// 即便随后完成，也不得把旧 session 的结果送进 `recoverable`。
+    func testCancelledWriteNeverReachesRecoverableEvenIfItLaterSucceeds() async {
         let env = await AbortEnvironment.make()
         await env.reachReadyPreview()
+        // 写入本身会成功，但会话在回读期间结束。
         env.host.acceptSetterWithoutApplying()
-        env.sleeper.onSleep = { [env] sleepIndex in
-            if sleepIndex == 1 {
-                env.requestOnMainActor { _ in
-                    env.hotKey.press()
-                }
+        let expected = env.snapshotTransformedText
+        env.sleeper.onSleep = { [host = env.host] index in
+            if index == 1 {
+                host.editSegmentExternally(expected)
             }
         }
 
-        env.controller.handle(.confirmReplacement)
-        await env.settle()
+        await env.assertAbortStopsReadback(configureSleeper: false) { controller in
+            controller.handle(.close)
+        }
 
-        try await env.assertAbortedEarly()
+        XCTAssertFalse(
+            env.presenter.presentedRecoverable,
+            "旧 session 的写入结果不得进入 recoverable"
+        )
     }
 }
 
 // MARK: - Environment
 
 /// 生产装配：只有 clock 与 sleeper 是替身，coordinator、`GatewaySessionTextTarget`
-/// 与其 `DispatchSemaphore` 桥、`AccessibilityGateway` 全部是生产对象。
+/// 与 `AccessibilityGateway` 全部是生产对象。
 @MainActor
 private final class AbortEnvironment {
     let host: SyntheticAXTextHost
@@ -110,6 +84,11 @@ private final class AbortEnvironment {
     let presenter: AbortPresenterSpy
     let sleeper: AbortSleeperSpy
     let budget: ReadbackBudget
+
+    /// 第一轮 sleep 已进入回读循环。
+    private let sleepEntered = DispatchSemaphore(value: 0)
+    /// 中止动作已在 `MainActor` 上处理完毕，回读可以继续。
+    private let abortCompleted = DispatchSemaphore(value: 0)
 
     private init(
         host: SyntheticAXTextHost,
@@ -170,49 +149,90 @@ private final class AbortEnvironment {
         await controller.captureWork?.value
     }
 
-    /// 从回读循环所在的 detached task 请求一个 `MainActor` 动作。
+    /// 预览就绪时展示的结果文字，用于让夹具在回读中途「补上」写入。
+    var snapshotTransformedText: String {
+        presenter.presentedStates.compactMap(\.resultText).last ?? ""
+    }
+
+    /// 完整的确定性握手：确认替换 → 等第一轮 sleep 进入 → 在 `MainActor` 上执行中止
+    /// → 放行回读 → 等生产任务结束 → 断言。
     ///
-    /// 这正是真实情形的形状：用户的点击、面板关闭与新会话都只能在 `MainActor` 上被
-    /// 处理，而此刻 `MainActor` 正停在 `performBlocking` 的 `semaphore.wait()` 上，
-    /// 因此请求只能排队。测试要断言的就是「排队的中止请求能否及时生效」。
-    nonisolated func requestOnMainActor(
-        _ action: @escaping @Sendable @MainActor (AppLifecycleController) -> Void
-    ) {
-        Task { @MainActor [controller] in
-            action(controller)
+    /// 中止动作能在这里被执行本身就是被测行为：`MainActor` 若仍被 semaphore 占住，
+    /// 这一行根本轮不到运行。
+    func assertAbortStopsReadback(
+        configureSleeper: Bool = true,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        abort: @escaping @MainActor (AppLifecycleController) -> Void
+    ) async {
+        if configureSleeper {
+            await reachReadyPreview()
+            host.acceptSetterWithoutApplying()
         }
-    }
+        installHandshake()
 
-    /// 让排队的 `MainActor` 工作有机会执行，再做断言。
-    func settle() async {
-        await controller.cleanupWork?.value
-        for _ in 0 ..< 4 {
-            await Task.yield()
-        }
-    }
+        controller.handle(.confirmReplacement)
+        // 取消会把 coordinator 的句柄清空，所以先抓住在途任务再中止。
+        let inFlight = controller.applyWork
+        XCTAssertNotNil(inFlight, "确认替换必须启动一个可取消的在途任务", file: file, line: line)
 
-    func assertAbortedEarly() async throws {
+        await waitFor(sleepEntered)          // (a)
+        abort(controller)                    // (b)
+        abortCompleted.signal()              // (c)
+        await inFlight?.value                // (d)
+
         let attempts = await gateway.readbackAttemptCount()
-
         XCTAssertLessThan(
             attempts,
             budget.maximumAttempts,
-            "中止请求到达后，剩余回读次数必须不再被消耗"
+            "中止请求到达后，剩余回读次数必须不再被消耗",
+            file: file,
+            line: line
         )
         XCTAssertLessThan(
             sleeper.sleptDurations.count,
             budget.maximumAttempts - 1,
-            "无需等到 deadline：中止后不得继续等待"
+            "无需等到 deadline：中止后不得继续等待",
+            file: file,
+            line: line
         )
         XCTAssertEqual(
             host.setterAttemptCount,
             1,
-            "被中止的回读不得追加任何写入"
+            "被中止的回读不得追加任何写入",
+            file: file,
+            line: line
         )
         XCTAssertFalse(
             presenter.presentedRecoverable,
-            "未确认的写入结果不得进入 recoverable"
+            "未确认的写入结果不得进入 recoverable",
+            file: file,
+            line: line
         )
+    }
+
+    /// 让第一轮 sleep 在回读循环里停住，直到 `MainActor` 完成中止。
+    private func installHandshake() {
+        let entered = sleepEntered
+        let resume = abortCompleted
+        let existing = sleeper.onSleep
+        sleeper.onSleep = { index in
+            existing?(index)
+            if index == 1 {
+                entered.signal()
+                resume.wait()
+            }
+        }
+    }
+
+    /// 在不占住 `MainActor` 的前提下等待一个信号量。
+    private func waitFor(_ semaphore: DispatchSemaphore) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global().async {
+                semaphore.wait()
+                continuation.resume()
+            }
+        }
     }
 }
 
@@ -326,8 +346,7 @@ private final class AbortPresenterSpy: PreviewPresenting {
     private(set) var presentedStates: [PreviewViewState] = []
     private(set) var dismissCount = 0
 
-    /// 出现过「可恢复」状态即视为旧结果已进入 recoverable：该状态是唯一提供
-    /// 「恢复原文」动作的状态。
+    /// 出现过提供「恢复原文」动作的状态，即视为旧结果已进入 recoverable。
     var presentedRecoverable: Bool {
         presentedStates.contains { state in
             state.buttons.contains { $0.action == .restoreOriginal && $0.isEnabled }

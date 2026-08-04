@@ -180,9 +180,9 @@ final class ProductionTargetMonitorAssemblyTests: XCTestCase {
             0,
             "nothing may be asked before an action runs"
         )
-        _ = target.replace(content)
+        _ = await target.replace(content)
         XCTAssertEqual(ownership.callCount, 1, "the confirm action asks once")
-        _ = target.restore(content)
+        _ = await target.restore(content)
         XCTAssertEqual(
             ownership.callCount,
             2,
@@ -215,7 +215,7 @@ final class ProductionTargetMonitorAssemblyTests: XCTestCase {
             transformed: DeterministicTransformer().transform(captured.sourceText),
             mode: captured.captureMode
         )
-        guard case .success = target.replace(content) else {
+        guard case .success = await target.replace(content) else {
             XCTFail("the replacement must succeed before recovery is meaningful")
             return
         }
@@ -226,8 +226,9 @@ final class ProductionTargetMonitorAssemblyTests: XCTestCase {
         host.setFrontmostApplication(pid: ProcessInfo.processInfo.processIdentifier)
         ownership.isKey = false
 
+        let restoredAfterFocusLoss = await target.restore(content)
         XCTAssertFalse(
-            target.restore(content),
+            restoredAfterFocusLoss,
             "a lost panel focus must revoke the exemption"
         )
         XCTAssertEqual(

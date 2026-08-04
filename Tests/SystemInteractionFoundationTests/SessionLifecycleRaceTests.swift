@@ -89,12 +89,14 @@ final class SessionLifecycleRaceTests: XCTestCase {
         env.hotKey.press()
         await env.controller.captureWork?.value
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
         let settersAfterReplacement = env.host.setterAttemptCount
 
         env.secureInput.isEnabled = true
         env.hotKey.press()
         await env.controller.cleanupWork?.value
         env.controller.handle(.restoreOriginal)
+        await env.controller.recoverWork?.value
 
         XCTAssertEqual(
             env.host.setterAttemptCount,

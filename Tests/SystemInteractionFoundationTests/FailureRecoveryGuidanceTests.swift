@@ -46,8 +46,10 @@ final class FailureRecoveryGuidanceTests: XCTestCase {
         env.hotKey.press()
         await env.controller.captureWork?.value
         env.controller.handle(.confirmReplacement)
+        await env.controller.applyWork?.value
         env.host.replaceFullTextForTesting("SYNTHETIC-001 被外部改动的文字")
         env.controller.handle(.restoreOriginal)
+        await env.controller.recoverWork?.value
         env.pasteboard.writeSucceeds = false
         env.controller.handle(.copyOriginal)
 
