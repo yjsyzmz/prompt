@@ -223,7 +223,13 @@ final class InteractionSessionCoordinator {
         guard
             state == .recoverable,
             let content,
-            let sessionID = currentSessionID
+            let sessionID = currentSessionID,
+            // T-065: at most one in-flight recovery. `confirmReplacement` is
+            // already protected by leaving `previewing(.ready)`, but recovery
+            // stays in `.recoverable` while its task runs, so a second click
+            // would start a second restore and overwrite the cancellable handle.
+            // Gating on the handle needs no new state.
+            recoverWork == nil
         else {
             return
         }
