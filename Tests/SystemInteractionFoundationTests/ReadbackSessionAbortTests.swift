@@ -306,6 +306,9 @@ private final class AbortEnvironment {
         }
         installHandshake()
 
+        let attemptsBeforeRecovery = await gateway.readbackAttemptCount()
+        let sleepsBeforeRecovery = sleeper.sleptDurations.count
+
         controller.handle(.restoreOriginal)
         let inFlight = controller.recoverWork
         XCTAssertNotNil(inFlight, "恢复原文必须启动一个可取消的在途任务", file: file, line: line)
@@ -316,17 +319,17 @@ private final class AbortEnvironment {
         await inFlight?.value
 
         let attempts = await gateway.readbackAttemptCount()
-        XCTAssertLessThan(
-            attempts,
-            budget.maximumAttempts,
-            "中止请求到达后，剩余回读次数必须不再被消耗",
+        XCTAssertEqual(
+            attempts - attemptsBeforeRecovery,
+            1,
+            "中止后 recovery 回读增量必须恰好为 1：第一轮未确认后立即停止，不得再读",
             file: file,
             line: line
         )
-        XCTAssertLessThan(
-            sleeper.sleptDurations.count,
-            budget.maximumAttempts - 1,
-            "无需等到 deadline：中止后不得继续等待",
+        XCTAssertEqual(
+            sleeper.sleptDurations.count - sleepsBeforeRecovery,
+            1,
+            "中止后 recovery sleep 增量必须恰好为 1：不得再等待",
             file: file,
             line: line
         )

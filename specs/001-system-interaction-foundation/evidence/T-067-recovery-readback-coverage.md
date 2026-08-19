@@ -2,7 +2,7 @@
 
 ## 结论
 
-**覆盖已落地并转绿，并闭合 Solar 对 `0abf88c` 的 T-067 REVIEW 两项 MUST。**
+**覆盖已落地并转绿。** Solar 对 `0abf88c` 的 Finding 1／4 已关闭；对 `d004520c` 的 Finding 2 计数过宽已收紧。
 全套 **272 tests / 0 failures / 0 skipped**。
 
 本任务原先只把 (a)(b)(c)(d) 写成 gateway 级测试。复核证明两处不够：
@@ -73,9 +73,23 @@ Solar 把 `Task.isCancelled` 改成永不成立后，这三条仍绿。
 | R1 | `testSelectedR1RecoveryReadbackStopsWhenCoordinatorStops` | `controller.stop()` |
 | R2 | `testSelectedR2RecoveryReadbackStopsWhenNewSessionPreempts` | 新会话抢占 |
 
-逐路径断言：不等到 deadline；剩余 readback／sleep 不再消耗；恢复 setter
-恰好一次；把原文在第一轮 sleep 里补上后，旧结果仍不得写回 recoverable
-或新会话（不得呈现「无法直接恢复」）。原三条 target-loss 测试全部保留。
+逐路径断言（`d004520c` REVIEW 收紧后）：启动 recovery **之前**记录
+`readbackAttemptCount` 与 sleep 次数基线；中止并等待 `recoverWork` 结束后，
+recovery 增量**恰好**为 1 次 readback、1 次 sleep。不再使用「少于最大值」。
+恢复 setter 恰好一次；第一轮 sleep 里把原文补上后，旧结果仍不得写回
+recoverable 或新会话。原三条 target-loss 测试全部保留。
+
+负向变异（临时把 `confirmWrittenText` 的 `Task.isCancelled` 改为永不成立，
+跑完即还原，未提交）：三条测试全部失败，**3 tests / 4 failures**。
+
+| 路径 | 期望增量 | 忽略取消后的实际增量 |
+| --- | --- | --- |
+| W4 panel-close | readback=1, sleep=1 | readback=2（sleep 仍为 1：下一轮立刻确认成功） |
+| R1 coordinator-stop | readback=1, sleep=1 | readback=7, sleep=7（R1 无 whole-field fallback，耗到 deadline） |
+| R2 new-session | readback=1, sleep=1 | readback=2（下一轮立刻确认成功） |
+
+W4／R2 在宽松的 `< maximumAttempts` 下会假通过，因为补上原文后第二次回读
+即成功，总次数仍小于 8。精确增量把这条路堵住了。生产代码已还原。
 
 ## Finding 4 SHOULD
 
