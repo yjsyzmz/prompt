@@ -3,7 +3,7 @@
 ## 结论
 
 **已修复并转绿。** 失败优先测试先把错误行为写成 RED，再以最小循环改动转绿。
-全套 **253 tests / 0 failures / 0 skipped**，连续两次一致。
+全套 **256 tests / 0 failures / 0 skipped**（含三项逐操作跨线测试）。
 
 本任务只收紧「何时允许开始下一轮 A1／A3／A4 与 AX readback」，不改变 setter 次数、
 比较单位、取消语义或恢复路径。
@@ -81,3 +81,35 @@ AX 不可中断的残余风险。
 - 没有给 AX 调用加 timeout。
 - 没有断言整个 loop 的 wall/monotonic elapsed 硬上界。
 - 没有开始 T-067 或任何后续 P9 任务。
+
+## Finding 1（Solar 对 `e22a4fa` 的 MUST，2026-08-19）
+
+上一版只在整组有效性检查之前采样一次时钟。A3 在检查内部跨过 deadline 后，
+A4 与 AX 文本回读仍会启动。那不是「单次已开始的 AX 调用越时」：A3 已经返回，
+A4 和文本回读是随后新启动的操作。
+
+### RED
+
+在宿主的 A1／A3／A4 调用内把假时钟推进到 deadline。三项失败优先测试、6 个失败：
+
+```text
+Executed 3 tests, with 6 failures (0 unexpected)
+
+A1 内跨线：windowIdentityCheckCount 2≠1，elementIdentityCheckCount 2≠1，readbackAttemptCount 1≠0
+A3 内跨线：elementIdentityCheckCount 2≠1，readbackAttemptCount 1≠0
+A4 内跨线：readbackAttemptCount 1≠0
+```
+
+与 Solar 定向探针一致（A3 路径：`elementCheckCount = 2` 期望 1，`readbackAttemptCount = 1` 期望 0）。
+
+### GREEN
+
+`confirmWrittenText` 在每个 A1、A3、A4 之前以及 `writeReadbackMatches` 之前分别读取
+单调时钟；`now >= deadline` 返回 `.unconfirmed`，不再启动后续 AX 操作。
+已开始的那一次调用仍会跑完，记为残余风险。
+
+三项跨线测试转绿。全套：
+
+```text
+Executed 256 tests, with 0 failures (0 unexpected)
+```

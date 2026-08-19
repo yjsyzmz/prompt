@@ -1009,24 +1009,27 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
                 return .aborted
             }
 
-            // T-066 hard guarantee ③: never start a new A1/A3/A4 check or AX
-            // readback once the monotonic deadline has been reached. The first
-            // iteration always starts below the deadline; subsequent ones must
-            // refuse rather than "one last" query that lands entirely outside
-            // the budget. An in-flight AX call already started is residual
+            // T-066 hard guarantee ③: never start a new A1, A3, A4 or AX
+            // readback once the monotonic deadline has been reached. Each of
+            // those is a separate AX operation; checking the clock only once
+            // per loop allowed A3 to cross the line and still start A4 and
+            // the text readback. An in-flight call already started is residual
             // risk and is not interrupted here.
-            if clock.now() >= deadline {
+            switch readbackTargetStillValid(
+                targetHandle: targetHandle,
+                pid: pid,
+                deadline: deadline
+            ) {
+            case .stillValid:
+                break
+            case .deadlineReached:
                 return .unconfirmed
+            case .targetGone:
+                return .aborted
             }
 
-            // (7) Waiting only makes sense while the target could still both
-            // receive the write and report it back.
-            readbackValidityChecks += 1
-            guard readbackTargetStillValid(
-                targetHandle: targetHandle,
-                pid: pid
-            ) else {
-                return .aborted
+            if clock.now() >= deadline {
+                return .unconfirmed
             }
 
             attempt += 1
@@ -1061,13 +1064,44 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     /// capture — which is what ending a session or closing the panel does — also
     /// fails them: with no retained reference there is no window or element left
     /// to match.
+    ///
+    /// T-066: A1, A3 and A4 are independent AX operations. Sample the monotonic
+    /// deadline before each one so a check that itself crosses the line cannot
+    /// start the next.
+    private enum ReadbackValidity {
+        case stillValid
+        case deadlineReached
+        case targetGone
+    }
+
     private func readbackTargetStillValid(
         targetHandle: TargetHandle,
-        pid: Int32
-    ) -> Bool {
-        targetApplicationIsRunning(pid: pid)
-            && windowMatches(targetHandle: targetHandle)
-            && elementMatches(targetHandle: targetHandle)
+        pid: Int32,
+        deadline: UInt64
+    ) -> ReadbackValidity {
+        if clock.now() >= deadline {
+            return .deadlineReached
+        }
+        readbackValidityChecks += 1
+        guard targetApplicationIsRunning(pid: pid) else {
+            return .targetGone
+        }
+
+        if clock.now() >= deadline {
+            return .deadlineReached
+        }
+        guard windowMatches(targetHandle: targetHandle) else {
+            return .targetGone
+        }
+
+        if clock.now() >= deadline {
+            return .deadlineReached
+        }
+        guard elementMatches(targetHandle: targetHandle) else {
+            return .targetGone
+        }
+
+        return .stillValid
     }
 
     /// T-061 (3): the readback comparison unit is the UTF-16 code unit, the same

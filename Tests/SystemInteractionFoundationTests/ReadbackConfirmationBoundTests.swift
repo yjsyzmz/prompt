@@ -256,6 +256,114 @@ final class ReadbackConfirmationBoundTests: XCTestCase {
         )
     }
 
+    /// T-066 Finding 1：A1／A3／A4 是三个独立 AX 操作。A1 内跨过 deadline
+    /// 后不得再开 A3、A4 或文本回读。
+    func testDeadlineCrossingDuringA1DoesNotStartLaterAX() async {
+        await assertDeadlineCrossingStopsLaterAX(during: .application)
+    }
+
+    /// T-066 Finding 1：A3 内跨过 deadline 后不得再开 A4 或文本回读。
+    func testDeadlineCrossingDuringA3DoesNotStartA4OrReadback() async {
+        await assertDeadlineCrossingStopsLaterAX(during: .window)
+    }
+
+    /// T-066 Finding 1：A4 内跨过 deadline 后不得再开 AX 文本回读。
+    func testDeadlineCrossingDuringA4DoesNotStartReadback() async {
+        await assertDeadlineCrossingStopsLaterAX(during: .element)
+    }
+
+    private enum ReadbackAXStep {
+        case application
+        case window
+        case element
+    }
+
+    private func assertDeadlineCrossingStopsLaterAX(
+        during step: ReadbackAXStep
+    ) async {
+        let budget = ReadbackBudget.default
+        let probe = await ReadbackProbe.make(budget: budget)
+        probe.host.acceptSetterWithoutApplying()
+
+        switch step {
+        case .application:
+            probe.host.onApplicationRunningCheck = { [host = probe.host, clock = probe.clock] in
+                if host.applicationRunningCheckCount == 2 {
+                    clock.advance(by: budget.totalBudgetNanoseconds)
+                }
+            }
+        case .window:
+            probe.host.onWindowIdentityCheck = { [host = probe.host, clock = probe.clock] in
+                if host.windowIdentityCheckCount == 2 {
+                    clock.advance(by: budget.totalBudgetNanoseconds)
+                }
+            }
+        case .element:
+            probe.host.onElementIdentityCheck = { [host = probe.host, clock = probe.clock] in
+                if host.elementIdentityCheckCount == 2 {
+                    clock.advance(by: budget.totalBudgetNanoseconds)
+                }
+            }
+        }
+
+        let result = await probe.gateway.replaceAfterAuthoritativeValidation(
+            probe.snapshot,
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+        )
+        guard case .failure(let failure) = result else {
+            XCTFail("crossing the deadline must fail closed, not confirm")
+            return
+        }
+        XCTAssertEqual(failure, .writeFailed)
+        XCTAssertEqual(probe.host.setterAttemptCount, 1, "deadline must not cause another write")
+
+        // Capture/validation uses the first identity check; the second is the
+        // first readback-loop operation. Counts after that must freeze.
+        switch step {
+        case .application:
+            XCTAssertEqual(probe.host.applicationRunningCheckCount, 2)
+            XCTAssertEqual(
+                probe.host.windowIdentityCheckCount,
+                1,
+                "A1 crossing the deadline must not start A3"
+            )
+            XCTAssertEqual(
+                probe.host.elementIdentityCheckCount,
+                1,
+                "A1 crossing the deadline must not start A4"
+            )
+        case .window:
+            XCTAssertEqual(probe.host.applicationRunningCheckCount, 2)
+            XCTAssertEqual(probe.host.windowIdentityCheckCount, 2)
+            XCTAssertEqual(
+                probe.host.elementIdentityCheckCount,
+                1,
+                "A3 crossing the deadline must not start A4"
+            )
+        case .element:
+            XCTAssertEqual(probe.host.applicationRunningCheckCount, 2)
+            XCTAssertEqual(probe.host.windowIdentityCheckCount, 2)
+            XCTAssertEqual(probe.host.elementIdentityCheckCount, 2)
+        }
+
+        let attempts = await probe.gateway.readbackAttemptCount()
+        XCTAssertEqual(
+            attempts,
+            0,
+            "now >= deadline must not start an AX text readback"
+        )
+        XCTAssertEqual(
+            probe.sleeper.sleptDurations.count,
+            0,
+            "failing closed at the deadline must not wait for another round"
+        )
+        XCTAssertEqual(
+            probe.recorder.snapshot().last?.stage,
+            .readback,
+            "a spent deadline is unconfirmed, not a target abort"
+        )
+    }
+
     // MARK: - (3) 逐 UTF-16 码元比较
 
     /// 规范等价不是相等。`String ==` 会把预组合的 `é` 与分解形式判为相等，

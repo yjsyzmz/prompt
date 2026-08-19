@@ -45,6 +45,15 @@ final class SyntheticAXTextHost: @unchecked Sendable {
     private var setterAttempts = 0
     private var selectedSetterAttempts = 0
     private var wholeFieldSetterAttempts = 0
+    private var applicationRunningChecks = 0
+    private var windowIdentityChecks = 0
+    private var elementIdentityChecks = 0
+
+    /// T-066: fired during the corresponding identity AX call so a test can
+    /// advance the monotonic clock *inside* A1, A3 or A4.
+    var onApplicationRunningCheck: (() -> Void)?
+    var onWindowIdentityCheck: (() -> Void)?
+    var onElementIdentityCheck: (() -> Void)?
 
     private init(
         prefix: String,
@@ -176,6 +185,18 @@ final class SyntheticAXTextHost: @unchecked Sendable {
 
     var wholeFieldSetterAttemptCount: Int {
         withLock { wholeFieldSetterAttempts }
+    }
+
+    var applicationRunningCheckCount: Int {
+        withLock { applicationRunningChecks }
+    }
+
+    var windowIdentityCheckCount: Int {
+        withLock { windowIdentityChecks }
+    }
+
+    var elementIdentityCheckCount: Int {
+        withLock { elementIdentityChecks }
     }
 
     // MARK: - Controlled external events
@@ -323,7 +344,9 @@ extension SyntheticAXTextHost: AXCaptureReading {
 
 extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
     func isTargetApplicationRunning(expectedPID: Int32) -> Bool {
-        withLock { applicationRunning && expectedPID == pid }
+        withLock { applicationRunningChecks += 1 }
+        onApplicationRunningCheck?()
+        return withLock { applicationRunning && expectedPID == pid }
     }
 
     func currentExternalApplicationPID() -> Int32? {
@@ -331,11 +354,15 @@ extension SyntheticAXTextHost: AXAuthoritativeTargetAccessing {
     }
 
     func windowIdentityMatches(targetHandle: TargetHandle) -> Bool {
-        withLock { windowGeneration == capturedWindowGeneration }
+        withLock { windowIdentityChecks += 1 }
+        onWindowIdentityCheck?()
+        return withLock { windowGeneration == capturedWindowGeneration }
     }
 
     func elementIdentityMatches(targetHandle: TargetHandle) -> Bool {
-        withLock { elementGeneration == capturedElementGeneration }
+        withLock { elementIdentityChecks += 1 }
+        onElementIdentityCheck?()
+        return withLock { elementGeneration == capturedElementGeneration }
     }
 
     func currentElementCapability() -> AXFocusedElementCapability {
