@@ -85,9 +85,12 @@ enum ReplacementStage: String, Equatable, Sendable {
 /// monotonic deadline passes, whichever comes first.
 ///
 /// With the default values the time bound binds first — the backoffs after
-/// seven failed attempts sum to 1350ms, which exceeds the 1200ms deadline — so
-/// a target that never applies the write costs at most 1200ms plus eight
-/// readbacks, never an unbounded wait.
+/// seven failed attempts would sum to 1350ms, which exceeds the 1200ms
+/// deadline. T-066 forbids starting a new A1/A3/A4 check or AX readback once
+/// `now >= deadline`, so a target that never applies the write spends at most
+/// the cumulative wait budget plus the readbacks that began *before* the
+/// deadline. A single already-started AX call is not interrupted and may
+/// overrun; that overrun is residual risk, not a hard elapsed-time bound.
 struct ReadbackBudget: Equatable, Sendable {
     let maximumAttempts: Int
     let totalBudgetNanoseconds: UInt64

@@ -76,10 +76,17 @@ final class ReadbackConfirmationBoundTests: XCTestCase {
         )
         XCTAssertEqual(probe.host.fullText, textBefore)
         let spentAttempts = await probe.gateway.readbackAttemptCount()
-        XCTAssertEqual(
+        // T-066: with the default budget the monotonic deadline binds first,
+        // so the loop must stop without consuming the last attempt after
+        // `now >= deadline`. Hard guarantee ① is covered separately.
+        XCTAssertLessThanOrEqual(
             spentAttempts,
-            ReadbackBudget.default.maximumAttempts,
-            "the whole readback budget must be spent before giving up"
+            ReadbackBudget.default.maximumAttempts
+        )
+        XCTAssertGreaterThan(
+            spentAttempts,
+            1,
+            "fail-closed still has to try at least once"
         )
         XCTAssertEqual(probe.recorder.snapshot().last?.stage, .readback)
     }
@@ -171,8 +178,44 @@ final class ReadbackConfirmationBoundTests: XCTestCase {
         )
     }
 
-    /// 预算必须由**单调时钟**裁定，而不是由重试次数兜底：把次数上限抬到远高于
-    /// 时间上限，循环仍须在 deadline 处停下。
+    /// T-066 硬保证 ①：次数上界独立成立。把时间预算抬到远高于次数上限，
+    /// 循环必须在第 N 次停下，不得再开一轮。
+    func testTheAttemptCeilingStopsTheLoopIndependentlyOfTheTimeBudget() async {
+        let budget = ReadbackBudget(
+            maximumAttempts: 3,
+            totalBudgetNanoseconds: 60_000_000_000,
+            initialBackoffNanoseconds: 50_000_000,
+            maximumBackoffNanoseconds: 250_000_000
+        )
+        let probe = await ReadbackProbe.make(budget: budget)
+        probe.host.acceptSetterWithoutApplying()
+
+        _ = await probe.gateway.replaceAfterAuthoritativeValidation(
+            probe.snapshot,
+            panelFocus: PanelFocusAuthorization(currentSessionPanelIsKey: true)
+        )
+
+        let attempts = await probe.gateway.readbackAttemptCount()
+        let validityChecks = await probe.gateway.readbackValidityCheckCount()
+        XCTAssertEqual(attempts, 3, "the attempt ceiling is a hard stop")
+        XCTAssertEqual(
+            validityChecks,
+            3,
+            "A1/A3/A4 checks are not allowed past the attempt ceiling"
+        )
+        XCTAssertEqual(probe.sleeper.sleptDurations.count, 2)
+        XCTAssertLessThan(
+            probe.sleeper.sleptDurations.reduce(0, +),
+            budget.totalBudgetNanoseconds,
+            "the time budget must not be what stopped this loop"
+        )
+    }
+
+    /// T-066 硬保证 ③：预算必须由**单调时钟**裁定。把次数上限抬到远高于
+    /// 时间上限后，`now >= deadline` 时不得再开始 A1／A3／A4 或 AX 回读。
+    ///
+    /// 旧断言把「到达 300ms 后再执行第 4 次回读」写成了期望，那是错误行为。
+    /// 三次 100ms 等待之后时钟已落在 deadline 上，第四轮必须被拒绝。
     func testTheDeadlineStopsTheLoopIndependentlyOfTheAttemptCeiling() async {
         let budget = ReadbackBudget(
             maximumAttempts: 100,
@@ -189,10 +232,16 @@ final class ReadbackConfirmationBoundTests: XCTestCase {
         )
 
         let attempts = await probe.gateway.readbackAttemptCount()
+        let validityChecks = await probe.gateway.readbackValidityCheckCount()
         XCTAssertEqual(
             attempts,
-            4,
-            "three 100ms waits reach the 300ms deadline after the fourth readback"
+            3,
+            "three 100ms waits land on the 300ms deadline; no fourth AX readback"
+        )
+        XCTAssertEqual(
+            validityChecks,
+            3,
+            "now >= deadline must not start another A1/A3/A4 check"
         )
         XCTAssertLessThan(
             attempts,
@@ -200,6 +249,11 @@ final class ReadbackConfirmationBoundTests: XCTestCase {
             "the monotonic deadline, not the attempt ceiling, ended this loop"
         )
         XCTAssertEqual(probe.sleeper.sleptDurations.reduce(0, +), 300_000_000)
+        XCTAssertEqual(
+            probe.sleeper.sleptDurations.count,
+            3,
+            "the cumulative wait budget is the three 100ms sleeps"
+        )
     }
 
     // MARK: - (3) 逐 UTF-16 码元比较

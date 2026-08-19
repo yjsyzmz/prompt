@@ -298,3 +298,18 @@ Executed 250 tests, with 0 failures (0 unexpected)   ← 0 skipped
 该测试。本轮全套连续两次全绿，未再出现失败。该项仍按 Solar 要求留在最终
 Implementation Gate 之前处理；若再次失败，按 AGENTS.md 第 9 节立即调查，不再以重跑
 消化。
+
+## 十、第四轮 PASS 后的证据同步（Solar SHOULD，2026-08-19）
+
+Solar 对 `8d6cf4252e65630bdb4759195429d4f1acbd8a4a` 的第四轮复核判定 **PASS**，
+第三轮 Finding 4 已闭合。该 SHA 的全套基线是 **252 tests / 0 failures / 0 skipped**。
+本文件此前停在第九节的 250 tests；本节补入，满足「下一次 SDD 证据更新时同步、
+最迟 T-057 前完成」的 SHOULD。不同步不阻塞当时的 T-066。
+
+252 相对 250 的差额，来自 Finding 4 的两项失败优先测试：旧恢复停在
+`validateForRecovery` 时关闭面板，以及停在 validation 时启动新会话。两者在未修复的
+`7784f03` 上 `restoreCount == 1`（RED），修复后为 `restoreCount == 0`（GREEN）。
+精确 SHA 的 GitHub Actions run `32224012274` 全绿。
+
+T-066 开工时的仓库基线因此是 252 tests。T-066 另增一项次数上界测试，结果记在
+`evidence/T-066-readback-deadline-strict.md`，不回溯改写本节数字。

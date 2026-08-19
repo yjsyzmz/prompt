@@ -128,6 +128,7 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     private let sleeper: any MonotonicSleeping
     private let readbackBudget: ReadbackBudget
     private var readbackAttempts = 0
+    private var readbackValidityChecks = 0
     private var targetReferences: [TargetHandle: AXTargetReference] = [:]
     private var activeMonitorEnvelope: AXMonitorCallbackEnvelope?
     private var monitorInvalidationSink: (any AXMonitorInvalidationReceiving)?
@@ -154,6 +155,13 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     /// an aborted loop really left its remaining budget unspent.
     func readbackAttemptCount() -> Int {
         readbackAttempts
+    }
+
+    /// T-066: how many A1/A3/A4 bundles the loop started. Distinct from
+    /// `readbackAttemptCount` so a test can prove that `now >= deadline`
+    /// stopped the loop before the next validity check, not after it.
+    func readbackValidityCheckCount() -> Int {
+        readbackValidityChecks
     }
 
     /// MUST 1: lets the assembly tests confirm that the production wiring really
@@ -1001,8 +1009,19 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
                 return .aborted
             }
 
+            // T-066 hard guarantee ③: never start a new A1/A3/A4 check or AX
+            // readback once the monotonic deadline has been reached. The first
+            // iteration always starts below the deadline; subsequent ones must
+            // refuse rather than "one last" query that lands entirely outside
+            // the budget. An in-flight AX call already started is residual
+            // risk and is not interrupted here.
+            if clock.now() >= deadline {
+                return .unconfirmed
+            }
+
             // (7) Waiting only makes sense while the target could still both
             // receive the write and report it back.
+            readbackValidityChecks += 1
             guard readbackTargetStillValid(
                 targetHandle: targetHandle,
                 pid: pid
