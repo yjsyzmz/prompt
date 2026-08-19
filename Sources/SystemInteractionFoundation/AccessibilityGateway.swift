@@ -627,7 +627,8 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             recovery.originalText.value,
             mode: recovery.captureMode,
             targetHandle: recovery.targetHandle,
-            pid: recovery.pid
+            pid: recovery.pid,
+            selectedConfirmation: .selectedAttributesOnly
         ) == .confirmed else {
             return .failure(.recoveryTargetChanged)
         }
@@ -987,11 +988,21 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     /// The loop ends for one of three reasons — the text was read back
     /// identically, the budget was spent, or the target stopped being valid —
     /// and the caller can tell them apart.
+    /// Selected-mode confirmation policy. Replacement may accept a whole-field
+    /// substring when selected range/text lag behind a write that did land in
+    /// `kAXValue`. Recovery R1 must not inherit that fallback: matching text
+    /// elsewhere in the field is not evidence that the selected setter landed.
+    private enum SelectedReadbackConfirmation {
+        case allowWholeFieldSubstringFallback
+        case selectedAttributesOnly
+    }
+
     private func confirmWrittenText(
         _ expectedText: String,
         mode: CaptureMode,
         targetHandle: TargetHandle,
-        pid: Int32
+        pid: Int32,
+        selectedConfirmation: SelectedReadbackConfirmation = .allowWholeFieldSubstringFallback
     ) -> ReadbackOutcome {
         // (1) The budget is a monotonic deadline. A wall-clock adjustment during
         // the loop cannot shorten or extend it.
@@ -1037,7 +1048,8 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
             if writeReadbackMatches(
                 expectedText,
                 mode: mode,
-                targetHandle: targetHandle
+                targetHandle: targetHandle,
+                selectedConfirmation: selectedConfirmation
             ) {
                 return .confirmed
             }
@@ -1122,7 +1134,8 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
     private func writeReadbackMatches(
         _ expectedText: String,
         mode: CaptureMode,
-        targetHandle: TargetHandle
+        targetHandle: TargetHandle,
+        selectedConfirmation: SelectedReadbackConfirmation
     ) -> Bool {
         switch mode {
         case .selectedText(let expectedRange):
@@ -1141,6 +1154,12 @@ actor AccessibilityGateway: AXMonitorEventReceiving {
                 readbackTextMatches(selectionValue, expectedText)
             {
                 return true
+            }
+            // Replacement keeps this host-lag fallback. Recovery R1 stops here
+            // so a coincidental whole-field substring cannot confirm a selected
+            // setter that did not land on `kAXSelectedText`.
+            guard selectedConfirmation == .allowWholeFieldSubstringFallback else {
+                return false
             }
             guard
                 case .success(let fullValue) = wholeValue(targetHandle: targetHandle)

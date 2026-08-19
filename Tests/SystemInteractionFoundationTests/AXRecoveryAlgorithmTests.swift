@@ -584,6 +584,33 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
         await assertPathStaysOnItsOwnAttribute(path: .selectedR1)
     }
 
+    /// Finding 1（`0abf88c` REVIEW）：selected 内容仍是写入前的值，但 whole-field
+    /// 在原范围上的 substring 恰好等于 original 时，R1 必须 fail-closed，且 recovery
+    /// 全程不得读 `kAXValue`。
+    func testSelectedR1RecoveryDoesNotConfirmViaWholeFieldSubstringFallback() async {
+        let fixture = makeReadbackFixture(path: .selectedR1)
+        fixture.authority.setterAppliesValue = false
+        fixture.authority.currentWholeValue = prefix + original.value + suffix
+
+        let result = await fixture.gateway.restoreAfterAuthoritativeValidation(
+            fixture.recovery
+        )
+
+        assertFailure(.recoveryTargetChanged, result: result)
+        XCTAssertEqual(fixture.authority.selectedSetterCount, 1)
+        XCTAssertEqual(fixture.authority.wholeFieldSetterCount, 0)
+        XCTAssertEqual(
+            fixture.authority.fullValueReadCount,
+            0,
+            "R1 must not inherit replacement's selected→whole-field substring fallback"
+        )
+        XCTAssertEqual(
+            fixture.authority.currentSelectedText,
+            transformedValue,
+            "selected text stayed on the transformed value; confirming via kAXValue would be a false success"
+        )
+    }
+
     func testSelectedR2RecoveryDelayedReadbackConfirmsWithSingleSetter() async {
         await assertDelayedReadbackConfirms(path: .selectedR2)
     }
@@ -631,8 +658,22 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
         assertFailure(.recoveryTargetChanged, result: result)
         XCTAssertEqual(fixture.authority.totalSetterCount, 1, "\(path): no additional write")
         let attempts = await fixture.gateway.readbackAttemptCount()
-        XCTAssertGreaterThan(attempts, 1, "\(path): fail-closed still reads back")
-        XCTAssertLessThanOrEqual(attempts, ReadbackBudget.default.maximumAttempts)
+        let budget = ReadbackBudget.default
+        // Default budget: time bound binds first. Backoffs 50+100+200+250+250+250
+        // would be 1100ms after six misses; the seventh sleep is clipped to the
+        // remaining 100ms, then `now >= deadline` stops the loop. That is 7
+        // readbacks and exactly 1200ms of sleep, not the 8-attempt cap.
+        XCTAssertEqual(
+            attempts,
+            7,
+            "\(path): unconfirmed readback must exhaust the default deadline"
+        )
+        XCTAssertLessThan(attempts, budget.maximumAttempts)
+        XCTAssertEqual(
+            fixture.sleeper?.sleptDurations.reduce(0, +),
+            budget.totalBudgetNanoseconds,
+            "\(path): cumulative wait must equal the default 1200ms budget"
+        )
         assertPathDidNotSwitchSetter(path: path, fixture: fixture)
     }
 
@@ -675,6 +716,11 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
             XCTAssertEqual(fixture.authority.selectedTextReadCount, 0)
         case .selectedR1:
             XCTAssertGreaterThan(fixture.authority.selectedTextReadCount, 0)
+            XCTAssertEqual(
+                fixture.authority.fullValueReadCount,
+                0,
+                "R1 recovery readback must not read kAXValue, including the replacement substring fallback"
+            )
         case .selectedR2:
             XCTAssertGreaterThan(fixture.authority.fullValueReadCount, 0)
         }

@@ -69,6 +69,34 @@ final class ReadbackSessionAbortTests: XCTestCase {
             "旧 session 的写入结果不得进入 recoverable"
         )
     }
+
+    // MARK: - T-067 Finding 2：recovery 回读必须走生产 bridge 才能被会话取消
+
+    /// W4：面板关闭中止恢复回读。现有
+    /// `testWholeFieldRecoveryTargetLossAbortsReadbackWithoutSpendingBudget`
+    /// 只在 sleeper 里把元素身份关掉，覆盖不了 session cancellation。
+    func testWholeFieldRecoveryReadbackStopsWhenPanelCloses() async {
+        let env = await AbortEnvironment.makeForRecovery(.wholeFieldW4)
+        await env.assertRecoveryAbortStopsReadback { controller in
+            controller.handle(.close)
+        }
+    }
+
+    /// R1：`coordinator.stop()` 中止恢复回读。
+    func testSelectedR1RecoveryReadbackStopsWhenCoordinatorStops() async {
+        let env = await AbortEnvironment.makeForRecovery(.selectedR1)
+        await env.assertRecoveryAbortStopsReadback { controller in
+            controller.stop()
+        }
+    }
+
+    /// R2：新会话抢占中止恢复回读，且旧结果不得写进新会话。
+    func testSelectedR2RecoveryReadbackStopsWhenNewSessionPreempts() async {
+        let env = await AbortEnvironment.makeForRecovery(.selectedR2)
+        await env.assertRecoveryAbortStopsReadback { [hotKey = env.hotKey] _ in
+            hotKey.press()
+        }
+    }
 }
 
 // MARK: - Environment
@@ -84,6 +112,8 @@ private final class AbortEnvironment {
     let presenter: AbortPresenterSpy
     let sleeper: AbortSleeperSpy
     let budget: ReadbackBudget
+    private let collapseSelectionAfterReplacement: Bool
+    private var capturedOriginalSegment = ""
 
     /// 第一轮 sleep 已进入回读循环。
     private let sleepEntered = DispatchSemaphore(value: 0)
@@ -97,7 +127,8 @@ private final class AbortEnvironment {
         hotKey: AbortHotKeyClientFake,
         presenter: AbortPresenterSpy,
         sleeper: AbortSleeperSpy,
-        budget: ReadbackBudget
+        budget: ReadbackBudget,
+        collapseSelectionAfterReplacement: Bool
     ) {
         self.host = host
         self.gateway = gateway
@@ -106,10 +137,37 @@ private final class AbortEnvironment {
         self.presenter = presenter
         self.sleeper = sleeper
         self.budget = budget
+        self.collapseSelectionAfterReplacement = collapseSelectionAfterReplacement
+    }
+
+    enum RecoveryPath {
+        case wholeFieldW4
+        case selectedR1
+        case selectedR2
     }
 
     static func make() async -> AbortEnvironment {
-        let host = SyntheticAXTextHost.wholeFieldFixture()
+        await make(host: SyntheticAXTextHost.wholeFieldFixture())
+    }
+
+    static func makeForRecovery(_ path: RecoveryPath) async -> AbortEnvironment {
+        switch path {
+        case .wholeFieldW4:
+            return await make(host: .wholeFieldFixture())
+        case .selectedR1:
+            return await make(host: .selectionFixture())
+        case .selectedR2:
+            return await make(
+                host: .selectionFixture(),
+                collapseSelectionAfterReplacement: true
+            )
+        }
+    }
+
+    private static func make(
+        host: SyntheticAXTextHost,
+        collapseSelectionAfterReplacement: Bool = false
+    ) async -> AbortEnvironment {
         let clock = AbortClockFake()
         let sleeper = AbortSleeperSpy(clock: clock)
         let budget = ReadbackBudget.default
@@ -140,7 +198,8 @@ private final class AbortEnvironment {
             hotKey: hotKey,
             presenter: presenter,
             sleeper: sleeper,
-            budget: budget
+            budget: budget,
+            collapseSelectionAfterReplacement: collapseSelectionAfterReplacement
         )
     }
 
@@ -206,6 +265,108 @@ private final class AbortEnvironment {
         XCTAssertFalse(
             presenter.presentedRecoverable,
             "未确认的写入结果不得进入 recoverable",
+            file: file,
+            line: line
+        )
+    }
+
+    func reachRecoverable() async {
+        await reachReadyPreview()
+        capturedOriginalSegment = host.selectedSegment
+        controller.handle(.confirmReplacement)
+        await controller.applyWork?.value
+        if collapseSelectionAfterReplacement {
+            host.collapseSelectionAfterWrite()
+        }
+        XCTAssertTrue(
+            presenter.presentedRecoverable,
+            "恢复回读测试必须从 recoverable 起步"
+        )
+    }
+
+    /// 对标 `assertAbortStopsReadback`，但走 `restoreOriginal` / `recoverWork`。
+    /// 第一轮恢复 sleep 期间把原文补上，证明即便回读随后会成功，取消后的结果
+    /// 也不得写回 recoverable 或新会话。
+    func assertRecoveryAbortStopsReadback(
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        abort: @escaping @MainActor (AppLifecycleController) -> Void
+    ) async {
+        await reachRecoverable()
+        let settersAfterReplacement = host.setterAttemptCount
+        let selectedAfterReplacement = host.selectedSetterAttemptCount
+        let wholeAfterReplacement = host.wholeFieldSetterAttemptCount
+        let statesBeforeAbort = presenter.presentedStates.count
+        host.acceptSetterWithoutApplying()
+        let original = capturedOriginalSegment
+        sleeper.onSleep = { [host] index in
+            if index == 1 {
+                host.editSegmentExternally(original)
+            }
+        }
+        installHandshake()
+
+        controller.handle(.restoreOriginal)
+        let inFlight = controller.recoverWork
+        XCTAssertNotNil(inFlight, "恢复原文必须启动一个可取消的在途任务", file: file, line: line)
+
+        await waitFor(sleepEntered)
+        abort(controller)
+        abortCompleted.signal()
+        await inFlight?.value
+
+        let attempts = await gateway.readbackAttemptCount()
+        XCTAssertLessThan(
+            attempts,
+            budget.maximumAttempts,
+            "中止请求到达后，剩余回读次数必须不再被消耗",
+            file: file,
+            line: line
+        )
+        XCTAssertLessThan(
+            sleeper.sleptDurations.count,
+            budget.maximumAttempts - 1,
+            "无需等到 deadline：中止后不得继续等待",
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(
+            host.setterAttemptCount - settersAfterReplacement,
+            1,
+            "被中止的恢复回读不得追加任何写入",
+            file: file,
+            line: line
+        )
+        if collapseSelectionAfterReplacement {
+            XCTAssertEqual(
+                host.wholeFieldSetterAttemptCount - wholeAfterReplacement,
+                1,
+                "R2 恢复必须走 whole-field setter",
+                file: file,
+                line: line
+            )
+            XCTAssertEqual(
+                host.selectedSetterAttemptCount,
+                selectedAfterReplacement,
+                "R2 恢复不得改用 selected setter",
+                file: file,
+                line: line
+            )
+        }
+        let statesAfterAbort = Array(presenter.presentedStates.dropFirst(statesBeforeAbort))
+        XCTAssertFalse(
+            statesAfterAbort.contains { state in
+                state.buttons.contains { $0.action == .restoreOriginal && $0.isEnabled }
+            },
+            "旧 recovery 结果不得写回 recoverable",
+            file: file,
+            line: line
+        )
+        XCTAssertFalse(
+            statesAfterAbort.contains { state in
+                state.message == "目标内容已经变化，无法直接恢复。"
+            },
+            "旧 recovery 失败也不得写进新会话或当前面板",
             file: file,
             line: line
         )
