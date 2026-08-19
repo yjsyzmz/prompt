@@ -1,0 +1,280 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000091 /* AppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000025 /* AppEntry.swift */; };
+		100000000000000000000092 /* ProjectStructureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000026 /* ProjectStructureTests.swift */; };
+		100000000000000000000093 /* AppEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000027 /* AppEntry.swift */; };
+		100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */; };
+		100000000000000000000095 /* SystemInteractionAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000029 /* SystemInteractionAdapters.swift */; };
+		100000000000000000000096 /* SystemInteractionAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000029 /* SystemInteractionAdapters.swift */; };
+		100000000000000000000097 /* SystemInteractionAdapters.swift in Copy Adapter Source for Audit */ = {isa = PBXBuildFile; fileRef = 100000000000000000000029 /* SystemInteractionAdapters.swift */; };
+		100000000000000000000098 /* PanelGeometryProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000030 /* PanelGeometryProbeTests.swift */; };
+		100000000000000000000099 /* PanelProbeAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000033 /* PanelProbeAdapters.swift */; };
+		10000000000000000000009A /* PanelProbeAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000033 /* PanelProbeAdapters.swift */; };
+		10000000000000000000009B /* DomainValuePrivacyContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000034 /* DomainValuePrivacyContractTests.swift */; };
+		10000000000000000000009C /* DomainContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000035 /* DomainContracts.swift */; };
+		10000000000000000000009D /* DomainContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000035 /* DomainContracts.swift */; };
+		10000000000000000000009E /* InteractionSessionCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000036 /* InteractionSessionCoordinatorTests.swift */; };
+		10000000000000000000009F /* InteractionSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000037 /* InteractionSessionCoordinator.swift */; };
+		1000000000000000000000A0 /* InteractionSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000037 /* InteractionSessionCoordinator.swift */; };
+		1000000000000000000000A1 /* AccessibilityPermissionFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000038 /* AccessibilityPermissionFlowTests.swift */; };
+		1000000000000000000000A2 /* AccessibilityPermissionFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000039 /* AccessibilityPermissionFlow.swift */; };
+		1000000000000000000000A3 /* AccessibilityPermissionFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000039 /* AccessibilityPermissionFlow.swift */; };
+		1000000000000000000000A4 /* ClipboardPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003A /* ClipboardPolicyTests.swift */; };
+		1000000000000000000000A5 /* ClipboardPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003B /* ClipboardPolicy.swift */; };
+		1000000000000000000000A6 /* ClipboardPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003B /* ClipboardPolicy.swift */; };
+		1000000000000000000000A7 /* AXTargetCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003C /* AXTargetCaptureTests.swift */; };
+		1000000000000000000000A8 /* AccessibilityGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003D /* AccessibilityGateway.swift */; };
+		1000000000000000000000A9 /* AccessibilityGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003D /* AccessibilityGateway.swift */; };
+		1000000000000000000000AA /* AXAuthoritativeWriteRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003E /* AXAuthoritativeWriteRecoveryTests.swift */; };
+		1000000000000000000000AB /* AXObserverDeliveryIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000003F /* AXObserverDeliveryIsolationTests.swift */; };
+		1000000000000000000000AC /* ExternalTargetMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000040 /* ExternalTargetMonitor.swift */; };
+		1000000000000000000000AD /* ExternalTargetMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000040 /* ExternalTargetMonitor.swift */; };
+		1000000000000000000000AE /* ExternalTargetMonitor.swift in Copy Adapter Source for Audit */ = {isa = PBXBuildFile; fileRef = 100000000000000000000040 /* ExternalTargetMonitor.swift */; };
+		1000000000000000000000AF /* ScreenGeometryConverterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000044 /* ScreenGeometryConverterTests.swift */; };
+		1000000000000000000000B0 /* ScreenGeometryConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000045 /* ScreenGeometryConverter.swift */; };
+		1000000000000000000000B1 /* ScreenGeometryConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000045 /* ScreenGeometryConverter.swift */; };
+		1000000000000000000000B2 /* PreviewStateActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000046 /* PreviewStateActionTests.swift */; };
+		1000000000000000000000C0 /* SyntheticAXHostFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000C2 /* SyntheticAXHostFixtures.swift */; };
+		1000000000000000000000C1 /* SyntheticAXHostFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000C3 /* SyntheticAXHostFixtureTests.swift */; };
+		1000000000000000000000C4 /* EndToEndIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000C5 /* EndToEndIntegrationTests.swift */; };
+		1000000000000000000000DA /* FailureRecoveryGuidanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000DB /* FailureRecoveryGuidanceTests.swift */; };
+		1000000000000000000000DC /* ReplacementFailureMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000DD /* ReplacementFailureMappingTests.swift */; };
+		1000000000000000000000DE /* ClipboardRetrySemanticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000DF /* ClipboardRetrySemanticsTests.swift */; };
+		1000000000000000000000E0 /* ReplacementStageDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000E1 /* ReplacementStageDiagnosticsTests.swift */; };
+		1000000000000000000000E2 /* StaleTargetDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000E3 /* StaleTargetDiagnosticsTests.swift */; };
+		1000000000000000000000E4 /* ReadbackConfirmationBoundTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000E5 /* ReadbackConfirmationBoundTests.swift */; };
+		1000000000000000000000E6 /* ReadbackSessionAbortTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000E7 /* ReadbackSessionAbortTests.swift */; };
+		1000000000000000000000E8 /* SessionGenerationIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000E9 /* SessionGenerationIsolationTests.swift */; };
+		1000000000000000000000D8 /* SessionLifecycleRaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000D9 /* SessionLifecycleRaceTests.swift */; };
+		1000000000000000000000D6 /* ProductionTargetMonitorAssemblyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000D7 /* ProductionTargetMonitorAssemblyTests.swift */; };
+		1000000000000000000000D4 /* PreviewContentDisclosureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000D5 /* PreviewContentDisclosureTests.swift */; };
+		1000000000000000000000D2 /* AXRecoveryAlgorithmTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000D3 /* AXRecoveryAlgorithmTests.swift */; };
+		1000000000000000000000D0 /* PresentationLatencyInstrumentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000D1 /* PresentationLatencyInstrumentationTests.swift */; };
+		1000000000000000000000B3 /* PreviewPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000047 /* PreviewPresentation.swift */; };
+		1000000000000000000000B4 /* PreviewPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000047 /* PreviewPresentation.swift */; };
+		1000000000000000000000B5 /* PreviewContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000048 /* PreviewContentView.swift */; };
+		1000000000000000000000B6 /* PreviewContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000048 /* PreviewContentView.swift */; };
+		1000000000000000000000B7 /* AppLifecycleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000049 /* AppLifecycleController.swift */; };
+		1000000000000000000000B8 /* AppLifecycleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000049 /* AppLifecycleController.swift */; };
+		1000000000000000000000C6 /* SessionIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000C8 /* SessionIntegration.swift */; };
+		1000000000000000000000C7 /* SessionIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1000000000000000000000C8 /* SessionIntegration.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		100000000000000000000031 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 100000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 100000000000000000000011;
+			remoteInfo = SystemInteractionFoundation;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		100000000000000000000064 /* Copy Adapter Source for Audit */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (100000000000000000000097 /* SystemInteractionAdapters.swift in Copy Adapter Source for Audit */, 1000000000000000000000AE /* ExternalTargetMonitor.swift in Copy Adapter Source for Audit */,);
+			name = "Copy Adapter Source for Audit";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		100000000000000000000021 /* SystemInteractionFoundation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SystemInteractionFoundation.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000022 /* SystemInteractionFoundationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SystemInteractionFoundationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000023 /* SyntheticAXHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SyntheticAXHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000024 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
+		100000000000000000000025 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/AppEntry.swift; sourceTree = "<group>"; };
+		100000000000000000000026 /* ProjectStructureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ProjectStructureTests.swift; sourceTree = "<group>"; };
+		100000000000000000000027 /* AppEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntheticAXHost/AppEntry.swift; sourceTree = "<group>"; };
+		100000000000000000000028 /* HotKeySecureInputProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/HotKeySecureInputProbeTests.swift; sourceTree = "<group>"; };
+		100000000000000000000029 /* SystemInteractionAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/SystemInteractionAdapters.swift; sourceTree = "<group>"; };
+		100000000000000000000030 /* PanelGeometryProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/PanelGeometryProbeTests.swift; sourceTree = "<group>"; };
+		100000000000000000000033 /* PanelProbeAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/PanelProbeAdapters.swift; sourceTree = "<group>"; };
+		100000000000000000000034 /* DomainValuePrivacyContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/DomainValuePrivacyContractTests.swift; sourceTree = "<group>"; };
+		100000000000000000000035 /* DomainContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/DomainContracts.swift; sourceTree = "<group>"; };
+		100000000000000000000036 /* InteractionSessionCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/InteractionSessionCoordinatorTests.swift; sourceTree = "<group>"; };
+		100000000000000000000037 /* InteractionSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/InteractionSessionCoordinator.swift; sourceTree = "<group>"; };
+		100000000000000000000038 /* AccessibilityPermissionFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/AccessibilityPermissionFlowTests.swift; sourceTree = "<group>"; };
+		100000000000000000000039 /* AccessibilityPermissionFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/AccessibilityPermissionFlow.swift; sourceTree = "<group>"; };
+		10000000000000000000003A /* ClipboardPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ClipboardPolicyTests.swift; sourceTree = "<group>"; };
+		10000000000000000000003B /* ClipboardPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/ClipboardPolicy.swift; sourceTree = "<group>"; };
+		10000000000000000000003C /* AXTargetCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/AXTargetCaptureTests.swift; sourceTree = "<group>"; };
+		10000000000000000000003D /* AccessibilityGateway.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/AccessibilityGateway.swift; sourceTree = "<group>"; };
+		10000000000000000000003E /* AXAuthoritativeWriteRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/AXAuthoritativeWriteRecoveryTests.swift; sourceTree = "<group>"; };
+		10000000000000000000003F /* AXObserverDeliveryIsolationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/AXObserverDeliveryIsolationTests.swift; sourceTree = "<group>"; };
+		100000000000000000000040 /* ExternalTargetMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/ExternalTargetMonitor.swift; sourceTree = "<group>"; };
+		100000000000000000000044 /* ScreenGeometryConverterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ScreenGeometryConverterTests.swift; sourceTree = "<group>"; };
+		100000000000000000000045 /* ScreenGeometryConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/ScreenGeometryConverter.swift; sourceTree = "<group>"; };
+		100000000000000000000046 /* PreviewStateActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/PreviewStateActionTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000C2 /* SyntheticAXHostFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/SyntheticAXHostFixtures.swift; sourceTree = "<group>"; };
+		1000000000000000000000C3 /* SyntheticAXHostFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/SyntheticAXHostFixtureTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000C5 /* EndToEndIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/EndToEndIntegrationTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000DB /* FailureRecoveryGuidanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/FailureRecoveryGuidanceTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000DD /* ReplacementFailureMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ReplacementFailureMappingTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000DF /* ClipboardRetrySemanticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ClipboardRetrySemanticsTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000E1 /* ReplacementStageDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ReplacementStageDiagnosticsTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000E3 /* StaleTargetDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/StaleTargetDiagnosticsTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000E5 /* ReadbackConfirmationBoundTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ReadbackConfirmationBoundTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000E7 /* ReadbackSessionAbortTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ReadbackSessionAbortTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000E9 /* SessionGenerationIsolationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/SessionGenerationIsolationTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000D9 /* SessionLifecycleRaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/SessionLifecycleRaceTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000D7 /* ProductionTargetMonitorAssemblyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/ProductionTargetMonitorAssemblyTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000D5 /* PreviewContentDisclosureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/PreviewContentDisclosureTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000D3 /* AXRecoveryAlgorithmTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/AXRecoveryAlgorithmTests.swift; sourceTree = "<group>"; };
+		1000000000000000000000D1 /* PresentationLatencyInstrumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundationTests/PresentationLatencyInstrumentationTests.swift; sourceTree = "<group>"; };
+		100000000000000000000047 /* PreviewPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/PreviewPresentation.swift; sourceTree = "<group>"; };
+		100000000000000000000048 /* PreviewContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/PreviewContentView.swift; sourceTree = "<group>"; };
+		100000000000000000000049 /* AppLifecycleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/AppLifecycleController.swift; sourceTree = "<group>"; };
+		1000000000000000000000C8 /* SessionIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemInteractionFoundation/SessionIntegration.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		100000000000000000000041 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000042 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000043 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		100000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000004 /* Sources */,
+				100000000000000000000005 /* Tests */,
+				100000000000000000000006 /* Configurations */,
+				100000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		100000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000021 /* SystemInteractionFoundation.app */,
+				100000000000000000000022 /* SystemInteractionFoundationTests.xctest */,
+				100000000000000000000023 /* SyntheticAXHost.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		100000000000000000000004 /* Sources */ = {isa = PBXGroup; children = (100000000000000000000025 /* AppEntry.swift */, 100000000000000000000029 /* SystemInteractionAdapters.swift */, 100000000000000000000033 /* PanelProbeAdapters.swift */, 100000000000000000000035 /* DomainContracts.swift */, 100000000000000000000037 /* InteractionSessionCoordinator.swift */, 100000000000000000000039 /* AccessibilityPermissionFlow.swift */, 10000000000000000000003B /* ClipboardPolicy.swift */, 10000000000000000000003D /* AccessibilityGateway.swift */, 100000000000000000000040 /* ExternalTargetMonitor.swift */, 100000000000000000000045 /* ScreenGeometryConverter.swift */, 100000000000000000000047 /* PreviewPresentation.swift */, 100000000000000000000048 /* PreviewContentView.swift */, 100000000000000000000049 /* AppLifecycleController.swift */, 1000000000000000000000C8 /* SessionIntegration.swift */,); path = Sources; sourceTree = "<group>"; };
+		100000000000000000000005 /* Tests */ = {isa = PBXGroup; children = (100000000000000000000026 /* ProjectStructureTests.swift */, 100000000000000000000028 /* HotKeySecureInputProbeTests.swift */, 100000000000000000000030 /* PanelGeometryProbeTests.swift */, 100000000000000000000034 /* DomainValuePrivacyContractTests.swift */, 100000000000000000000036 /* InteractionSessionCoordinatorTests.swift */, 100000000000000000000038 /* AccessibilityPermissionFlowTests.swift */, 10000000000000000000003A /* ClipboardPolicyTests.swift */, 10000000000000000000003C /* AXTargetCaptureTests.swift */, 10000000000000000000003E /* AXAuthoritativeWriteRecoveryTests.swift */, 10000000000000000000003F /* AXObserverDeliveryIsolationTests.swift */, 100000000000000000000044 /* ScreenGeometryConverterTests.swift */, 100000000000000000000046 /* PreviewStateActionTests.swift */, 1000000000000000000000C2 /* SyntheticAXHostFixtures.swift */, 1000000000000000000000C3 /* SyntheticAXHostFixtureTests.swift */, 1000000000000000000000C5 /* EndToEndIntegrationTests.swift */, 1000000000000000000000D1 /* PresentationLatencyInstrumentationTests.swift */, 1000000000000000000000D3 /* AXRecoveryAlgorithmTests.swift */, 1000000000000000000000D5 /* PreviewContentDisclosureTests.swift */, 1000000000000000000000D7 /* ProductionTargetMonitorAssemblyTests.swift */, 1000000000000000000000D9 /* SessionLifecycleRaceTests.swift */, 1000000000000000000000DB /* FailureRecoveryGuidanceTests.swift */, 1000000000000000000000DD /* ReplacementFailureMappingTests.swift */, 1000000000000000000000DF /* ClipboardRetrySemanticsTests.swift */, 1000000000000000000000E1 /* ReplacementStageDiagnosticsTests.swift */, 1000000000000000000000E3 /* StaleTargetDiagnosticsTests.swift */, 1000000000000000000000E5 /* ReadbackConfirmationBoundTests.swift */, 1000000000000000000000E7 /* ReadbackSessionAbortTests.swift */, 1000000000000000000000E9 /* SessionGenerationIsolationTests.swift */, 100000000000000000000027 /* AppEntry.swift */,); path = Tests; sourceTree = "<group>"; };
+		100000000000000000000006 /* Configurations */ = {
+			isa = PBXGroup;
+			children = (100000000000000000000024 /* Shared.xcconfig */,);
+			path = Configurations;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		100000000000000000000011 /* SystemInteractionFoundation */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000071 /* Build configuration list for PBXNativeTarget "SystemInteractionFoundation" */;
+			buildPhases = (100000000000000000000051 /* Sources */, 100000000000000000000041 /* Frameworks */, 100000000000000000000061 /* Resources */);
+			buildRules = ();
+			dependencies = ();
+			name = SystemInteractionFoundation;
+			productName = SystemInteractionFoundation;
+			productReference = 100000000000000000000021 /* SystemInteractionFoundation.app */;
+			productType = "com.apple.product-type.application";
+		};
+		100000000000000000000012 /* SystemInteractionFoundationTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000072 /* Build configuration list for PBXNativeTarget "SystemInteractionFoundationTests" */;
+			buildPhases = (100000000000000000000052 /* Sources */, 100000000000000000000042 /* Frameworks */, 100000000000000000000062 /* Resources */, 100000000000000000000064 /* Copy Adapter Source for Audit */);
+			buildRules = ();
+			dependencies = (100000000000000000000032 /* PBXTargetDependency */,);
+			name = SystemInteractionFoundationTests;
+			productName = SystemInteractionFoundationTests;
+			productReference = 100000000000000000000022 /* SystemInteractionFoundationTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		100000000000000000000013 /* SyntheticAXHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000073 /* Build configuration list for PBXNativeTarget "SyntheticAXHost" */;
+			buildPhases = (100000000000000000000053 /* Sources */, 100000000000000000000043 /* Frameworks */, 100000000000000000000063 /* Resources */);
+			buildRules = ();
+			dependencies = ();
+			name = SyntheticAXHost;
+			productName = SyntheticAXHost;
+			productReference = 100000000000000000000023 /* SyntheticAXHost.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		100000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					100000000000000000000011 = {CreatedOnToolsVersion = 26.6; };
+					100000000000000000000012 = {CreatedOnToolsVersion = 26.6; TestTargetID = 100000000000000000000011; };
+					100000000000000000000013 = {CreatedOnToolsVersion = 26.6; };
+				};
+			};
+			buildConfigurationList = 100000000000000000000070 /* Build configuration list for PBXProject "SystemInteractionFoundation" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base,);
+			mainGroup = 100000000000000000000002;
+			productRefGroup = 100000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				100000000000000000000011 /* SystemInteractionFoundation */,
+				100000000000000000000012 /* SystemInteractionFoundationTests */,
+				100000000000000000000013 /* SyntheticAXHost */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		100000000000000000000061 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000062 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000063 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		100000000000000000000051 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000091 /* AppEntry.swift in Sources */, 100000000000000000000095 /* SystemInteractionAdapters.swift in Sources */, 100000000000000000000099 /* PanelProbeAdapters.swift in Sources */, 10000000000000000000009C /* DomainContracts.swift in Sources */, 10000000000000000000009F /* InteractionSessionCoordinator.swift in Sources */, 1000000000000000000000A2 /* AccessibilityPermissionFlow.swift in Sources */, 1000000000000000000000A5 /* ClipboardPolicy.swift in Sources */, 1000000000000000000000A8 /* AccessibilityGateway.swift in Sources */, 1000000000000000000000AC /* ExternalTargetMonitor.swift in Sources */, 1000000000000000000000B0 /* ScreenGeometryConverter.swift in Sources */, 1000000000000000000000B3 /* PreviewPresentation.swift in Sources */, 1000000000000000000000B5 /* PreviewContentView.swift in Sources */, 1000000000000000000000B7 /* AppLifecycleController.swift in Sources */, 1000000000000000000000C6 /* SessionIntegration.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000052 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000092 /* ProjectStructureTests.swift in Sources */, 100000000000000000000094 /* HotKeySecureInputProbeTests.swift in Sources */, 100000000000000000000098 /* PanelGeometryProbeTests.swift in Sources */, 10000000000000000000009B /* DomainValuePrivacyContractTests.swift in Sources */, 10000000000000000000009E /* InteractionSessionCoordinatorTests.swift in Sources */, 1000000000000000000000A1 /* AccessibilityPermissionFlowTests.swift in Sources */, 1000000000000000000000A4 /* ClipboardPolicyTests.swift in Sources */, 1000000000000000000000A7 /* AXTargetCaptureTests.swift in Sources */, 1000000000000000000000AA /* AXAuthoritativeWriteRecoveryTests.swift in Sources */, 1000000000000000000000AB /* AXObserverDeliveryIsolationTests.swift in Sources */, 1000000000000000000000AF /* ScreenGeometryConverterTests.swift in Sources */, 1000000000000000000000B2 /* PreviewStateActionTests.swift in Sources */, 1000000000000000000000C0 /* SyntheticAXHostFixtures.swift in Sources */, 1000000000000000000000C1 /* SyntheticAXHostFixtureTests.swift in Sources */, 1000000000000000000000C4 /* EndToEndIntegrationTests.swift in Sources */, 1000000000000000000000D0 /* PresentationLatencyInstrumentationTests.swift in Sources */, 1000000000000000000000D2 /* AXRecoveryAlgorithmTests.swift in Sources */, 1000000000000000000000D4 /* PreviewContentDisclosureTests.swift in Sources */, 1000000000000000000000D6 /* ProductionTargetMonitorAssemblyTests.swift in Sources */, 1000000000000000000000D8 /* SessionLifecycleRaceTests.swift in Sources */, 1000000000000000000000DA /* FailureRecoveryGuidanceTests.swift in Sources */, 1000000000000000000000DC /* ReplacementFailureMappingTests.swift in Sources */, 1000000000000000000000DE /* ClipboardRetrySemanticsTests.swift in Sources */, 1000000000000000000000E0 /* ReplacementStageDiagnosticsTests.swift in Sources */, 1000000000000000000000E2 /* StaleTargetDiagnosticsTests.swift in Sources */, 1000000000000000000000E4 /* ReadbackConfirmationBoundTests.swift in Sources */, 1000000000000000000000E6 /* ReadbackSessionAbortTests.swift in Sources */, 1000000000000000000000E8 /* SessionGenerationIsolationTests.swift in Sources */, 100000000000000000000096 /* SystemInteractionAdapters.swift in Sources */, 10000000000000000000009A /* PanelProbeAdapters.swift in Sources */, 10000000000000000000009D /* DomainContracts.swift in Sources */, 1000000000000000000000A0 /* InteractionSessionCoordinator.swift in Sources */, 1000000000000000000000A3 /* AccessibilityPermissionFlow.swift in Sources */, 1000000000000000000000A6 /* ClipboardPolicy.swift in Sources */, 1000000000000000000000A9 /* AccessibilityGateway.swift in Sources */, 1000000000000000000000AD /* ExternalTargetMonitor.swift in Sources */, 1000000000000000000000B1 /* ScreenGeometryConverter.swift in Sources */, 1000000000000000000000B4 /* PreviewPresentation.swift in Sources */, 1000000000000000000000B6 /* PreviewContentView.swift in Sources */, 1000000000000000000000B8 /* AppLifecycleController.swift in Sources */, 1000000000000000000000C7 /* SessionIntegration.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		100000000000000000000053 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (100000000000000000000093 /* AppEntry.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		100000000000000000000032 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 100000000000000000000011 /* SystemInteractionFoundation */; targetProxy = 100000000000000000000031 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		100000000000000000000081 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES;}; name = Debug; };
+		100000000000000000000082 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";}; name = Release; };
+		100000000000000000000083 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.systeminteractionfoundation;}; name = Debug; };
+		100000000000000000000084 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.systeminteractionfoundation;}; name = Release; };
+		100000000000000000000085 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.systeminteractionfoundation.tests;}; name = Debug; };
+		100000000000000000000086 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.systeminteractionfoundation.tests;}; name = Release; };
+		100000000000000000000087 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.syntheticaxhost;}; name = Debug; };
+		100000000000000000000088 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = 100000000000000000000024 /* Shared.xcconfig */; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = dev.prompt.syntheticaxhost;}; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		100000000000000000000070 /* Build configuration list for PBXProject "SystemInteractionFoundation" */ = {isa = XCConfigurationList; buildConfigurations = (100000000000000000000081 /* Debug */, 100000000000000000000082 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		100000000000000000000071 /* Build configuration list for PBXNativeTarget "SystemInteractionFoundation" */ = {isa = XCConfigurationList; buildConfigurations = (100000000000000000000083 /* Debug */, 100000000000000000000084 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		100000000000000000000072 /* Build configuration list for PBXNativeTarget "SystemInteractionFoundationTests" */ = {isa = XCConfigurationList; buildConfigurations = (100000000000000000000085 /* Debug */, 100000000000000000000086 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		100000000000000000000073 /* Build configuration list for PBXNativeTarget "SyntheticAXHost" */ = {isa = XCConfigurationList; buildConfigurations = (100000000000000000000087 /* Debug */, 100000000000000000000088 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 100000000000000000000001 /* Project object */;
+}
