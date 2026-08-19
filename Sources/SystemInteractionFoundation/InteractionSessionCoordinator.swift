@@ -242,6 +242,18 @@ final class InteractionSessionCoordinator {
                 self.recoveryCompleted(restored: false, for: sessionID)
                 return
             }
+            // Finding 4（第三轮 REVIEW）：validation 的 await 释放了 MainActor，
+            // 会话可能已在这个窗口内关闭或被替换。adapter 的代际检查在
+            // `restore` 内部才捕获代际，读到的已是新边界之后的值，识别不出
+            // 旧任务。必须在 restore 产生任何 side effect 之前 fail-closed
+            // 复核取消、会话身份与状态（plan.md 第 55 行、FR-011）。
+            guard
+                !Task.isCancelled,
+                sessionID == self.currentSessionID,
+                self.state == .recoverable
+            else {
+                return
+            }
             let restored = await self.target.restore(content)
             self.recoveryCompleted(restored: restored, for: sessionID)
         }

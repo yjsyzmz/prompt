@@ -115,6 +115,55 @@ final class SessionGenerationIsolationTests: XCTestCase {
             "重复的恢复动作只允许一次 restore／setter"
         )
     }
+
+    // MARK: - Finding 4（第三轮 REVIEW）：validation 与 restore 之间的会话边界
+
+    /// 旧恢复任务停在 `validateForRecovery` 的 await 上时用户关闭面板：
+    /// validation 放行后，旧任务不得再发起 `restore`。
+    ///
+    /// 被测窗口在协调器等待 validation 返回与调用 restore 之间：adapter 的
+    /// 代际检查要到 `restore` 内部才捕获代际，此时读到的已是新边界之后的值，
+    /// 识别不出旧任务，且恢复 side effect 已经发生。
+    func testStaleRecoveryHeldInValidationDoesNotRestoreAfterPanelCloses() async {
+        let probe = CoordinatorRecoveryProbe()
+        await probe.reachRecoverable()
+        probe.target.holdNextValidation()
+
+        probe.coordinator.recoverOriginal()
+        let staleWork = probe.coordinator.recoverWork
+        await probe.target.waitUntilValidationIsHeld()
+        probe.coordinator.close()
+        probe.target.releaseValidation()
+        await staleWork?.value
+
+        XCTAssertEqual(
+            probe.target.restoreCount,
+            0,
+            "面板关闭后，停在 validation 的旧任务不得再发起 restore（plan.md 第 55 行、FR-011）"
+        )
+    }
+
+    /// 旧恢复任务停在 `validateForRecovery` 时新会话已启动：同样不得 restore。
+    /// 新会话推进了 adapter 代际，restore 内部迟到的代际捕获会把旧任务当成
+    /// 新任务放行。
+    func testStaleRecoveryHeldInValidationDoesNotRestoreAfterNewSessionBegins() async {
+        let probe = CoordinatorRecoveryProbe()
+        await probe.reachRecoverable()
+        probe.target.holdNextValidation()
+
+        probe.coordinator.recoverOriginal()
+        let staleWork = probe.coordinator.recoverWork
+        await probe.target.waitUntilValidationIsHeld()
+        probe.coordinator.beginDirectSession()
+        probe.target.releaseValidation()
+        await staleWork?.value
+
+        XCTAssertEqual(
+            probe.target.restoreCount,
+            0,
+            "新会话已开始，旧任务的 validation 放行后不得写入 restore（plan.md 第 55 行、FR-011）"
+        )
+    }
 }
 
 // MARK: - Adapter probe（MUST 1）
@@ -465,4 +514,100 @@ private final class IsolationTargetMonitorSpy: TargetChangeMonitoring {
     ) {}
 
     func stopMonitoring() {}
+}
+
+// MARK: - Finding 4 doubles：validation 与 restore 之间的会话边界
+
+/// 直接驱动 `InteractionSessionCoordinator`：被测行为在协调器这一层，
+/// adapter 探针保护不到它。
+@MainActor
+private final class CoordinatorRecoveryProbe {
+    let coordinator: InteractionSessionCoordinator
+    let target: HeldValidationTargetSpy
+    private let pasteboard = BoundaryPasteboardSpy()
+    private let observer = BoundaryObserverSpy()
+
+    init() {
+        let target = HeldValidationTargetSpy()
+        self.target = target
+        coordinator = InteractionSessionCoordinator(
+            target: target,
+            pasteboard: pasteboard,
+            observer: observer
+        )
+    }
+
+    func reachRecoverable() async {
+        let sessionID = coordinator.beginDirectSession()
+        coordinator.permissionResolved(granted: true, for: sessionID)
+        coordinator.captureCompleted(
+            source: SourceText("SYNTHETIC-BOUNDARY-original"),
+            transformed: TransformedText(value: "SYNTHETIC-BOUNDARY-transformed"),
+            mode: .wholeField,
+            for: sessionID
+        )
+        coordinator.confirmReplacement()
+        await coordinator.applyWork?.value
+    }
+}
+
+/// 让下一次 `validateForRecovery` 挂在 continuation 上，测试在 `MainActor`
+/// 完成会话边界后再放行——与本文件其余握手一样，不依赖调度顺序。
+@MainActor
+private final class HeldValidationTargetSpy: SessionTextTargetAccessing {
+    private(set) var restoreCount = 0
+    private var shouldHoldValidation = false
+    private var heldValidation: CheckedContinuation<Void, Never>?
+    private var holdObserver: CheckedContinuation<Void, Never>?
+
+    func holdNextValidation() {
+        shouldHoldValidation = true
+    }
+
+    func replace(_ content: SessionContent) async -> Result<Void, DomainFailure> {
+        .success(())
+    }
+
+    func validateForRecovery(_ content: SessionContent) async -> Bool {
+        guard shouldHoldValidation else {
+            return true
+        }
+        shouldHoldValidation = false
+        await withCheckedContinuation { continuation in
+            heldValidation = continuation
+            holdObserver?.resume()
+            holdObserver = nil
+        }
+        return true
+    }
+
+    func restore(_ content: SessionContent) async -> Bool {
+        restoreCount += 1
+        return true
+    }
+
+    /// 挂起测试直到旧任务真的停在 validation 里。
+    func waitUntilValidationIsHeld() async {
+        guard heldValidation == nil else {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            holdObserver = continuation
+        }
+    }
+
+    func releaseValidation() {
+        heldValidation?.resume()
+        heldValidation = nil
+    }
+}
+
+private final class BoundaryPasteboardSpy: SessionPasteboardAccessing {
+    func writeLocalStringAfterExplicitAction(_ text: String) -> Bool {
+        true
+    }
+}
+
+private final class BoundaryObserverSpy: SessionStateObserving {
+    func sessionCoordinatorDidTransition(to state: InteractionSessionState) {}
 }
