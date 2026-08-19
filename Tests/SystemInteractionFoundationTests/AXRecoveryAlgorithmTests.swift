@@ -544,20 +544,212 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
         }
     }
 
+    // MARK: - T-067：三条 recovery 路径的回读覆盖（FR-012／AC-013）
+
+    private enum RecoveryReadbackPath {
+        case wholeFieldW4
+        case selectedR1
+        case selectedR2
+    }
+
+    func testWholeFieldRecoveryDelayedReadbackConfirmsWithSingleSetter() async {
+        await assertDelayedReadbackConfirms(path: .wholeFieldW4)
+    }
+
+    func testWholeFieldRecoveryUnconfirmedReadbackDoesNotWriteAgain() async {
+        await assertUnconfirmedReadbackFailsClosed(path: .wholeFieldW4)
+    }
+
+    func testWholeFieldRecoveryTargetLossAbortsReadbackWithoutSpendingBudget() async {
+        await assertTargetLossAbortsReadback(path: .wholeFieldW4)
+    }
+
+    func testWholeFieldRecoveryReadbackNeverUsesSelectedSetterOrRange() async {
+        await assertPathStaysOnItsOwnAttribute(path: .wholeFieldW4)
+    }
+
+    func testSelectedR1RecoveryDelayedReadbackConfirmsWithSingleSetter() async {
+        await assertDelayedReadbackConfirms(path: .selectedR1)
+    }
+
+    func testSelectedR1RecoveryUnconfirmedReadbackDoesNotWriteAgain() async {
+        await assertUnconfirmedReadbackFailsClosed(path: .selectedR1)
+    }
+
+    func testSelectedR1RecoveryTargetLossAbortsReadbackWithoutSpendingBudget() async {
+        await assertTargetLossAbortsReadback(path: .selectedR1)
+    }
+
+    func testSelectedR1RecoveryReadbackNeverUsesWholeFieldSetter() async {
+        await assertPathStaysOnItsOwnAttribute(path: .selectedR1)
+    }
+
+    func testSelectedR2RecoveryDelayedReadbackConfirmsWithSingleSetter() async {
+        await assertDelayedReadbackConfirms(path: .selectedR2)
+    }
+
+    func testSelectedR2RecoveryUnconfirmedReadbackDoesNotWriteAgain() async {
+        await assertUnconfirmedReadbackFailsClosed(path: .selectedR2)
+    }
+
+    func testSelectedR2RecoveryTargetLossAbortsReadbackWithoutSpendingBudget() async {
+        await assertTargetLossAbortsReadback(path: .selectedR2)
+    }
+
+    func testSelectedR2RecoveryReadbackNeverUsesSelectedSetter() async {
+        await assertPathStaysOnItsOwnAttribute(path: .selectedR2)
+    }
+
+    private func assertDelayedReadbackConfirms(path: RecoveryReadbackPath) async {
+        let fixture = makeReadbackFixture(path: path)
+        fixture.authority.setterAppliesValue = false
+        fixture.sleeper?.onSleep = { [authority = fixture.authority] sleepIndex in
+            if sleepIndex == 2 {
+                authority.applyLastWrite()
+            }
+        }
+
+        let result = await fixture.gateway.restoreAfterAuthoritativeValidation(
+            fixture.recovery
+        )
+
+        assertSuccess(result)
+        XCTAssertEqual(fixture.authority.totalSetterCount, 1, "\(path): setter exactly once")
+        let attempts = await fixture.gateway.readbackAttemptCount()
+        XCTAssertEqual(attempts, 3, "\(path): two misses then the confirming readback")
+        assertPathDidNotSwitchSetter(path: path, fixture: fixture)
+    }
+
+    private func assertUnconfirmedReadbackFailsClosed(path: RecoveryReadbackPath) async {
+        let fixture = makeReadbackFixture(path: path)
+        fixture.authority.setterAppliesValue = false
+
+        let result = await fixture.gateway.restoreAfterAuthoritativeValidation(
+            fixture.recovery
+        )
+
+        assertFailure(.recoveryTargetChanged, result: result)
+        XCTAssertEqual(fixture.authority.totalSetterCount, 1, "\(path): no additional write")
+        let attempts = await fixture.gateway.readbackAttemptCount()
+        XCTAssertGreaterThan(attempts, 1, "\(path): fail-closed still reads back")
+        XCTAssertLessThanOrEqual(attempts, ReadbackBudget.default.maximumAttempts)
+        assertPathDidNotSwitchSetter(path: path, fixture: fixture)
+    }
+
+    private func assertTargetLossAbortsReadback(path: RecoveryReadbackPath) async {
+        let fixture = makeReadbackFixture(path: path)
+        fixture.authority.setterAppliesValue = false
+        fixture.sleeper?.onSleep = { [authority = fixture.authority] sleepIndex in
+            if sleepIndex == 1 {
+                authority.elementIdentityMatches = false
+            }
+        }
+
+        let result = await fixture.gateway.restoreAfterAuthoritativeValidation(
+            fixture.recovery
+        )
+
+        assertFailure(.recoveryTargetChanged, result: result)
+        XCTAssertEqual(fixture.authority.totalSetterCount, 1, "\(path): abort must not write again")
+        let attempts = await fixture.gateway.readbackAttemptCount()
+        XCTAssertEqual(attempts, 1, "\(path): stop at invalidation, do not keep polling")
+        XCTAssertEqual(fixture.sleeper?.sleptDurations.count, 1)
+        XCTAssertLessThan(attempts, ReadbackBudget.default.maximumAttempts)
+        assertPathDidNotSwitchSetter(path: path, fixture: fixture)
+    }
+
+    private func assertPathStaysOnItsOwnAttribute(path: RecoveryReadbackPath) async {
+        let fixture = makeReadbackFixture(path: path)
+        fixture.authority.setterAppliesValue = false
+        fixture.sleeper?.onSleep = { [authority = fixture.authority] sleepIndex in
+            if sleepIndex == 2 {
+                authority.applyLastWrite()
+            }
+        }
+
+        _ = await fixture.gateway.restoreAfterAuthoritativeValidation(fixture.recovery)
+        assertPathDidNotSwitchSetter(path: path, fixture: fixture)
+        switch path {
+        case .wholeFieldW4:
+            XCTAssertEqual(fixture.authority.selectedRangeReadCount, 0)
+            XCTAssertEqual(fixture.authority.selectedTextReadCount, 0)
+        case .selectedR1:
+            XCTAssertGreaterThan(fixture.authority.selectedTextReadCount, 0)
+        case .selectedR2:
+            XCTAssertGreaterThan(fixture.authority.fullValueReadCount, 0)
+        }
+    }
+
+    private func assertPathDidNotSwitchSetter(
+        path: RecoveryReadbackPath,
+        fixture: AXRecoveryFixture
+    ) {
+        switch path {
+        case .wholeFieldW4:
+            XCTAssertEqual(fixture.authority.selectedSetterCount, 0)
+            XCTAssertEqual(fixture.authority.wholeFieldSetterCount, 1)
+        case .selectedR1:
+            XCTAssertEqual(fixture.authority.wholeFieldSetterCount, 0)
+            XCTAssertEqual(fixture.authority.selectedSetterCount, 1)
+        case .selectedR2:
+            XCTAssertEqual(fixture.authority.selectedSetterCount, 0)
+            XCTAssertEqual(fixture.authority.wholeFieldSetterCount, 1)
+        }
+    }
+
+    private func makeReadbackFixture(path: RecoveryReadbackPath) -> AXRecoveryFixture {
+        let clock = RecoveryReadbackClockFake()
+        let sleeper = RecoveryReadbackSleeperSpy(clock: clock)
+        switch path {
+        case .wholeFieldW4:
+            return makeFixture(
+                mode: .wholeField,
+                fieldContainsTransformed: true,
+                clock: clock,
+                sleeper: sleeper
+            )
+        case .selectedR1:
+            return makeSelectedFixture(
+                currentRange: expectedResultRange,
+                clock: clock,
+                sleeper: sleeper
+            )
+        case .selectedR2:
+            let caret = AXTextRange(location: capturedLocation, length: 0)
+            return makeSelectedFixture(
+                currentRange: caret,
+                clock: clock,
+                sleeper: sleeper
+            )
+        }
+    }
+
     // MARK: - Fixtures
 
     private func makeFixture(
         mode: CaptureMode,
-        fieldContainsTransformed: Bool
+        fieldContainsTransformed: Bool,
+        clock: (any MonotonicClockReading)? = nil,
+        sleeper: (any MonotonicSleeping)? = nil
     ) -> AXRecoveryFixture {
         let authority = AXRecoveryTargetSpy(pid: pid)
         authority.currentWholeValue = fieldContainsTransformed
             ? transformedValue
             : original.value
-        let gateway = AccessibilityGateway(
-            captureReader: AXRecoveryUnusedCaptureReader(),
-            authoritativeTarget: authority
-        )
+        let gateway: AccessibilityGateway
+        if let clock, let sleeper {
+            gateway = AccessibilityGateway(
+                captureReader: AXRecoveryUnusedCaptureReader(),
+                authoritativeTarget: authority,
+                clock: clock,
+                sleeper: sleeper
+            )
+        } else {
+            gateway = AccessibilityGateway(
+                captureReader: AXRecoveryUnusedCaptureReader(),
+                authoritativeTarget: authority
+            )
+        }
         let recovery = AXRecoveryContext(
             targetHandle: handle,
             pid: pid,
@@ -568,22 +760,35 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
         return AXRecoveryFixture(
             gateway: gateway,
             authority: authority,
-            recovery: recovery
+            recovery: recovery,
+            sleeper: sleeper as? RecoveryReadbackSleeperSpy
         )
     }
 
     private func makeSelectedFixture(
         currentRange: AXTextRange,
-        capturedRangeOverride: AXTextRange? = nil
+        capturedRangeOverride: AXTextRange? = nil,
+        clock: (any MonotonicClockReading)? = nil,
+        sleeper: (any MonotonicSleeping)? = nil
     ) -> AXRecoveryFixture {
         let authority = AXRecoveryTargetSpy(pid: pid)
         authority.currentWholeValue = prefix + transformedValue + suffix
         authority.selectedRangeOutcome = .success(currentRange)
         authority.currentSelectedText = transformedValue
-        let gateway = AccessibilityGateway(
-            captureReader: AXRecoveryUnusedCaptureReader(),
-            authoritativeTarget: authority
-        )
+        let gateway: AccessibilityGateway
+        if let clock, let sleeper {
+            gateway = AccessibilityGateway(
+                captureReader: AXRecoveryUnusedCaptureReader(),
+                authoritativeTarget: authority,
+                clock: clock,
+                sleeper: sleeper
+            )
+        } else {
+            gateway = AccessibilityGateway(
+                captureReader: AXRecoveryUnusedCaptureReader(),
+                authoritativeTarget: authority
+            )
+        }
         let recovery = AXRecoveryContext(
             targetHandle: handle,
             pid: pid,
@@ -594,7 +799,8 @@ final class AXRecoveryAlgorithmTests: XCTestCase {
         return AXRecoveryFixture(
             gateway: gateway,
             authority: authority,
-            recovery: recovery
+            recovery: recovery,
+            sleeper: sleeper as? RecoveryReadbackSleeperSpy
         )
     }
 
@@ -631,6 +837,7 @@ private struct AXRecoveryFixture {
     let gateway: AccessibilityGateway
     let authority: AXRecoveryTargetSpy
     let recovery: AXRecoveryContext
+    var sleeper: RecoveryReadbackSleeperSpy?
 }
 
 /// `settableModes` 的键：区分被查询的属性而不依赖 range 值。
@@ -667,11 +874,13 @@ private final class AXRecoveryTargetSpy: AXAuthoritativeTargetAccessing,
     var setterAppliesValue = true
 
     private(set) var selectedRangeReadCount = 0
+    private(set) var selectedTextReadCount = 0
     private(set) var selectedSetterCount = 0
     private(set) var wholeFieldSetterCount = 0
     private(set) var settableQueriedModes: [CaptureMode] = []
     private(set) var lastWrittenWholeValue: String?
-    private var fullValueReadCount = 0
+    private(set) var lastWrittenSelectedText: String?
+    private(set) var fullValueReadCount = 0
 
     var totalSetterCount: Int {
         selectedSetterCount + wholeFieldSetterCount
@@ -712,7 +921,8 @@ private final class AXRecoveryTargetSpy: AXAuthoritativeTargetAccessing,
     }
 
     func selectedText(in range: AXTextRange) -> Result<String, DomainFailure> {
-        .success(currentSelectedText)
+        selectedTextReadCount += 1
+        return .success(currentSelectedText)
     }
 
     func fullValue() -> Result<String, DomainFailure> {
@@ -740,6 +950,7 @@ private final class AXRecoveryTargetSpy: AXAuthoritativeTargetAccessing,
 
     func setSelectedText(_ value: String) -> Bool {
         selectedSetterCount += 1
+        lastWrittenSelectedText = value
         guard setterSucceeds else {
             return false
         }
@@ -774,6 +985,26 @@ private final class AXRecoveryTargetSpy: AXAuthoritativeTargetAccessing,
         currentWholeValue = value
         return true
     }
+
+    /// T-067 (a): the setter reported success but the value lands later.
+    func applyLastWrite() {
+        if let value = lastWrittenSelectedText {
+            if case .success(let range) = selectedRangeOutcome {
+                let full = currentWholeValue as NSString
+                let target = NSRange(location: range.location, length: range.length)
+                if target.location >= 0, NSMaxRange(target) <= full.length {
+                    currentWholeValue = full.replacingCharacters(in: target, with: value)
+                }
+                selectedRangeOutcome = .success(
+                    AXTextRange(location: range.location, length: (value as NSString).length)
+                )
+            }
+            currentSelectedText = value
+        }
+        if let value = lastWrittenWholeValue {
+            currentWholeValue = value
+        }
+    }
 }
 
 private struct AXRecoveryUnusedCaptureReader: AXCaptureReading {
@@ -795,5 +1026,50 @@ private struct AXRecoveryUnusedCaptureReader: AXCaptureReading {
 
     func bounds(for range: AXTextRange) -> Result<CGRect?, DomainFailure> {
         .failure(.unsupportedTarget)
+    }
+}
+
+// MARK: - T-067 injected clock
+
+private final class RecoveryReadbackClockFake: MonotonicClockReading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var current: UInt64 = 1_000_000_000
+
+    func now() -> UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return current
+    }
+
+    func advance(by nanoseconds: UInt64) {
+        lock.lock()
+        defer { lock.unlock() }
+        current += nanoseconds
+    }
+}
+
+private final class RecoveryReadbackSleeperSpy: MonotonicSleeping, @unchecked Sendable {
+    private let lock = NSLock()
+    private var durations: [UInt64] = []
+    private let clock: RecoveryReadbackClockFake
+    var onSleep: ((Int) -> Void)?
+
+    init(clock: RecoveryReadbackClockFake) {
+        self.clock = clock
+    }
+
+    func sleep(nanoseconds: UInt64) {
+        lock.lock()
+        durations.append(nanoseconds)
+        let index = durations.count
+        lock.unlock()
+        clock.advance(by: nanoseconds)
+        onSleep?(index)
+    }
+
+    var sleptDurations: [UInt64] {
+        lock.lock()
+        defer { lock.unlock() }
+        return durations
     }
 }
